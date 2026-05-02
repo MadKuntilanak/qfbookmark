@@ -1,0 +1,901 @@
+local Config = require("qfbookmark.config").defaults
+local QfbookmarkWindow = require "qfbookmark.window"
+local QfbookmarkNav = require "qfbookmark.nav"
+local QfbookmarkUtils = require "qfbookmark.utils"
+local QfbookmarkBookmark = require "qfbookmark.mark"
+local QfbookmarkPaths = require "qfbookmark.path"
+
+local M = { prefix_app = "QFBookmark" }
+Config.ns = vim.api.nvim_create_namespace(M.prefix_app .. "Ns")
+Config.sign_group = "QFBook"
+
+local last_winid = 0
+local status_autocmd_enabled = false
+
+---@type QFbookBufferMark
+M.buffers = {}
+
+---M.buffers = {
+---  ["MARK"] = {
+---    ["15"] = {
+---      bufnr = 0,
+---      filename = "filename",
+---      line = 15,
+---      col = 15,
+---      text = "some_text",
+---      harpoon = "filename:line:col:mark_mode",
+---      mark_mode = "MARK/DEBUG/FIX..",
+---    },
+---  },
+---  ....
+---}
+
+---@type QFbookBufferMarkEntry[]
+M.mark_lists = {}
+
+---@type table <string>
+M.mark_lists_harpoon = {}
+
+---@return QFbookBufferMarkEntry[]
+local function get_lists_marks()
+  if vim.tbl_isempty(M.buffers) then
+    return {}
+  end
+
+  ---@type QFbookBufferMarkEntry[]
+  local mark_lists = {}
+
+  for mark_mode, _ in pairs(M.buffers) do
+    for _, m in pairs(M.buffers[mark_mode]) do
+      mark_lists[#mark_lists + 1] = m
+    end
+  end
+
+  if #M.mark_lists_harpoon > 0 then
+    local pos = {}
+    for i, v in ipairs(M.mark_lists_harpoon) do
+      v = QfbookmarkUtils.remove_idx_m_harpoon(v)
+      pos[v] = i
+    end
+
+    -- Sort tabel mark_lists base on mark_lists_harpoon
+    table.sort(mark_lists, function(x, y)
+      if not x or not y then
+        -- QfbookmarkUtils.info("DEBUG: " .. x .. " or " .. y .. "nil")
+        return false
+      end
+      local px = pos[x.harpoon]
+      local py = pos[y.harpoon]
+      return (px or math.huge) < (py or math.huge)
+    end)
+  end
+
+  return mark_lists
+end
+
+---@param bufnr integer
+---@return boolean
+local function exclude_buf(bufnr)
+  ---@type { buftypes: table, filetypes: table}
+  local excluded = Config.extmarks.excluded
+  local user_buftypes = excluded.buftypes
+  local user_filetype = excluded.filetypes
+
+  local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
+
+  if #user_buftypes > 0 then
+    user_buftypes[#user_buftypes + 1] = { "prompt", "nofile" }
+  else
+    user_buftypes = { "prompt", "nofile", "quickfix" }
+  end
+  if vim.tbl_contains(user_buftypes, buftype) then
+    return false
+  end
+  local filetype = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
+  if vim.tbl_contains(user_filetype, filetype) then
+    return false
+  end
+
+  -- If I uncomment this block, I can mark Octo buffers :D
+  -- if buftype ~= "" then
+  --   return false
+  -- end
+
+  local win = vim.api.nvim_get_current_win()
+  if not QfbookmarkUtils._valid(win, bufnr) then
+    return false
+  end
+
+  return true
+end
+
+local function recall_augroup()
+  QfbookmarkBookmark.setup_mark_autocmds(M.buffers, true)
+
+  if status_autocmd_enabled then
+    vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
+      group = QfbookmarkUtils.create_augroup_name "SaveMark",
+      callback = function()
+        local mark_lists = get_lists_marks()
+        QfbookmarkBookmark.save_marks(mark_lists)
+      end,
+    })
+  end
+end
+
+local function remove_augroup()
+  if status_autocmd_enabled then
+    if M.buffers and #M.buffers == 0 then
+      local list_augroups = {
+        Config.sign_group .. "RefreshMark",
+        Config.sign_group .. "SaveMark",
+      }
+      for _, au_group in pairs(list_augroups) do
+        QfbookmarkUtils.clear_autocmd_group(au_group)
+      end
+    end
+    status_autocmd_enabled = false
+  end
+end
+
+--  ───────────────────────────────[ -MISC ]───────────────────────────────
+
+-- save quicklist items
+function M.save_or_load()
+  require("qfbookmark.pickers").handle_state(Config)
+end
+
+--  ───────────────────────────────[ MARK ]────────────────────────────
+
+local function reset_harpoon_list()
+  local mark_entry_lists = get_lists_marks()
+
+  if #M.mark_lists_harpoon == 0 then
+    for m_idx, m in pairs(mark_entry_lists) do
+      M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)
+    end
+  else
+    -- 1. Collect the valid harpoon IDs
+    local idx_lookup = {}
+    for _, m in ipairs(mark_entry_lists) do
+      idx_lookup[m.harpoon] = true
+    end
+
+    -- 2. Remove any harpoon entries that are no longer valid
+    local i = 1
+    while i <= #M.mark_lists_harpoon do
+      local harp = QfbookmarkUtils.remove_idx_m_harpoon(M.mark_lists_harpoon[i])
+      if not idx_lookup[harp] then
+        table.remove(M.mark_lists_harpoon, i)
+      else
+        i = i + 1
+      end
+    end
+
+    -- 3. Add any new harpoon IDs that don't already exist
+    for m_idx, m in ipairs(mark_entry_lists) do
+      local id = m.harpoon
+      local exists = false
+      for _, v in ipairs(M.mark_lists_harpoon) do
+        local harp = QfbookmarkUtils.remove_idx_m_harpoon(v)
+        if id == harp then
+          exists = true
+          break
+        end
+      end
+      if not exists then
+        M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, id)
+      end
+    end
+  end
+end
+local function sync_marks_harpoon()
+  reset_harpoon_list()
+
+  if #M.mark_lists_harpoon > 0 then
+    status_autocmd_enabled = true
+    recall_augroup()
+  else
+    remove_augroup()
+  end
+end
+
+local function clean_up_marks_harpoon()
+  local mark_entry_lists = get_lists_marks()
+
+  local idx_lookup = {}
+  for _, id in ipairs(M.mark_lists_harpoon) do
+    idx_lookup[id] = true
+  end
+
+  local mark_keep = {}
+  for _, m in pairs(mark_entry_lists) do
+    if idx_lookup[m.harpoon] then
+      mark_keep[#mark_keep + 1] = m.harpoon
+    end
+  end
+
+  M.mark_lists_harpoon = mark_keep
+end
+
+function M.setup_autocmds()
+  if status_autocmd_enabled then
+    vim.schedule(function()
+      recall_augroup()
+    end)
+  end
+
+  if not status_autocmd_enabled then
+    vim.schedule(function()
+      local mark_lists = QfbookmarkPaths.get_data_mark_local_project()
+      if mark_lists and not vim.tbl_isempty(mark_lists) then
+        -- fix old bufnr
+        for _, m in pairs(mark_lists) do
+          if m.filename and vim.fn.filereadable(m.filename) == 1 then
+            local new_bufnr = vim.fn.bufnr(m.filename)
+
+            if new_bufnr == -1 then
+              new_bufnr = vim.fn.bufadd(m.filename)
+            end
+
+            -- ensure the buffer is loaded and update the old buffer number
+            vim.fn.bufload(new_bufnr)
+            m.bufnr = new_bufnr
+          else
+            m.bufnr = nil
+          end
+        end
+
+        for m_idx, m in pairs(mark_lists) do
+          if not M.buffers[m.mark_mode] then
+            M.buffers[m.mark_mode] = {}
+          end
+
+          M.buffers[m.mark_mode][m.id] = {
+            bufnr = m.bufnr,
+            filename = m.filename,
+            line = m.line,
+            col = m.col,
+            text = m.text,
+            harpoon = m.harpoon,
+            mark_mode = m.mark_mode,
+            id = m.id,
+          }
+
+          M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)
+        end
+
+        sync_marks_harpoon()
+
+        for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+          if vim.api.nvim_buf_is_loaded(bufnr) then
+            QfbookmarkBookmark.update_mark_sign(M.buffers, bufnr)
+          end
+        end
+      end
+    end)
+  end
+
+  local qfhighlights = require "qfbookmark.highlights"
+  qfhighlights(M.prefix_app)
+end
+
+---@param mark_mode QFBookMarkMode
+local function add_sign(mark_mode)
+  if not Config.extmarks.enabled then
+    return
+  end
+
+  local mark_tbl = M.buffers
+
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  if not exclude_buf(bufnr) then
+    QfbookmarkUtils.warn "Can’t perform this action. This buffer is excluded."
+    return
+  end
+
+  local extmarkspec = Config.extmarks.keywords[mark_mode]
+  QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec)
+
+  -- vim.schedule(function()
+  --   clean_up_marks_harpoon()
+  -- end)
+
+  -- vim.schedule(function()
+  sync_marks_harpoon()
+  -- end)
+end
+
+function M.status_mark()
+  reset_harpoon_list()
+  return #M.mark_lists_harpoon > 0
+end
+
+function M.add_mark_sign()
+  add_sign "MARK"
+end
+function M.add_fix_sign()
+  add_sign "FIX"
+end
+function M.add_debug_sign()
+  add_sign "DEBUG"
+end
+function M.add_note_sign()
+  add_sign "NOTE"
+end
+
+local function delete_mark_builtin()
+  local marks = {}
+  for i = string.byte "a", string.byte "z" do
+    local mark = string.char(i)
+    local mark_line = vim.fn.line("'" .. mark)
+    if mark_line == vim.fn.line "." then
+      table.insert(marks, mark)
+    end
+  end
+
+  if #marks > 0 then
+    vim.cmd("delmarks " .. table.concat(marks, ""))
+  end
+end
+
+function M.delete_mark()
+  delete_mark_builtin()
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local pos = vim.api.nvim_win_get_cursor(0)
+
+  local line = pos[1]
+  local id = tonumber(line .. bufnr)
+  if not id then
+    return
+  end
+
+  local mark_lists = M.buffers
+
+  local opts = QfbookmarkBookmark.is_current_line_got_mark(mark_lists, { no_id = true })
+  if not opts then
+    return
+  end
+
+  local is_delete = QfbookmarkBookmark.delete_mark(mark_lists, opts.mark_mode, opts.id)
+  if not is_delete then
+    QfbookmarkUtils.warn(
+      string.format(
+        "Failed to delete mark (mode: %s, id: %s). Please check your input.",
+        tostring(opts.mark_mode),
+        tostring(opts.id)
+      )
+    )
+  end
+
+  vim.schedule(function()
+    clean_up_marks_harpoon()
+    reset_harpoon_list()
+  end)
+end
+---@param bufnr? integer
+function M.delete_mark_buffer(bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  local mark_lists = M.buffers
+
+  for mode_mark, _ in pairs(mark_lists) do
+    for j, x in pairs(mark_lists[mode_mark]) do
+      local filename = vim.api.nvim_buf_get_name(bufnr)
+      if string.match(x.filename, filename) then
+        local id = tonumber(j)
+        if id then
+          QfbookmarkBookmark.delete_mark(mark_lists, mode_mark, id)
+        end
+      end
+    end
+  end
+
+  -- Remove all builtin marks
+  vim.cmd "delmarks!"
+
+  -- Clean up a bit
+  vim.schedule(function()
+    clean_up_marks_harpoon()
+  end)
+end
+
+function M.next_mark()
+  if not M.status_mark() then
+    QfbookmarkUtils.info "Marks is empty"
+  end
+  local mark_lists = get_lists_marks()
+  QfbookmarkNav.handle_nav_mark(mark_lists, false)
+end
+function M.prev_mark()
+  if not M.status_mark() then
+    QfbookmarkUtils.info "Marks is empty"
+  end
+  local mark_lists = get_lists_marks()
+  QfbookmarkNav.handle_nav_mark(mark_lists, true)
+end
+
+--  ──────────────────────────────[ HARPOON ]──────────────────────────────
+
+-- -- WARN: Delete this!
+function M.debug_qf()
+  -- local mark_entry_lists = get_lists_marks()
+  QfbookmarkUtils.info(vim.inspect(M.mark_lists))
+  QfbookmarkUtils.info(vim.inspect(M.mark_lists_harpoon))
+end
+
+function M.open_mark_harpoon_window()
+  sync_marks_harpoon()
+
+  local mark_entry_lists = get_lists_marks()
+  local key_open_win_harp = Config.keymaps.actions.mark_win_open
+
+  local old_harpoon = {}
+  for _, harp in pairs(M.mark_lists_harpoon) do
+    old_harpoon[#old_harpoon + 1] = QfbookmarkUtils.remove_idx_m_harpoon(harp)
+  end
+
+  vim.schedule(function()
+    local QfbookmarkUI = require "qfbookmark.ui"
+    QfbookmarkUI._mark_harpoon_popup(mark_entry_lists, key_open_win_harp, M.mark_lists_harpoon, function(lines)
+      if #old_harpoon ~= #lines then
+        local idx_lookup = {}
+        for _, x in pairs(lines) do
+          local harp_no_idx = QfbookmarkUtils.remove_idx_m_harpoon(x)
+          if not idx_lookup[harp_no_idx] then
+            idx_lookup[harp_no_idx] = true
+          end
+        end
+
+        local harp_need_delete = {}
+        for _, x in pairs(old_harpoon) do
+          if not idx_lookup[x] then
+            harp_need_delete[#harp_need_delete + 1] = x
+          end
+        end
+
+        for _, m in pairs(mark_entry_lists) do
+          for _, x in pairs(harp_need_delete) do
+            if m.harpoon ~= x then
+              goto continue
+            end
+
+            local mark_lists = M.buffers
+
+            local opts = QfbookmarkBookmark.is_current_line_got_mark(mark_lists, { id = m.id })
+            if not opts then
+              return
+            end
+
+            if not vim.api.nvim_buf_is_valid(opts.bufnr) then
+              goto continue
+            end
+
+            local is_delete = QfbookmarkBookmark.delete_mark(mark_lists, opts.mark_mode, opts.id, opts.bufnr)
+            if not is_delete then
+              QfbookmarkUtils.warn "Something went wrong"
+            end
+
+            ::continue::
+          end
+        end
+      end
+
+      local new_lines = {}
+      for idx, x in pairs(lines) do
+        local harp_w_idx = QfbookmarkUtils.add_idx_m_harpoon(idx, x)
+        new_lines[#new_lines + 1] = harp_w_idx
+      end
+
+      M.mark_lists_harpoon = new_lines
+    end)
+  end)
+end
+
+---@param idx integer
+function M.goto_mark_index(idx)
+  if not M.mark_lists_harpoon[idx] then
+    -- M.add_mark_sign()
+    if Config.window.notify.mark then
+      QfbookmarkUtils.warn("No registered signmark exists for index `" .. tostring(idx) .. "`")
+    end
+    return
+  end
+
+  local harpoon_idx = QfbookmarkUtils.remove_idx_m_harpoon(M.mark_lists_harpoon[idx])
+
+  local is_set_cursor = false
+
+  local mark_entry_lists = get_lists_marks()
+
+  for _, m in pairs(mark_entry_lists) do
+    if m.harpoon == harpoon_idx then
+      QfbookmarkNav.jump_to {
+        filename = m.filename,
+        col = m.col,
+        line = m.line,
+      }
+    end
+  end
+
+  if is_set_cursor then
+    vim.schedule(function()
+      vim.cmd "normal! zz"
+    end)
+  end
+end
+
+--  ─────────────────────────────[ QUICKFIX ]──────────────────────────
+
+---@param list_type QFBookListType
+local function add_item(list_type)
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  if not exclude_buf(bufnr) then
+    QfbookmarkUtils.warn "Can’t perform this action. This buffer is excluded."
+    return
+  end
+
+  local is_location_target = list_type == "loclist"
+  local cmd_ = is_location_target and { "lclose", Config.window.layout.lopen, "loclist" }
+    or { "cclose", Config.window.layout.copen, "qflist" }
+
+  local title = QfbookmarkUtils.get_title_qf(QfbookmarkUtils.is_loclist())
+  if title and title:match "setqflist" or #title == 0 then
+    title = "Add item into " .. (is_location_target and "lf" or "qf")
+  end
+
+  local pos = vim.api.nvim_win_get_cursor(0)
+  local lnum = pos[1]
+  local col = pos[2]
+
+  ---@type QFBookLists
+  local list_items = {
+    items = {
+      {
+        bufnr = vim.api.nvim_get_current_buf(),
+        lnum = lnum,
+        col = col,
+        -- text = extmarkspec.alt .. QfbookmarkUtils.strip_whitespace(vim.api.nvim_get_current_line()),
+        text = QfbookmarkUtils.strip_whitespace(vim.api.nvim_get_current_line()),
+        line = vim.api.nvim_get_current_line(),
+      },
+    },
+    title = title,
+  }
+
+  if is_location_target then
+    QfbookmarkUtils.save_to_qf(list_items, true, "a")
+  else
+    QfbookmarkUtils.save_to_qf(list_items, false, "a")
+  end
+
+  if Config.window.popup.quickfix then
+    local is_open, _ = QfbookmarkUtils.is_vim_list_open()
+    if not is_open then
+      vim.cmd(cmd_[2])
+      vim.cmd "wincmd p"
+    end
+  end
+end
+
+function M.add_item_qflist()
+  add_item "quickfix"
+end
+function M.add_item_loclist()
+  add_item "loclist"
+end
+
+---@param list_type QFBookListType
+local function rename_header(list_type)
+  local is_location_target = list_type == "loclist"
+  local cmd = is_location_target and { Config.window.layout.lopen, "LocList" }
+    or { Config.window.layout.copen, "QuickFix" }
+
+  if QfbookmarkUtils.is_loclist() then
+    QfbookmarkUtils.warn("Renaming the title is not supported in the " .. cmd[2] .. ",\nOnly in Quickfix")
+    return
+  end
+
+  local QfbookmarkUI = require "qfbookmark.ui"
+  local title = string.format("Rename %s Title", cmd[2])
+  QfbookmarkUI._input_popup(title, "", "rename", function(input_msg)
+    if input_msg == "" or input_msg == nil then
+      return
+    end
+    vim.fn.setqflist({}, "r", { title = input_msg })
+    vim.cmd(cmd[1])
+  end)
+end
+
+function M.rename_title_qf()
+  if QfbookmarkUtils.is_loclist() then
+    rename_header "loclist"
+    return
+  end
+  rename_header "quickfix"
+end
+
+---@param list_type QFBookListType
+---@param force_close? boolean
+local function toggle_list(list_type, force_close)
+  force_close = force_close or false
+
+  local is_location_target = list_type == "loclist"
+  local cmd_ = is_location_target and { "lclose", Config.window.layout.lopen }
+    or { "cclose", Config.window.layout.copen }
+  local is_open, qf_or_loclist = QfbookmarkUtils.is_vim_list_open()
+
+  if (is_open and (list_type == qf_or_loclist)) or force_close then
+    vim.fn.win_gotoid(last_winid)
+    vim.cmd(cmd_[1])
+    return
+  end
+
+  if vim.bo.filetype == "qf" then
+    vim.cmd.wincmd "p"
+  end
+
+  local list = QfbookmarkUtils.get_list_qf(is_location_target)
+  if not vim.tbl_isempty(list.items) then
+    last_winid = vim.fn.win_getid()
+    vim.cmd(cmd_[2])
+    return
+  end
+
+  local msg_prefix = (is_location_target and "LocList" or "QuickFix")
+  QfbookmarkUtils.warn(msg_prefix .. " items is empty")
+
+  if vim.bo[0].filetype == "qf" then
+    vim.cmd.wincmd "p"
+  end
+end
+
+function M.toggle_open_qflist()
+  toggle_list "quickfix"
+end
+function M.toggle_open_loclist()
+  toggle_list "loclist"
+end
+
+function M.open_item_qf()
+  local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
+  local is_center = Config.window.actions.auto_center
+  local is_ispanded = Config.window.actions.auto_unfold
+  QfbookmarkNav.handle_open("default", is_center, is_ispanded)
+
+  if Config.keymaps.open_item.default.auto_close then
+    toggle_list(list_type, true)
+  end
+end
+function M.open_item_in_tab()
+  local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
+  local is_center = Config.window.actions.auto_center
+  local is_ispanded = Config.window.actions.auto_unfold
+  QfbookmarkNav.handle_open("tabnew", is_center, is_ispanded)
+
+  if Config.keymaps.open_item.tab.auto_close then
+    toggle_list(list_type, true)
+  end
+end
+function M.open_item_in_split()
+  local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
+  local is_center = Config.window.actions.auto_center
+  local is_ispanded = Config.window.actions.auto_unfold
+  QfbookmarkNav.handle_open("split", is_center, is_ispanded)
+
+  if Config.keymaps.open_item.split.auto_close then
+    toggle_list(list_type, true)
+  end
+end
+function M.open_item_in_vsplit()
+  local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
+  local is_center = Config.window.actions.auto_center
+  local is_ispanded = Config.window.actions.auto_unfold
+  QfbookmarkNav.handle_open("vsplit", is_center, is_ispanded)
+
+  if Config.keymaps.open_item.vsplit.auto_close then
+    toggle_list(list_type, true)
+  end
+end
+
+function M.next_item()
+  local is_center = Config.window.actions.auto_center
+  local is_ispanded = Config.window.actions.auto_unfold
+  QfbookmarkNav.handle_nav(false, "open", is_center, is_ispanded, false)
+end
+function M.prev_item()
+  local is_center = Config.window.actions.auto_center
+  local is_ispanded = Config.window.actions.auto_unfold
+  QfbookmarkNav.handle_nav(true, "open", is_center, is_ispanded, false)
+end
+function M.next_hist_qf()
+  QfbookmarkNav.handle_hist(Config.window.notify.plugin)
+end
+function M.prev_hist_qf()
+  QfbookmarkNav.handle_hist(Config.window.notify.plugin, true)
+end
+
+local function clear_all_items_qflist()
+  QfbookmarkUtils.info "✅ The item list has been cleared"
+  vim.fn.setqflist {}
+  vim.cmd.cclose()
+end
+local function clear_all_items_loclist()
+  QfbookmarkUtils.info "✅ The item list has been cleared"
+  vim.fn.setloclist(0, {}, "r")
+  vim.cmd.lclose()
+end
+
+function M.delete_all_items()
+  if QfbookmarkUtils.is_loclist() then
+    clear_all_items_loclist()
+  else
+    clear_all_items_qflist()
+  end
+end
+function M.delete_item()
+  local curqfidx = vim.fn.line "."
+
+  local data_lists = {}
+  data_lists = QfbookmarkUtils.get_list_qf(QfbookmarkUtils.is_loclist()).items
+
+  local close_cmd = QfbookmarkUtils.is_loclist() and "lclose" or "cclose"
+  local open_cmd = QfbookmarkUtils.is_loclist() and Config.window.layout.lopen or Config.window.layout.copen
+
+  local count = vim.v.count
+  if count == 0 then
+    count = 1
+  end
+  if count > #data_lists then
+    count = #data_lists
+  end
+
+  local item = vim.api.nvim_win_get_cursor(0)[1]
+  for _ = item, item + count - 1 do
+    table.remove(data_lists, item)
+  end
+
+  if #data_lists ~= 0 then
+    local title = QfbookmarkUtils.get_title_qf(QfbookmarkUtils.is_loclist())
+
+    ---@type QFBookLists
+    local list_items = {
+      items = data_lists,
+      title = title,
+    }
+    QfbookmarkUtils.save_to_qf(list_items, QfbookmarkUtils.is_loclist())
+
+    if QfbookmarkUtils.is_loclist() then
+      vim.cmd(string.format("%slfirst", curqfidx))
+    else
+      vim.cmd(string.format("%scfirst", curqfidx))
+    end
+
+    vim.schedule(function()
+      vim.cmd(open_cmd)
+    end)
+  elseif #data_lists == 0 then
+    vim.api.nvim_command(close_cmd)
+  end
+
+  -- if Config.extmarks.enabled then
+  --   QfbookmarkBookmark.update_render_extermark(vim.api.nvim_get_current_buf())
+  -- end
+end
+
+--  ───────────────────────────[ INTEGRATIONS ]────────────────────────
+
+function M.integrations_trouble_qflist()
+  if Config.keymaps.integrations.trouble.enabled then
+    local trouble = require "qfbookmark.integrations.trouble"
+    if vim.bo.filetype == "qf" then
+      trouble.handle_toggle_qf(false, "quickfix")
+    end
+    if vim.bo.filetype == "trouble" then
+      trouble.handle_toggle_qf(true, "quickfix")
+    end
+  end
+end
+function M.integrations_trouble_loclist()
+  if Config.keymaps.integrations.trouble.enabled then
+    local trouble = require "qfbookmark.integrations.trouble"
+    if vim.bo.filetype == "qf" then
+      if QfbookmarkUtils.is_loclist() then
+        trouble.handle_toggle_qf(false, "loclist")
+      end
+    end
+    if vim.bo.filetype == "trouble" then
+      trouble.handle_toggle_qf(true, "loclist", true)
+    end
+  end
+end
+function M.integrations_grugfar()
+  local keymap_grugfar_opts = Config.keymaps.integrations.grugfar
+  if keymap_grugfar_opts.enabled then
+    local grugfar = require "qfbookmark.integrations.grugfar"
+    if QfbookmarkUtils.is_loclist() then
+      grugfar.handle_toggle_qf("loclist", false, true)
+    else
+      grugfar.handle_toggle_qf("quickfix", false)
+    end
+  end
+end
+function M.integrations_copyline()
+  local bufnr = vim.api.nvim_get_current_buf()
+  if not exclude_buf(bufnr) then
+    QfbookmarkUtils.warn "Can’t perform this action. This buffer is excluded."
+    return
+  end
+
+  local keymap_copyline_opts = Config.keymaps.integrations.copyline
+  if keymap_copyline_opts.enabled then
+    local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
+    local filename = vim.api.nvim_buf_get_name(bufnr)
+
+    local line_format = string.format("%s:%s:%s", filename, line_opts.line, line_opts.col)
+    vim.fn.setreg("+", line_format, "c")
+
+    QfbookmarkUtils.info "Line under cursor copied!"
+  end
+end
+
+--  ───────────────────────────────[ NOTE ]────────────────────────────
+
+local is_open_global_note
+local window_command
+
+---@param first_close? boolean
+local function __note(first_close)
+  first_close = first_close or false
+
+  local note = require "qfbookmark.note"
+  local note_window_opts = Config.window.note
+  note.handle_open(is_open_global_note, window_command, note_window_opts, first_close)
+end
+function M.toggle_open_note_global()
+  if not window_command then
+    window_command = QfbookmarkWindow.get_size_note_window(Config.window.note)
+  end
+
+  is_open_global_note = true
+  __note()
+end
+function M.toggle_open_note_local()
+  if not window_command then
+    window_command = QfbookmarkWindow.get_size_note_window(Config.window.note)
+  end
+  is_open_global_note = false
+  __note()
+end
+
+--  ──────────────────────────────[ LAYOUT ]───────────────────────────
+
+function M.move_layout_qf_up()
+  if not Config.window.layout.enabled then
+    return
+  end
+  QfbookmarkWindow.move_to("above", function(list_type)
+    toggle_list(list_type, false)
+  end)
+end
+function M.move_layout_qf_down()
+  if not Config.window.layout.enabled then
+    return
+  end
+  QfbookmarkWindow.move_to("bottom", function(list_type)
+    toggle_list(list_type, false)
+  end)
+end
+
+function M.toggle_rotate_note_window()
+  local opts_note_window = Config.window.note
+  local next_win_layout = QfbookmarkWindow.get_next_rotate_note_window(opts_note_window)
+  window_command = next_win_layout
+  __note(true)
+end
+
+remove_augroup()
+
+return M

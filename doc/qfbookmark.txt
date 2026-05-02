@@ -1,0 +1,40 @@
+*qfbookmark.txt*        QFBookmark
+
+qfbookmark — plugin untuk melakukan sesuatu yang keren.
+
+==============================================================================
+CONTENTS                                                   *myplugin-contents*
+
+1. Introduction .............................................. |myplugin-intro|
+2. Usage ..................................................... |myplugin-usage|
+3. Configuration .................................. |myplugin-configuration|
+4. Commands ........................................ |myplugin-commands|
+5. License ............................................ |myplugin-license|
+
+==============================================================================
+1. Introduction                                               *myplugin-intro*
+
+write something here..
+
+==============================================================================
+2. Usage                                                      *myplugin-usage*
+
+How to use it?
+
+==============================================================================
+3. Configuration                                      *myplugin-configuration*
+
+How to configure it?
+
+==============================================================================
+4. Commands                                                  *myplugin-commands*
+
+`:MyCommand`    - Ex command
+E.g.:
+
+    :MyCommand arg
+
+==============================================================================
+5. License                                                   *myplugin-license*
+
+MIT License.
