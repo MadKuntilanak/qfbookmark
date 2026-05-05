@@ -578,18 +578,6 @@ function M.save_table_to_file(contents, filename)
 end
 
 ---@param bufnr integer
----@return boolean
-local function can_start_treesitter(bufnr)
-  local ft = vim.bo[bufnr].filetype
-  if ft == "" then
-    return false
-  end
-
-  local ok = pcall(vim.treesitter.language.get_lang, ft)
-  return ok
-end
-
----@param bufnr integer
 function M.ensure_treesitter(bufnr)
   if not vim.api.nvim_buf_is_valid(bufnr) then
     return
