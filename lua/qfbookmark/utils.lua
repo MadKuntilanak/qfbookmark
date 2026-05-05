@@ -231,10 +231,14 @@ local function get_prefix_notify_title(title)
   return title
 end
 
----@param msg string
+---@param msg string|table
 ---@param title? string
 function M.info(msg, title)
   title = get_prefix_notify_title(title)
+  if type(msg) == "table" then
+    vim.api.nvim_echo(msg, false, {})
+    return
+  end
   vim.notify(msg, vim.log.levels.INFO, { title = title })
 end
 

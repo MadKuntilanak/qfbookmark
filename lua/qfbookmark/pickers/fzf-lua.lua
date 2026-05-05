@@ -80,19 +80,11 @@ end
 --- END FZFLUA
 
 ---@param str string
----@param icon string
----@param icon_hl string
-local function format_title(str, icon, icon_hl)
-  if icon_hl == "" then
-    icon_hl = "FzfLuaTitle"
-  end
-
-  return {
-    { " ", "FzfLuaTitle" },
-    { (icon and icon .. " " or ""), icon_hl },
-    { str, "FzfLuaTitle" },
-    { " ", "FzfLuaTitle" },
-  }
+---@param icon? string
+---@return string
+local function format_title(str, icon)
+  icon = icon and icon .. " " or ""
+  return icon .. str
 end
 
 ---@param state QFBookState
@@ -112,6 +104,29 @@ local function save_to_qf(state, select_state)
   end
 end
 
+local function __fzf_open_files(title_prompt, path_cwd, opts)
+  opts = opts or {}
+  return FzfLua.files(vim.tbl_deep_extend("force", {
+    cwd = path_cwd,
+    no_header = false,
+    no_header_i = true, -- hide interactive header?
+    fzf_opts = { ["--header"] = [[^x:delete  ^r:rename]] },
+    cmd = "fd -d 1 -e json --exec stat --format '%Z %n' {} | sort -nr | cut -d' ' -f2- | sed 's/.json$//' | sed 's/\\.\\///'",
+    winopts = { title = title_prompt, preview = { hidden = true } },
+    actions = {
+      ["default"] = Mapping.default_load_qf(path_cwd),
+      ["alt-q"] = Mapping.load_open_in_qf(path_cwd),
+      ["alt-v"] = Mapping.load_open_in_loc(path_cwd),
+      ["ctrl-x"] = function()
+        return Mapping.remove_itemqf(path_cwd)
+      end,
+      ["ctrl-r"] = function()
+        return Mapping.rename_itemqf(path_cwd)
+      end,
+    },
+  }, opts))
+end
+
 ---@param state QFBookState
 ---@param select_state QFBookCurrentState
 local function load_to_qf(state, select_state)
@@ -123,22 +138,8 @@ local function load_to_qf(state, select_state)
     return
   end
 
-  local title_prompt = format_title(state, load_icon, "")
-
-  FzfLua.files {
-    cwd = path,
-    no_header = true,
-    no_header_i = true, -- hide interactive header?
-    fzf_opts = { ["--header"] = [[^x:delete  ^r:rename]] },
-    cmd = "fd -d 1 -e json --exec stat --format '%Z %n' {} | sort -nr | cut -d' ' -f2- | sed 's/.json$//' | sed 's/\\.\\///'",
-    winopts = { title = title_prompt, preview = { hidden = true } },
-    -- actions = vim.tbl_extend("keep", FzfMappings.edit_or_merge_qf(opts, path_qf), FzfMappings.delete_item(path_qf)),
-    actions = {
-      ["default"] = Mapping.default_load_qf(path),
-      ["alt-q"] = Mapping.load_open_in_qf(path),
-      ["alt-v"] = Mapping.load_open_in_loc(path),
-    },
-  }
+  local title_prompt = format_title(state, load_icon)
+  __fzf_open_files(title_prompt, path)
 end
 
 local fzf_opts = {
@@ -164,9 +165,9 @@ local function handle_state(config, contents, state)
 
   if #state > 0 then
     local icon = (state == "Save Qflist" or state == "Save Loclist") and save_icon or load_icon
-    fzf_opts.winopts.title = format_title(state, icon, "")
+    fzf_opts.winopts.title = format_title(state, icon)
   else
-    fzf_opts.winopts.title = format_title("Save Or Load", set_icon, "")
+    fzf_opts.winopts.title = format_title("Save Or Load", set_icon)
   end
 
   local generate_width = function()
@@ -292,6 +293,83 @@ function Mapping.load_open_in_loc(base_path)
     local sel_fname = selected[1]
     load_open(sel_fname, base_path, true)
   end
+end
+
+---@param base_path string
+function Mapping.remove_itemqf(base_path)
+  __fzf_open_files("Remove", base_path, {
+    actions = {
+      ["default"] = function(sel)
+        local fname = strip_string(sel[1])
+        if not fname then
+          QfbookmarkUtils.warn("Something went wrong when strip string: `" .. tostring(fname) .. "`")
+          return
+        end
+
+        local file_path = base_path .. "/" .. fname .. ".json"
+
+        if vim.fn.filereadable(file_path) ~= 1 then
+          QfbookmarkUtils.error("File not found: " .. file_path)
+          return
+        end
+
+        local ok, err = os.remove(file_path)
+        if not ok then
+          QfbookmarkUtils.error("Failed to delete file: " .. err)
+          return
+        end
+        QfbookmarkUtils.info("File deleted: `" .. file_path .. "`")
+      end,
+    },
+  })
+end
+
+function Mapping.rename_itemqf(base_path)
+  __fzf_open_files("Rename", base_path, {
+    actions = {
+      ["default"] = function(sel)
+        local fname = strip_string(sel[1])
+        if not fname then
+          QfbookmarkUtils.warn("Something went wrong when strip string: `" .. tostring(fname) .. "`")
+          return
+        end
+
+        local old_path = base_path .. "/" .. fname .. ".json"
+
+        if vim.fn.filereadable(old_path) ~= 1 then
+          QfbookmarkUtils.error("File not found: " .. old_path)
+          return
+        end
+
+        -- Create a new input prompt
+        local new_name = vim.fn.input("Rename to: ", fname)
+        if not new_name or new_name == "" then
+          QfbookmarkUtils.warn "Rename cancelled"
+          return
+        end
+
+        local new_path = base_path .. "/" .. new_name .. ".json"
+
+        if vim.fn.filereadable(new_path) == 1 then
+          QfbookmarkUtils.error("Target file already exists: " .. new_path)
+          return
+        end
+
+        local ok, err = os.rename(old_path, new_path)
+        if not ok then
+          QfbookmarkUtils.error("Failed to rename file: " .. err)
+          return
+        end
+
+        QfbookmarkUtils.info("Renamed: `" .. old_path .. "` -> `" .. new_path .. "`")
+        -- QfbookmarkUtils.info { { "Renamed: ", "Normal" },
+        --   { old_path, "Directory" },
+        --   { " -> ", "Normal" },
+        --   { new_path, "Directory" },
+        -- }
+      end,
+    },
+  })
 end
 
 return M
