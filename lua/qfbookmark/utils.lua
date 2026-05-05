@@ -474,34 +474,38 @@ function M.find_win_ls(opts)
   local current_win = vim.api.nvim_get_current_win()
   local current_filename = vim.api.nvim_buf_get_name(current_buf)
 
-  -- return false immediately if the filename is the same
+  -- Return false immediately if the filename is the same
   if opts.filename and opts.filename == current_filename then
     return win_found
   end
 
-  local wins = vim.api.nvim_list_wins()
+  -- Get all windows from tabs
+  -- local wins = vim.api.nvim_list_wins()
+
+  -- Get all windows only from current tab
+  local wins = vim.api.nvim_tabpage_list_wins(0)
+
   for _, winid in ipairs(wins) do
     local buf = vim.api.nvim_win_get_buf(winid)
     if not M._valid(winid, buf) then
       goto continue
     end
 
-    -- check bufnr
+    -- Check bufnr
     if opts.bufnr and buf == opts.bufnr then
-      win_found = { found = true, winid = winid, bufnr = buf }
+      return { found = true, winid = winid, bufnr = buf }
     end
 
-    -- check filename
+    -- Check filename
     if opts.filename then
       local buf_filename = vim.api.nvim_buf_get_name(buf)
-      -- if string.match(opts.filename, buf_filename) then
       if opts.filename == buf_filename then
-        -- return found if found
+        -- kalau cuma 1 window di tab ini, jangan dianggap found
         if #wins == 1 and winid == current_win then
-          win_found = { found = false, winid = nil, bufnr = nil }
-        else
-          win_found = { found = true, winid = winid, bufnr = buf }
+          return { found = false, winid = nil, bufnr = nil }
         end
+
+        return { found = true, winid = winid, bufnr = buf }
       end
     end
 
