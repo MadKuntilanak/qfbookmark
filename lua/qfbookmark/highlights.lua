@@ -1,37 +1,62 @@
 ---@type QFBookHighlight[]
 local colors = {
-  HarpFooter = {
-    fg = { higroup = { fromTo = "Keyword", attr = "fg" } },
+  PreviewFooter = {
+    fg = {
+      higroup = { fromTo = "Function", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.5 },
+    },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
   },
-  HarpCursorline = {
+  PreviewCursorline = {
     bg = {
       higroup = { fromTo = "Error", attr = "fg" },
       darken = { fromTo = "Normal", attr = "bg", amount = 0.1 },
-      -- tint = { fromTo = "Normal", attr = "bg", amount = 0.1 },
     },
+  },
+  PreviewFloatTitle = {
+    fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
+    bg = { higroup = { fromTo = "FloatTitle", attr = "bg" } },
+    bold = true,
+  },
+  PreviewFloatCursor = {
+    fg = {
+      higroup = { fromTo = "Function", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.5 },
+    },
+    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
   },
   SaveFloatNormal = {
     fg = { higroup = { fromTo = "Function", attr = "fg" } },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
   },
   FloatNormal = {
-    fg = { higroup = { fromTo = "NormalFloat", attr = "fg" } },
-    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
+    fg = {
+      higroup = { fromTo = "Error", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.4 },
+    },
+    bg = { higroup = { fromTo = "Normal", attr = "bg" } },
   },
   FloatTitle = {
-    fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
-    bg = { higroup = { fromTo = "FloatTitle", attr = "bg" } },
+    fg = {
+      higroup = { fromTo = "FloatBorder", attr = "fg" },
+      darken = { fromTo = "FloatBorder", attr = "fg", amount = 4 },
+    },
     bold = true,
   },
   FloatFooter = {
-    fg = { higroup = { fromTo = "FloatFooter", attr = "fg" } },
-    bg = { higroup = { fromTo = "FloatBorder", attr = "bg" } },
-    bold = true,
+    fg = {
+      higroup = { fromTo = "FloatBorder", attr = "fg" },
+      darken = { fromTo = "FloatBorder", attr = "fg", amount = 4 },
+    },
+    bold = false,
   },
-  FloatBorder = {
-    fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } },
-    bg = { higroup = { fromTo = "FloatBorder", attr = "bg" } },
+  FloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
+  FloatCursorLine = {
+    fg = {
+      higroup = { fromTo = "Error", attr = "fg" },
+      darken = { fromTo = "Keyword", attr = "bg", amount = 0.7 },
+    },
+    bold = true,
   },
 }
 

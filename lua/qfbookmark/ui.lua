@@ -179,7 +179,6 @@ local function update_preview_harpoon(mark_lists, opts, secondary_win)
       vim.api.nvim_win_set_cursor(secondary_win, { line, col })
     end
 
-    -- local ft = vim.filetype.match { buf = bufnr } or filename:match "^.+%.(.+)$" or ""
     local ft
     if vim.api.nvim_buf_is_valid(bufnr) then
       ft = vim.filetype.match { buf = bufnr }
@@ -192,11 +191,13 @@ local function update_preview_harpoon(mark_lists, opts, secondary_win)
       vim.api.nvim_set_option_value("foldenable", false, { win = secondary_win, scope = "local" })
       vim.api.nvim_set_option_value("foldmethod", "manual", { win = secondary_win, scope = "local" })
       vim.api.nvim_set_option_value("cursorline", true, { win = secondary_win, scope = "local" })
+      vim.api.nvim_set_option_value("number", true, { win = secondary_win, scope = "local" })
       vim.api.nvim_set_option_value(
         "winhighlight",
-        "CursorLine:QFBookmarkHarpCursorline,"
-          .. "FloatBorder:QFBookmarkFloatBorder,"
-          .. "FloatTitle:QFBookmarkFloatTitle,",
+        "CursorLine:QFBookmarkPreviewCursorline,"
+          .. "FloatTitle:QFBookmarkPreviewFloatTitle,"
+          .. "Cursor:QFBookmarkPreviewFloatCursor,",
+
         { win = secondary_win, scope = "local" }
       )
     end
@@ -367,21 +368,6 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon)
           }
         end
       end
-
-      -- if #missing > 0 then
-      --   QfbookmarkUtils.warn(
-      --     "The selected string is missing: " .. table.concat(missing, ", ") .. ".\nOperation cancelled."
-      --   )
-      -- else
-      --   vim.cmd(cmd)
-      --
-      --   if filename then
-      --     local bufnr = vim.fn.bufadd(filename)
-      --     vim.fn.bufload(bufnr)
-      --     vim.api.nvim_win_set_buf(0, bufnr)
-      --     vim.api.nvim_win_set_cursor(0, { line, col })
-      --   end
-      -- end
 
       clean_up(win_popup)
     end)
@@ -570,12 +556,17 @@ local function build_popup(qfpopup, wincfg, lines)
     end,
   })
 
+  vim.api.nvim_set_option_value("filetype", "qfbookmark", { buf = buf })
+  vim.api.nvim_set_option_value("cursorline", true, { win = win, scope = "local" })
+
   vim.api.nvim_set_option_value(
     "winhighlight",
-    -- "NormalFloat:QFBookmarkFloatNormal,"
     "FloatBorder:QFBookmarkFloatBorder,"
+      .. "Normal:QFBookmarkFloatNormal,"
+      .. "NormalFloat:QFBookmarkFloatNormal,"
       .. "FloatTitle:QFBookmarkFloatTitle,"
-      .. "FloatFooter:QFBookmarkFloatFooter",
+      .. "FloatFooter:QFBookmarkFloatFooter,"
+      .. "CursorLine:QFBookmarkFloatCursorLine,",
     { win = qfpopup.win, scope = "local" }
   )
 
@@ -757,8 +748,6 @@ end
 ---@param keymap_harpoon string|string[]
 ---@param harpoon_lines table
 local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
-  local title = "QFbookmark Harpoon"
-
   local win_opts = get_win_width()
   local win_buf = vim.api.nvim_create_buf(false, true)
 
@@ -786,7 +775,7 @@ local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
       style = "minimal",
       border = "rounded",
 
-      title = format_title(title),
+      title = "",
       title_pos = "center",
 
       footer = " <C-q> Quit | <C-y/v/s/t> Enter/V/Split/Tab ",
