@@ -55,8 +55,20 @@ function M.jump_to(opts)
     end
   end
 
-  safe_set_cursor(0, opts.line, opts.col)
+  -- Try jump to given position
+  if opts.line and opts.line > 0 then
+    safe_set_cursor(0, opts.line, opts.col or 0)
+  else
+    -- Fallback: go to last known cursor position (mark ")
+    local mark = vim.api.nvim_buf_get_mark(0, '"')
+    local line_count = vim.api.nvim_buf_line_count(0)
 
+    if mark[1] > 0 and mark[1] <= line_count then
+      pcall(vim.api.nvim_win_set_cursor, 0, mark)
+    end
+  end
+
+  -- Open fold if needed
   local fold_start = vim.fn.foldclosed(opts.line)
   if fold_start ~= -1 then
     vim.cmd "silent! foldopen!"

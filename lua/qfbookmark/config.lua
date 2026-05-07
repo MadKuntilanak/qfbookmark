@@ -65,7 +65,8 @@ M.defaults = {
       rename_title = "<Leader>mR",
 
       save_or_load = "<Leader>qy",
-      mark_win_open = "<Leader>qo",
+      mark_win_open = "gp",
+      buffers = "gn",
 
       mark = "<Leader>qq",
       fix = "<Leader>qf",

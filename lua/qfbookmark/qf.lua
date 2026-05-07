@@ -2,6 +2,8 @@ local Config = require("qfbookmark.config").defaults
 local QfbookmarkWindow = require "qfbookmark.window"
 local QfbookmarkNav = require "qfbookmark.nav"
 local QfbookmarkUtils = require "qfbookmark.utils"
+local QfbookmarkBuffers = require "qfbookmark.buffers"
+local QfbookmarkUI = require "qfbookmark.ui"
 local QfbookmarkBookmark = require "qfbookmark.mark"
 local QfbookmarkPaths = require "qfbookmark.path"
 
@@ -298,13 +300,7 @@ local function add_sign(mark_mode)
   local extmarkspec = Config.extmarks.keywords[mark_mode]
   QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec)
 
-  -- vim.schedule(function()
-  --   clean_up_marks_harpoon()
-  -- end)
-
-  -- vim.schedule(function()
   sync_marks_harpoon()
-  -- end)
 end
 
 function M.status_mark()
@@ -416,6 +412,27 @@ function M.prev_mark()
   QfbookmarkNav.handle_nav_mark(mark_lists, true)
 end
 
+--  ──────────────────────────────[ BUFFERS ]──────────────────────────────
+
+---@param is_prev? boolean
+local function load_buffers(is_prev)
+  local list_buffers = QfbookmarkBuffers.load_buffers(is_prev)
+
+  local tbl_buffers = {}
+
+  for _, buffer in pairs(list_buffers) do
+    local buffer_item = vim.fn.fnamemodify(buffer.info.name, ":~:.") -- shorten path
+    -- table.insert(tbl_buffers, buffer.flag .. " " .. buffer_item)
+    table.insert(tbl_buffers, buffer_item)
+  end
+
+  QfbookmarkUI._select_buffer(tbl_buffers, function() end)
+end
+
+function M.open_buffers()
+  load_buffers()
+end
+
 --  ──────────────────────────────[ HARPOON ]──────────────────────────────
 
 -- -- WARN: Delete this!
@@ -437,8 +454,11 @@ function M.open_mark_harpoon_window()
   end
 
   vim.schedule(function()
-    local QfbookmarkUI = require "qfbookmark.ui"
     QfbookmarkUI._mark_harpoon_popup(mark_entry_lists, key_open_win_harp, M.mark_lists_harpoon, function(lines)
+      if type(lines) == "string" then
+        return
+      end
+
       if #old_harpoon ~= #lines then
         local idx_lookup = {}
         for _, x in pairs(lines) do
@@ -598,7 +618,6 @@ local function rename_header(list_type)
     return
   end
 
-  local QfbookmarkUI = require "qfbookmark.ui"
   local title = string.format("Rename %s Title", cmd[2])
   QfbookmarkUI._input_popup(title, "", "rename", function(input_msg)
     if input_msg == "" or input_msg == nil then

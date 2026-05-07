@@ -3,6 +3,12 @@ local QfbookmarkUtils = require "qfbookmark.utils"
 
 local M = {}
 
+-- local string_sub = string.sub
+local string_byte = string.byte
+
+M.fslash_byte = string_byte "/"
+M.bslash_byte = string_byte [[\]]
+
 ---@param filename string
 ---@return boolean | string
 function M.exists(filename)
@@ -238,6 +244,60 @@ end
 ---@return string|nil
 function M.git_branch()
   return cmd "git branch --show-current"
+end
+
+---@param byte number
+---@return boolean
+function M.byte_is_separator(byte)
+  if QfbookmarkUtils.__IS_WINDOWS then
+    -- path on windows can also be the result of `vim.fs.normalize`
+    -- so we need to test for the presence of both slash types
+    return byte == M.bslash_byte or byte == M.fslash_byte
+  else
+    return byte == M.fslash_byte
+  end
+end
+
+---@param path string
+---@param relative_to string
+---@return boolean, string?
+function M.is_relative_to(path, relative_to)
+  -- make sure paths end with a separator
+  local path_no_trailing = M.tilde_to_HOME(path)
+  path = M.add_trailing(path_no_trailing)
+  relative_to = M.add_trailing(M.tilde_to_HOME(relative_to))
+  local pidx, ridx = 1, 1
+  repeat
+    local pbyte = string_byte(path, pidx)
+    local rbyte = string_byte(relative_to, ridx)
+    if M.byte_is_separator(pbyte) and M.byte_is_separator(rbyte) then
+      -- both path and relative_to have a separator part
+      -- which may differ in length if there are multiple
+      -- separators, e.g. "/some/path" and "//some//path"
+      repeat
+        pidx = pidx + 1
+      until not M.byte_is_separator(string_byte(path, pidx))
+      repeat
+        ridx = ridx + 1
+      until not M.byte_is_separator(string_byte(relative_to, ridx))
+    elseif
+      QfbookmarkUtils.__IS_WINDOWS
+        and pbyte
+        and rbyte
+        -- case insensitive matching on windows
+        and string.char(pbyte):lower() == string.char(rbyte):lower()
+      -- byte matching on Unix/BSD
+      or pbyte == rbyte
+    then
+      -- character matches, move to next
+      pidx = pidx + 1
+      ridx = ridx + 1
+    else
+      -- characters don't match
+      return false, nil
+    end
+  until ridx > #relative_to
+  return true, pidx <= #path_no_trailing and path_no_trailing:sub(pidx) or "."
 end
 
 return M

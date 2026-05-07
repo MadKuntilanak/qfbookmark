@@ -1,5 +1,5 @@
 local QfbookmarkNav = require "qfbookmark.nav"
-local QfbookmarkPathUtils = require "qfbookmark.path.utils"
+local QFbookmarkPathUtils = require "qfbookmark.path.utils"
 local QfbookmarkUtils = require "qfbookmark.utils"
 local Config = require("qfbookmark.config").defaults
 
@@ -38,6 +38,18 @@ local function format_title(title)
   return " " .. title .. " "
 end
 
+local function get_editor_size()
+  local ui = vim.api.nvim_list_uis()[1]
+  return {
+    width = ui.width,
+    height = ui.height,
+  }
+end
+
+local function get_padding()
+  return 2
+end
+
 ---@param is_input? boolean
 ---@param lines? table
 ---@return WinSizeCfg
@@ -66,6 +78,46 @@ local function get_win_width(is_input, lines)
   return { row = row, col = col, width = win_width, height = win_height }
 end
 
+---@param tbl_contents table[]
+---@param is_harpoon? boolean
+---@param default_win_width? number
+---@param max_width? number
+---@return number
+local function get_max_width_contents(tbl_contents, is_harpoon, default_win_width, max_width)
+  is_harpoon = is_harpoon or false
+  default_win_width = default_win_width or 50
+  max_width = max_width or 120 -- safety agar tidak kelebaran layar
+
+  local width = default_win_width
+
+  for _, item_content in ipairs(tbl_contents) do
+    local item = ""
+
+    if is_harpoon then
+      local t = type(item_content) == "table" and item_content.harpoon or ""
+      item = type(t) == "string" and t or ""
+    else
+      item = type(item_content) == "string" and item_content or ""
+    end
+
+    -- local len = vim.str_utfindex and vim.str_utfindex(item) or #item
+    local len = vim.fn.strdisplaywidth(item)
+
+    if is_harpoon then
+      len = len + 10
+    end
+
+    width = math.max(width, len)
+  end
+
+  -- clamp biar tidak keluar layar
+  if width > max_width then
+    width = max_width
+  end
+
+  return width
+end
+
 ---@param opts table
 ---@param second_buf integer
 ---@param target_path string
@@ -76,7 +128,7 @@ local function update_preview(opts, second_buf, target_path)
     return
   end
 
-  local fn_opts = QfbookmarkPathUtils.reformat_filename_json(table.concat(getlines, " "), target_path)
+  local fn_opts = QFbookmarkPathUtils.reformat_filename_json(table.concat(getlines, " "), target_path)
   if not fn_opts then
     return
   end
@@ -208,7 +260,8 @@ local function update_preview_harpoon(mark_lists, opts, secondary_win)
   end
 
   local cfg = vim.api.nvim_win_get_config(secondary_win)
-  cfg.title = format_title(vim.fn.fnamemodify(filename, ":~:.:h"))
+  cfg.title = format_title("🔍 " .. vim.fn.fnamemodify(filename, ":~:."))
+
   vim.api.nvim_win_set_config(secondary_win, cfg)
 end
 
@@ -300,9 +353,11 @@ end
 ---@param buf integer
 ---@param cb? function
 ---@param is_harpoon? boolean
-local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon)
+---@param is_buffers? boolean
+local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon, is_buffers)
   cb = cb or nil
   is_harpoon = is_harpoon or false
+  is_buffers = is_buffers or false
 
   local function _exit_fun_mapping()
     if is_harpoon then
@@ -344,10 +399,33 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon)
     end)
   end
 
-  ---@param cmd string
-  local function setup_nav_key(cmd)
-    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<" .. cmd .. ">", true, false, true), "n", true)
+  ---@param key string
+  local function press_normal_key(key, is_with_bracket)
+    is_with_bracket = is_with_bracket or false
+
+    local pkey = function()
+      if is_with_bracket then
+        return "<" .. key .. ">"
+      end
+      return key
+    end
+
+    if QfbookmarkUtils.is_buf_readonly(buf) then
+      vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+      vim.api.nvim_set_option_value("readonly", false, { buf = buf })
+    end
+
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(pkey(), true, false, true), "n", true)
   end
+
+  -- ---@param key string
+  -- local function press_norm_key(key)
+  --   if QfbookmarkUtils.is_buf_readonly(buf) then
+  --     vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+  --     vim.api.nvim_set_option_value("readonly", false, { buf = buf })
+  --   end
+  --   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(key, true, false, true), "n", true)
+  -- end
 
   ---@param open_mode OpenMode
   local function setup_open_key(open_mode)
@@ -357,16 +435,27 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon)
     vim.schedule(function()
       vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
 
-      for _, m in pairs(mark_lists) do
-        local line = QfbookmarkUtils.remove_idx_m_harpoon(line_opts.text)
-        if m.harpoon == line then
-          QfbookmarkNav.jump_to {
-            filename = m.filename,
-            col = m.col,
-            line = m.line,
-            mode_open = open_mode,
-          }
+      if is_harpoon then
+        for _, m in pairs(mark_lists) do
+          local line = QfbookmarkUtils.remove_idx_m_harpoon(line_opts.text)
+          if m.harpoon == line then
+            QfbookmarkNav.jump_to {
+              filename = m.filename,
+              col = m.col,
+              line = m.line,
+              mode_open = open_mode,
+            }
+          end
         end
+      end
+
+      if is_buffers then
+        QfbookmarkNav.jump_to {
+          filename = line_opts.text,
+          col = line_opts.col,
+          line = 0, -- force jump to last cursor position
+          mode_open = open_mode,
+        }
       end
 
       clean_up(win_popup)
@@ -410,7 +499,7 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon)
     ["<CR>"] = {
       mode = { "n", "i" },
       fun = function()
-        if is_harpoon then
+        if is_harpoon or is_buffers then
           setup_open_key "default"
           _exit_fun_mapping()
         else
@@ -445,72 +534,106 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon)
     },
   }
 
-  if is_harpoon then
-    local nav_keys = {
-      -- Navigation
-      ["<c-p>"] = {
-        mode = "n",
-        fun = function()
-          setup_nav_key "up"
-        end,
-      },
-      ["<c-k>"] = {
-        mode = "n",
-        fun = function()
-          setup_nav_key "up"
-        end,
-      },
-      ["<c-n>"] = {
-        mode = "n",
-        fun = function()
-          setup_nav_key "down"
-        end,
-      },
-      ["<c-j>"] = {
-        mode = "n",
-        fun = function()
-          setup_nav_key "down"
-        end,
-      },
-      -- Mode open
-      ["<c-y>"] = {
-        mode = "n",
-        fun = function()
-          setup_open_key "buffer"
-        end,
-      },
-      ["<c-s>"] = {
-        mode = "n",
-        fun = function()
-          setup_open_key "split"
-        end,
-      },
-      ["<c-v>"] = {
-        mode = "n",
-        fun = function()
-          setup_open_key "vsplit"
-        end,
-      },
-      ["<c-t>"] = {
-        mode = "n",
-        fun = function()
-          setup_open_key "tabnew"
-        end,
-      },
+  local nav_keys = {
+    -- Navigation
+    ["<c-p>"] = {
+      mode = "n",
+      fun = function()
+        press_normal_key("up", true)
+      end,
+    },
+    ["<c-k>"] = {
+      mode = "n",
+      fun = function()
+        press_normal_key("up", true)
+      end,
+    },
+    ["<c-n>"] = {
+      mode = "n",
+      fun = function()
+        press_normal_key("down", true)
+      end,
+    },
+    ["<c-j>"] = {
+      mode = "n",
+      fun = function()
+        press_normal_key("down", true)
+      end,
+    },
+    -- Mode open
+    ["<c-y>"] = {
+      mode = "n",
+      fun = function()
+        setup_open_key "buffer"
+      end,
+    },
+    ["<c-s>"] = {
+      mode = "n",
+      fun = function()
+        setup_open_key "split"
+      end,
+    },
+    ["<c-v>"] = {
+      mode = "n",
+      fun = function()
+        setup_open_key "vsplit"
+      end,
+    },
+    ["<c-t>"] = {
+      mode = "n",
+      fun = function()
+        setup_open_key "tabnew"
+      end,
+    },
 
-      ["<c-u>"] = {
-        mode = "n",
-        fun = function()
-          scroll_preview_window "up"
-        end,
-      },
-      ["<c-d>"] = {
-        mode = "n",
-        fun = function()
-          scroll_preview_window "down"
-        end,
-      },
+    ["<c-u>"] = {
+      mode = "n",
+      fun = function()
+        scroll_preview_window "up"
+      end,
+    },
+    ["<c-d>"] = {
+      mode = "n",
+      fun = function()
+        scroll_preview_window "down"
+      end,
+    },
+  }
+
+  if is_harpoon then
+    for nav_key, nav_val in pairs(nav_keys) do
+      if not _keys[nav_key] then
+        _keys[nav_key] = nav_val
+      end
+    end
+  end
+
+  if is_buffers then
+    nav_keys["gp"] = {
+      mode = "n",
+      fun = function()
+        press_normal_key("up", true)
+      end,
     }
+    nav_keys["gn"] = {
+      mode = "n",
+      fun = function()
+        press_normal_key "down"
+      end,
+    }
+
+    nav_keys["dd"] = {
+      mode = "n",
+      fun = function()
+        press_normal_key "dd"
+
+        local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
+        QfbookmarkUtils.buf_del(line_opts)
+      end,
+    }
+
+    nav_keys["<c-d>"] = nil
+    nav_keys["<c-u>"] = nil
 
     for nav_key, nav_val in pairs(nav_keys) do
       if not _keys[nav_key] then
@@ -527,8 +650,11 @@ end
 ---@param qfpopup QfBookUiWinPopup
 ---@param lines table
 ---@param wincfg WinCfg
-local function build_popup(qfpopup, wincfg, lines)
+---@param is_buffers? boolean
+local function build_popup(qfpopup, wincfg, lines, is_buffers)
   local buf, win
+
+  is_buffers = is_buffers or false
 
   local winopts = open_win(wincfg, lines)
   qfpopup.buf = winopts.buf
@@ -557,6 +683,12 @@ local function build_popup(qfpopup, wincfg, lines)
   })
 
   vim.api.nvim_set_option_value("filetype", "qfbookmark", { buf = buf })
+
+  -- make buffer non-editable
+  vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+  vim.api.nvim_set_option_value("readonly", true, { buf = buf })
+  vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
+
   vim.api.nvim_set_option_value("cursorline", true, { win = win, scope = "local" })
 
   vim.api.nvim_set_option_value(
@@ -564,7 +696,7 @@ local function build_popup(qfpopup, wincfg, lines)
     "FloatBorder:QFBookmarkFloatBorder,"
       .. "Normal:QFBookmarkFloatNormal,"
       .. "NormalFloat:QFBookmarkFloatNormal,"
-      .. "FloatTitle:QFBookmarkFloatTitle,"
+      .. (is_buffers and "FloatTitle:QFBookmarkFloatTitleBuffers," or "FloatTitle:QFBookmarkFloatTitle,")
       .. "FloatFooter:QFBookmarkFloatFooter,"
       .. "CursorLine:QFBookmarkFloatCursorLine,",
     { win = qfpopup.win, scope = "local" }
@@ -671,26 +803,22 @@ end
 ---@param qfpopup QfBookUiWinPopup
 ---@param secondary_buf integer
 ---@param main_win_cfg vim.api.keyset.win_config
-local function harpoon_preview(qfpopup, secondary_buf, main_win_cfg)
-  local title = "Preview Harpoon"
+local function harpoon_preview(qfpopup, secondary_buf, main_win_cfg, main_width)
+  local win_buf = vim.api.nvim_create_buf(false, true)
 
   local win_opts = get_win_width()
+  local padding = get_padding()
 
-  local main_row = main_win_cfg.row
+  local height = math.max(1, math.floor(win_opts.height * 2))
+  local preview_width = math.floor(main_width * 1.2)
 
-  -- calculate available vertical space
-  local avaiable_height = main_row - 7
+  local row = main_win_cfg.row
+  local col = main_win_cfg.col - preview_width - padding
 
-  -- ensure preview window has a minimal height
-  local height = math.max(avaiable_height - 1, 3)
-
-  -- preview window should appear above the main window
-  local row = main_row - height - 2
-  if row < 0 then
-    row = 0
+  -- safety: prevent going off-screen
+  if col < 0 then
+    col = padding
   end
-
-  local win_buf = vim.api.nvim_create_buf(false, true)
 
   ---@type WinCfg
   local wincfg = {
@@ -698,16 +826,16 @@ local function harpoon_preview(qfpopup, secondary_buf, main_win_cfg)
     enter = false,
     wincfg = {
       relative = "editor",
-      width = win_opts.width,
+      width = preview_width,
       height = height,
 
       row = row,
-      col = win_opts.col,
+      col = col,
 
       style = "minimal",
       border = "rounded",
 
-      title = format_title(title),
+      title = format_title "Preview Harpoon",
       title_pos = "center",
 
       focusable = false,
@@ -747,18 +875,19 @@ end
 ---@param mark_lists QFbookBufferMarkEntry[]
 ---@param keymap_harpoon string|string[]
 ---@param harpoon_lines table
+---@param cb function
 local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
   local win_opts = get_win_width()
   local win_buf = vim.api.nvim_create_buf(false, true)
 
-  local ui = vim.api.nvim_list_uis()[1]
-  local row = math.floor((ui.height - win_opts.row) - 2)
+  local editor = get_editor_size()
+  local padding = get_padding()
 
-  local height = math.floor(win_opts.height / 2)
+  local height = math.max(1, math.floor(win_opts.height / 2))
+  local width = get_max_width_contents(mark_lists, true)
 
-  if height < 1 then
-    height = 1
-  end
+  local row = padding
+  local col = editor.width - width - padding
 
   ---@type WinCfg
   local wincfg = {
@@ -766,16 +895,16 @@ local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
     enter = true,
     wincfg = {
       relative = "editor",
-      width = win_opts.width,
+      width = width,
       height = height,
 
       row = row,
-      col = win_opts.col,
+      col = col,
 
       style = "minimal",
       border = "rounded",
 
-      title = "",
+      title = format_title "📌 QFMarks",
       title_pos = "center",
 
       footer = " <C-q> Quit | <C-y/v/s/t> Enter/V/Split/Tab ",
@@ -790,7 +919,7 @@ local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
 
   local main_win_cfg = vim.api.nvim_win_get_config(win)
 
-  local preview_win, preview_buf = harpoon_preview(M.window.footer_win, buf, main_win_cfg)
+  local preview_win, preview_buf = harpoon_preview(M.window.footer_win, buf, main_win_cfg, width)
   if not preview_win or not preview_buf then
     return
   end
@@ -826,7 +955,69 @@ local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
   end
 end
 
+---@param buffer_lists string[]
+---@param cb function
+---@param is_prev? boolean
+local function buffers_popup(buffer_lists, cb, is_prev)
+  is_prev = is_prev or false
+
+  local win_opts = get_win_width()
+  local win_buf = vim.api.nvim_create_buf(false, true)
+
+  local ui = vim.api.nvim_list_uis()[1]
+
+  local height = math.floor(win_opts.height / 2)
+  local width = get_max_width_contents(buffer_lists)
+
+  local padding = 2
+
+  local row = padding
+  local col = ui.width - width - padding
+
+  if height < 1 then
+    height = 1
+  end
+
+  ---@type WinCfg
+  local wincfg = {
+    buf = win_buf,
+    enter = true,
+    wincfg = {
+      relative = "editor",
+      width = width,
+      height = height,
+
+      row = row,
+      col = col,
+
+      style = "minimal",
+      border = "rounded",
+
+      title = format_title "📑 QFBuffers",
+      title_pos = "center",
+
+      footer = " <C-q> Quit | <C-y/v/s/t> Enter/V/Split/Tab ",
+      footer_pos = "center",
+    },
+  }
+
+  local win, buf = build_popup(M.window.mark_win, wincfg, buffer_lists, true)
+
+  if not win or not buf then
+    return
+  end
+
+  local is_buffers = true
+  local qf_win_popup = {
+    primary = M.window.mark_win,
+    secondary = M.window.footer_win,
+  }
+
+  setup_keymaps(buffer_lists, qf_win_popup, buf, cb, false, is_buffers)
+end
+
 return {
   _mark_harpoon_popup = mark_harpoon_popup,
   _input_popup = input_popup,
+  _select_buffer = buffers_popup,
 }

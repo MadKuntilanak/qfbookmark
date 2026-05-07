@@ -102,6 +102,10 @@
 ---@field next string | string[]
 ---@field prev string | string[]
 
+---@class QFBookKeymapMoveBuffers
+---@field next string | string[]
+---@field prev string | string[]
+
 ---@class QFBookKeymapMove
 ---@field quicklist QFBookKeymapMoveQFlist
 ---@field window QFBookKeymapMoveWindow
@@ -161,6 +165,7 @@
 ---@field debug string | string[]
 ---@field note string | string[]
 ---@field harpoon QFBookKeymapMarkHarpoon
+---@field buffers string
 
 ---@class QFBookmarkKeymap
 ---@field disable_all boolean

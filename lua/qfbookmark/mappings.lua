@@ -280,6 +280,14 @@ function M.setup()
       mode = "n",
     },
 
+    -- BUFFERS
+    {
+      desc = "Qf: open buffer [QFbookmark]",
+      func = "open_buffers",
+      keys = get_keymap(Config.keymaps, "actions", "buffers"),
+      mode = { "n" },
+    },
+
     -- NAVI MARK
     {
       desc = "Qf: next mark [QFbookmark]",

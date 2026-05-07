@@ -20,7 +20,6 @@ end
 local function load_open(sel_fname, base_path, is_loc)
   is_loc = is_loc or false
 
-  -- local fname = strip_string(sel_fname)
   local fname = sel_fname
   local fname_path = base_path .. "/" .. fname .. ".json"
 

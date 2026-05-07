@@ -34,17 +34,6 @@ local function is_not_valid_line_and_col(bufnr, line, col)
   return col >= 0 and col <= line_len
 end
 
---- Clean orphan marks (whose line no longer exists)
--- local function clean_orphan_marks(mark_lists)
---   for mode, marks in pairs(mark_lists) do
---     for id, mark in pairs(marks) do
---       if not is_valid_line(mark.bufnr, mark.line) then
---         M.buffers[mode][id] = nil
---       end
---     end
---   end
--- end
-
 ---@param bufnr integer
 ---@return table <integer>
 local function get_all_signs_buffer(bufnr)
@@ -286,13 +275,7 @@ end
 ---@param text string
 ---@return QFbookBufferMark | nil
 function M.place_next_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line, col, text)
-  -- local last_mark = M.is_current_line_got_mark(id)
-  -- if last_mark and last_mark.id then
-  --   M.delete_mark(last_mark.mark_mode, last_mark.extmarkspec, last_mark.id, bufnr)
-  -- end
-  -- vim.schedule(function()
   return register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line, col, text)
-  -- end)
 end
 
 ---@param mark_lists QFbookBufferMark

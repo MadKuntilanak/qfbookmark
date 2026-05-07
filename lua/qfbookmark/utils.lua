@@ -1,5 +1,7 @@
 local M = {}
 
+M.__IS_WINDOWS = vim.fn.has "win32" == 1 or vim.fn.has "win64" == 1
+
 ---@type QFBookListResults
 local results = {
   quickfix = {
@@ -363,11 +365,15 @@ local function is_file_in_buffers(filename)
   return nil
 end
 
+local function delete_bufnr(buf)
+  vim.api.nvim_buf_delete(buf, { force = true })
+end
+
 ---@param filename string
 function M.delete_buffer_by_name(filename)
   local buf = is_file_in_buffers(filename)
   if buf then
-    vim.api.nvim_buf_delete(buf, { force = true })
+    delete_bufnr(buf)
     return true
   end
   return false
@@ -457,9 +463,7 @@ function M._valid(win, buf)
   if vim.api.nvim_win_get_config(win).relative ~= "" then
     return false
   end
-  -- if vim.bo[buf].buftype ~= "" then
-  --   return false
-  -- end
+
   return true
 end
 
@@ -588,16 +592,86 @@ function M.ensure_treesitter(bufnr)
     return
   end
 
-  -- cek apakah filetype punya mapping language treesitter
+  -- Cek apakah filetype punya mapping language treesitter
   local ok = pcall(vim.treesitter.language.get_lang, ft)
   if not ok then
     return
   end
 
-  -- start ulang hanya jika belum aktif
+  -- Start ulang hanya jika belum aktif
   -- if not vim.treesitter.highlighter.active[bufnr] and can_start_treesitter(bufnr) then
   if not vim.treesitter.highlighter.active[bufnr] then
     pcall(vim.treesitter.start, bufnr)
+  end
+end
+
+-- ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+-- ┃                      BUFFER UTILS                       ┃
+-- ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+--
+function M.is_buf_readonly(buf)
+  buf = buf or 0
+  return not vim.bo[0].modifiable or vim.bo[0].readonly
+end
+
+---@param bufnr integer
+---@param bufinfo table?
+---@return string?
+function M.nvim_buf_get_name(bufnr, bufinfo)
+  assert(not vim.in_fast_event())
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return
+  end
+  if bufinfo and bufinfo.name and #bufinfo.name > 0 then
+    return bufinfo.name
+  end
+  local bufname = vim.api.nvim_buf_get_name(bufnr)
+  if #bufname == 0 then
+    if vim.bo[bufnr].buftype == "nofile" then
+      bufname = "[Scratch]"
+    else
+      local is_qf = M.buf_is_qf(bufnr, bufinfo)
+      if is_qf then
+        bufname = is_qf == 1 and "[Quickfix List]" or "[Location List]"
+      else
+        bufname = "[No Name]"
+      end
+    end
+  end
+  assert(#bufname > 0)
+  return bufname
+end
+
+---@param bufnr? integer
+---@return vim.fn.getbufinfo.ret.item
+function M.getbufinfo(bufnr)
+  return vim.fn.getbufinfo(bufnr)[1] or {} ---@as vim.fn.getbufinfo.ret.item
+end
+
+function M.is_term_bufname(bufname)
+  if bufname and bufname:match "term://" then
+    return true
+  end
+  return false
+end
+
+---@param bufnr integer
+---@return boolean
+function M.is_term_buffer(bufnr)
+  return vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].buftype == "terminal"
+end
+
+function M.buf_del(selected)
+  if type(selected) == "number" then
+    delete_bufnr(selected)
+    return
+  end
+
+  if type(selected) == "table" then
+    if selected.text then
+      local bufnr = vim.fn.bufnr(selected.text)
+      delete_bufnr(bufnr)
+    end
   end
 end
 

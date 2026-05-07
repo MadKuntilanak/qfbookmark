@@ -37,16 +37,17 @@ local colors = {
     bg = { higroup = { fromTo = "Normal", attr = "bg" } },
   },
   FloatTitle = {
-    fg = {
-      higroup = { fromTo = "FloatBorder", attr = "fg" },
-      darken = { fromTo = "FloatBorder", attr = "fg", amount = 4 },
-    },
+    fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
+    bold = true,
+  },
+  FloatTitleBuffers = {
+    fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
     bold = true,
   },
   FloatFooter = {
     fg = {
       higroup = { fromTo = "FloatBorder", attr = "fg" },
-      darken = { fromTo = "FloatBorder", attr = "fg", amount = 4 },
+      darken = { fromTo = "FloatBorder", attr = "fg", amount = 5 },
     },
     bold = false,
   },
