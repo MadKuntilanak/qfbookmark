@@ -608,10 +608,45 @@ end
 -- ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 -- ┃                      BUFFER UTILS                       ┃
 -- ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
---
+
 function M.is_buf_readonly(buf)
   buf = buf or 0
   return not vim.bo[0].modifiable or vim.bo[0].readonly
+end
+
+function M.tbl_isempty(T)
+  assert(type(T) == "table", string.format("Expected table, got %s", type(T)))
+  return next(T) == nil
+end
+
+-- returns:
+--   1 for qf list
+--   2 for loc list
+---@param winid integer
+---@return 1|2|false
+function M.win_is_qf(winid)
+  local winty = vim.api.nvim_win_is_valid(winid) and vim.fn.win_gettype(winid) or nil
+  return winty == "quickfix" and 1 or winty == "loclist" and 2 or false
+end
+
+---@param bufnr integer
+---@param bufinfo (vim.fn.getbufinfo.ret.item|vim.fn.getbufinfo.ret.item[]|false|table)?
+---@return 1|2|false
+function M.buf_is_qf(bufnr, bufinfo)
+  bufinfo = bufinfo or (vim.api.nvim_buf_is_valid(bufnr) and M.getbufinfo(bufnr))
+  if
+    bufinfo
+    and bufinfo.variables
+    and bufinfo.variables.current_syntax == "qf"
+    and not M.tbl_isempty(bufinfo.windows)
+  then
+    local window = bufinfo
+      .windows --[[@cast -?]]
+      [1]
+    ---@cast window integer
+    return M.win_is_qf(window)
+  end
+  return false
 end
 
 ---@param bufnr integer
