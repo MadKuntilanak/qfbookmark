@@ -46,13 +46,7 @@ function M.jump_to(opts)
   end
 
   if opts.filename ~= filename and not mode then
-    local f = QfbookmarkUtils.find_win_ls { filename = opts.filename }
-
-    if f and f.found then
-      vim.api.nvim_set_current_win(f.winid)
-    else
-      vim.cmd("e " .. opts.filename)
-    end
+    vim.cmd("e " .. opts.filename)
   end
 
   -- Try jump to given position
