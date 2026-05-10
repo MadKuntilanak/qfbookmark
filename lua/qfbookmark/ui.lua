@@ -86,7 +86,7 @@ end
 local function get_max_width_contents(tbl_contents, is_harpoon, default_win_width, max_width)
   is_harpoon = is_harpoon or false
   default_win_width = default_win_width or 50
-  max_width = max_width or 120 -- safety agar tidak kelebaran layar
+  max_width = max_width or 70 -- safety agar tidak kelebaran layar
 
   local width = default_win_width
 
@@ -100,7 +100,6 @@ local function get_max_width_contents(tbl_contents, is_harpoon, default_win_widt
       item = type(item_content) == "string" and item_content or ""
     end
 
-    -- local len = vim.str_utfindex and vim.str_utfindex(item) or #item
     local len = vim.fn.strdisplaywidth(item)
 
     if is_harpoon then
