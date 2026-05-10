@@ -601,6 +601,13 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon, is_buff
   }
 
   if is_harpoon then
+    nav_keys["dd"] = {
+      mode = "n",
+      fun = function()
+        press_normal_key "dd"
+      end,
+    }
+
     for nav_key, nav_val in pairs(nav_keys) do
       if not _keys[nav_key] then
         _keys[nav_key] = nav_val
@@ -650,11 +657,11 @@ end
 ---@param qfpopup QfBookUiWinPopup
 ---@param lines table
 ---@param wincfg WinCfg
----@param is_buffers? boolean
-local function build_popup(qfpopup, wincfg, lines, is_buffers)
+---@param is_not_modified? boolean
+local function build_popup(qfpopup, wincfg, lines, is_not_modified)
   local buf, win
 
-  is_buffers = is_buffers or false
+  is_not_modified = is_not_modified or false
 
   local winopts = open_win(wincfg, lines)
   qfpopup.buf = winopts.buf
@@ -685,9 +692,11 @@ local function build_popup(qfpopup, wincfg, lines, is_buffers)
   vim.api.nvim_set_option_value("filetype", "qfbookmark", { buf = buf })
 
   -- make buffer non-editable
-  vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
-  vim.api.nvim_set_option_value("readonly", true, { buf = buf })
-  vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
+  if not is_not_modified then
+    vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
+    vim.api.nvim_set_option_value("readonly", true, { buf = buf })
+    vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
+  end
 
   vim.api.nvim_set_option_value("cursorline", true, { win = win, scope = "local" })
 
@@ -696,7 +705,7 @@ local function build_popup(qfpopup, wincfg, lines, is_buffers)
     "FloatBorder:QFBookmarkFloatBorder,"
       .. "Normal:QFBookmarkFloatNormal,"
       .. "NormalFloat:QFBookmarkFloatNormal,"
-      .. (is_buffers and "FloatTitle:QFBookmarkFloatTitleBuffers," or "FloatTitle:QFBookmarkFloatTitle,")
+      .. (is_not_modified and "FloatTitle:QFBookmarkFloatTitleBuffers," or "FloatTitle:QFBookmarkFloatTitle,")
       .. "FloatFooter:QFBookmarkFloatFooter,"
       .. "CursorLine:QFBookmarkFloatCursorLine,",
     { win = qfpopup.win, scope = "local" }
@@ -778,7 +787,7 @@ local function input_popup(title, target_path, for_what, cb)
     },
   }
 
-  local win, buf = build_popup(M.window.save_win, wincfg, lines)
+  local win, buf = build_popup(M.window.save_win, wincfg, lines, true)
   if not win or not buf then
     return
   end

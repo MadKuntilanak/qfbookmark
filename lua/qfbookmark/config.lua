@@ -107,8 +107,8 @@ M.defaults = {
         rotate_layout_note = "<a-=>",
       },
       mark = {
-        next = "<Leader>qn",
-        prev = "<Leader>qp",
+        next = "gj",
+        prev = "gk",
       },
     },
 
