@@ -511,7 +511,7 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon, is_buff
       fun = _exit_fun_mapping,
     },
     ["<Esc>"] = {
-      mode = "n",
+      mode = { "n", "i" },
       fun = _exit_fun_mapping,
     },
     ["<C-c>"] = {
@@ -656,11 +656,11 @@ end
 ---@param qfpopup QfBookUiWinPopup
 ---@param lines table
 ---@param wincfg WinCfg
----@param is_not_modified? boolean
-local function build_popup(qfpopup, wincfg, lines, is_not_modified)
+---@param is_editable? boolean
+local function build_popup(qfpopup, wincfg, lines, is_editable)
   local buf, win
 
-  is_not_modified = is_not_modified or false
+  is_editable = is_editable or false
 
   local winopts = open_win(wincfg, lines)
   qfpopup.buf = winopts.buf
@@ -691,7 +691,7 @@ local function build_popup(qfpopup, wincfg, lines, is_not_modified)
   vim.api.nvim_set_option_value("filetype", "qfbookmark", { buf = buf })
 
   -- make buffer non-editable
-  if not is_not_modified then
+  if not is_editable then
     vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
     vim.api.nvim_set_option_value("readonly", true, { buf = buf })
     vim.api.nvim_set_option_value("buftype", "nofile", { buf = buf })
@@ -704,7 +704,7 @@ local function build_popup(qfpopup, wincfg, lines, is_not_modified)
     "FloatBorder:QFBookmarkFloatBorder,"
       .. "Normal:QFBookmarkFloatNormal,"
       .. "NormalFloat:QFBookmarkFloatNormal,"
-      .. (is_not_modified and "FloatTitle:QFBookmarkFloatTitleBuffers," or "FloatTitle:QFBookmarkFloatTitle,")
+      .. (is_editable and "FloatTitle:QFBookmarkFloatTitleBuffers," or "FloatTitle:QFBookmarkFloatTitle,")
       .. "FloatFooter:QFBookmarkFloatFooter,"
       .. "CursorLine:QFBookmarkFloatCursorLine,",
     { win = qfpopup.win, scope = "local" }
@@ -806,6 +806,16 @@ local function input_popup(title, target_path, for_what, cb)
   }
 
   setup_keymaps({}, qf_win_popup, buf, cb)
+
+  -- Paksa start insert mode
+  vim.api.nvim_set_current_win(win)
+  vim.defer_fn(function()
+    if vim.api.nvim_win_is_valid(win) then
+      -- Paksa modifiable
+      vim.api.nvim_set_option_value("modifiable", true, { buf = buf })
+      vim.cmd "startinsert!"
+    end
+  end, 10) -- Jeda 10ms
 end
 
 ---@param qfpopup QfBookUiWinPopup
@@ -1009,7 +1019,7 @@ local function buffers_popup(buffer_lists, cb, is_prev)
     },
   }
 
-  local win, buf = build_popup(M.window.mark_win, wincfg, buffer_lists, true)
+  local win, buf = build_popup(M.window.mark_win, wincfg, buffer_lists)
 
   if not win or not buf then
     return
