@@ -120,14 +120,16 @@ end
 ---@param opts table
 ---@param second_buf integer
 ---@param target_path string
-local function update_preview(opts, second_buf, target_path)
+---@param is_loc? boolean
+local function update_preview(opts, second_buf, target_path, is_loc)
+  is_loc = is_loc or false
   local getlines = vim.api.nvim_buf_get_lines(second_buf, 0, -1, false)
 
   if not target_path then
     return
   end
 
-  local fn_opts = QFbookmarkPathUtils.reformat_filename_json(table.concat(getlines, " "), target_path)
+  local fn_opts = QFbookmarkPathUtils.reformat_filename_json(table.concat(getlines, " "), target_path, is_loc)
   if not fn_opts then
     return
   end
@@ -270,11 +272,13 @@ end
 ---@param target_path? string
 ---@param is_harpoon? boolean
 ---@param is_two_win? boolean
+---@param is_loc? boolean
 ---@return { win: integer, buf: integer}
-local function open_win(wincfg, lines, second_buf, is_two_win, is_harpoon, target_path)
+local function open_win(wincfg, lines, second_buf, is_two_win, is_harpoon, target_path, is_loc)
   is_two_win = is_two_win or false
   is_harpoon = is_harpoon or false
   target_path = target_path or nil
+  is_loc = is_loc or false
   lines = lines or {}
 
   local opts = wincfg
@@ -290,7 +294,7 @@ local function open_win(wincfg, lines, second_buf, is_two_win, is_harpoon, targe
           on_lines = function()
             vim.schedule(function()
               if target_path then
-                update_preview(opts, second_buf, target_path)
+                update_preview(opts, second_buf, target_path, is_loc)
               end
             end)
           end,
@@ -378,6 +382,8 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon, is_buff
       close_win(win_popup.primary.win, win_popup.secondary.win)
       clean_up(win_popup)
     end
+
+    vim.cmd.stopinsert()
   end
 
   local function save_input()
@@ -717,7 +723,8 @@ end
 ---@param target_path string
 ---@param main_cfg table
 ---@param main_buf integer
-local function save_footer(opts_win, main_cfg, target_path, main_buf)
+---@param is_loc boolean
+local function save_footer(opts_win, main_cfg, target_path, main_buf, is_loc)
   local win_opts = get_win_width(true)
 
   local footer_row = math.floor((win_opts.row + main_cfg.height) + 2)
@@ -741,7 +748,7 @@ local function save_footer(opts_win, main_cfg, target_path, main_buf)
     },
   }
 
-  local winopts = open_win(win_config, {}, main_buf, true, false, target_path)
+  local winopts = open_win(win_config, {}, main_buf, true, false, target_path, is_loc)
 
   vim.api.nvim_set_option_value("winblend", 0, { win = winopts.win })
   vim.api.nvim_set_option_value("winhighlight", "FloatBorder:QFBookmarkFloatBorder", { win = winopts.win })
@@ -755,8 +762,9 @@ end
 ---@param title string
 ---@param target_path string
 ---@param cb function
+---@param is_loc boolean
 ---@param for_what "save" | "rename"
-local function input_popup(title, target_path, for_what, cb)
+local function input_popup(title, target_path, for_what, is_loc, cb)
   local lines = {}
 
   local is_input = true
@@ -794,7 +802,7 @@ local function input_popup(title, target_path, for_what, cb)
   local main_win_cfg = vim.api.nvim_win_get_config(win)
 
   if for_what == "save" then
-    local footer_win, footer_buf = save_footer(M.window.save_footer, main_win_cfg, target_path, buf)
+    local footer_win, footer_buf = save_footer(M.window.save_footer, main_win_cfg, target_path, buf, is_loc)
     if not footer_win or not footer_buf then
       return
     end

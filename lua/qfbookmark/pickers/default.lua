@@ -36,7 +36,7 @@ local function load_open(sel_fname, base_path, is_loc)
     vim.cmd "copen"
   end
 
-  QfbookmarkUtils.info("Load successful! File -> " .. fname)
+  QfbookmarkUtils.info("󰄬 Loaded: `" .. fname .. "`")
 end
 
 ---@param state QFBookState

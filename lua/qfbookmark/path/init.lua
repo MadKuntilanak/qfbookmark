@@ -95,14 +95,15 @@ function M.setup_path(is_global)
 end
 
 ---@param list_items QFBookLists
+---@param is_global boolean
 ---@param is_loc boolean
-function M.save_data_lists(list_items, is_loc)
-  is_loc = is_loc or false
-
+function M.save_data_lists(list_items, is_global, is_loc)
   local target_path = M.path_opts.current_target
 
   local QfbookmarkUI = require "qfbookmark.ui"
-  QfbookmarkUI._input_popup("Save To File", target_path, "save", function(input)
+  local title_popup = "󰋚  Save to File " .. (is_global and "Global" or "Local")
+
+  QfbookmarkUI._input_popup(title_popup, target_path, "save", is_loc, function(input)
     if #input == 0 or input == "" then
       return
     end

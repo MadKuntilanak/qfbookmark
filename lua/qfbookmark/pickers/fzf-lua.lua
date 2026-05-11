@@ -100,7 +100,7 @@ local function save_to_qf(state, select_state)
 
   local data_lists = QfbookmarkUtils.get_populate_data_qf(is_loc)
   if data_lists then
-    QfbookmarkPaths.save_data_lists(data_lists, is_loc)
+    QfbookmarkPaths.save_data_lists(data_lists, is_global, is_loc)
   end
 end
 
@@ -256,7 +256,7 @@ local function load_open(sel_fname, base_path, is_loc)
     vim.cmd "copen"
   end
 
-  QfbookmarkUtils.info("Load successful! File -> " .. fname)
+  QfbookmarkUtils.info("󰄬 Loaded: `" .. fname .. "`")
 end
 
 ---@param base_path string
