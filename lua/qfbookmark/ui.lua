@@ -4,6 +4,7 @@ local QfbookmarkUtils = require "qfbookmark.utils"
 local Config = require("qfbookmark.config").defaults
 
 local M = {}
+local PADDING = 2
 
 ---@alias WinSizeCfg { row: integer, col: integer, height: integer, width: integer, title: string, title_pos: string, buf?: integer}
 ---@alias WinCfg { buf: integer, enter: boolean, wincfg: vim.api.keyset.win_config }
@@ -44,10 +45,6 @@ local function get_editor_size()
     width = ui.width,
     height = ui.height,
   }
-end
-
-local function get_padding()
-  return 2
 end
 
 ---@param is_input? boolean
@@ -269,7 +266,7 @@ end
 ---@param wincfg WinCfg
 ---@param lines? table
 ---@param second_buf? integer
----@param target_path? string
+---@param target_path string
 ---@param is_harpoon? boolean
 ---@param is_two_win? boolean
 ---@param is_loc? boolean
@@ -277,7 +274,6 @@ end
 local function open_win(wincfg, lines, second_buf, is_two_win, is_harpoon, target_path, is_loc)
   is_two_win = is_two_win or false
   is_harpoon = is_harpoon or false
-  target_path = target_path or nil
   is_loc = is_loc or false
   lines = lines or {}
 
@@ -506,7 +502,6 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon, is_buff
       fun = function()
         if is_harpoon or is_buffers then
           setup_open_key "default"
-          _exit_fun_mapping()
         else
           save_input()
         end
@@ -630,7 +625,7 @@ local function setup_keymaps(mark_lists, win_popup, buf, cb, is_harpoon, is_buff
     nav_keys["gn"] = {
       mode = "n",
       fun = function()
-        press_normal_key "down"
+        press_normal_key("down", true)
       end,
     }
 
@@ -833,7 +828,7 @@ local function harpoon_preview(qfpopup, secondary_buf, main_win_cfg, main_width)
   local win_buf = vim.api.nvim_create_buf(false, true)
 
   local win_opts = get_win_width()
-  local padding = get_padding()
+  local padding = PADDING
 
   local height = math.max(1, math.floor(win_opts.height * 2))
   local preview_width = math.floor(main_width * 1.2)
@@ -868,9 +863,7 @@ local function harpoon_preview(qfpopup, secondary_buf, main_win_cfg, main_width)
       noautocmd = true,
     },
   }
-  local footer_text = "hello bro"
-
-  local winopts = open_win(wincfg, { footer_text }, secondary_buf, true, true)
+  local winopts = open_win(wincfg, {}, secondary_buf, true, true)
 
   vim.api.nvim_set_option_value("winblend", 0, { win = winopts.win })
   vim.api.nvim_set_option_value(
@@ -907,7 +900,7 @@ local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
   local win_buf = vim.api.nvim_create_buf(false, true)
 
   local editor = get_editor_size()
-  local padding = get_padding()
+  local padding = PADDING
 
   local height = math.max(1, math.floor(win_opts.height / 2))
   local width = get_max_width_contents(mark_lists, true)
