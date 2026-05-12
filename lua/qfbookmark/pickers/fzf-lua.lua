@@ -362,11 +362,6 @@ function Mapping.rename_itemqf(base_path)
         end
 
         QfbookmarkUtils.info("Renamed: `" .. old_path .. "` -> `" .. new_path .. "`")
-        -- QfbookmarkUtils.info { { "Renamed: ", "Normal" },
-        --   { old_path, "Directory" },
-        --   { " -> ", "Normal" },
-        --   { new_path, "Directory" },
-        -- }
       end,
     },
   })

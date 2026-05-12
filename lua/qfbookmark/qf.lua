@@ -17,21 +17,6 @@ local status_autocmd_enabled = false
 ---@type QFbookBufferMark
 M.buffers = {}
 
----M.buffers = {
----  ["MARK"] = {
----    ["15"] = {
----      bufnr = 0,
----      filename = "filename",
----      line = 15,
----      col = 15,
----      text = "some_text",
----      harpoon = "filename:line:col:mark_mode",
----      mark_mode = "MARK/DEBUG/FIX..",
----    },
----  },
----  ....
----}
-
 ---@type QFbookBufferMarkEntry[]
 M.mark_lists = {}
 
@@ -98,11 +83,6 @@ local function exclude_buf(bufnr)
     return false
   end
 
-  -- If I uncomment this block, I can mark Octo buffers :D
-  -- if buftype ~= "" then
-  --   return false
-  -- end
-
   local win = vim.api.nvim_get_current_win()
   if not QfbookmarkUtils._valid(win, bufnr) then
     return false
@@ -114,6 +94,7 @@ end
 local function recall_augroup()
   QfbookmarkBookmark.setup_mark_autocmds(M.buffers, true)
 
+  QfbookmarkUtils.clear_autocmd_group(Config.sign_group .. "SaveMark")
   if status_autocmd_enabled then
     vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
       group = QfbookmarkUtils.create_augroup_name "SaveMark",
@@ -142,7 +123,6 @@ end
 
 --  ───────────────────────────────[ -MISC ]───────────────────────────────
 
--- save quicklist items
 function M.save_or_load()
   require("qfbookmark.pickers").handle_state(Config)
 end
@@ -289,7 +269,6 @@ local function add_sign(mark_mode)
   end
 
   local mark_tbl = M.buffers
-
   local bufnr = vim.api.nvim_get_current_buf()
 
   if not exclude_buf(bufnr) then
@@ -301,6 +280,12 @@ local function add_sign(mark_mode)
   QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec)
 
   sync_marks_harpoon()
+
+  -- Save langsung setelah add mark, jangan hanya andalkan VimLeavePre
+  vim.schedule(function()
+    local mark_lists = get_lists_marks()
+    QfbookmarkBookmark.save_marks(mark_lists)
+  end)
 end
 
 function M.status_mark()
@@ -435,9 +420,8 @@ end
 
 --  ──────────────────────────────[ HARPOON ]──────────────────────────────
 
--- -- WARN: Delete this!
+-- WARN: Delete this!
 function M.debug_qf()
-  -- local mark_entry_lists = get_lists_marks()
   QfbookmarkUtils.info(vim.inspect(M.mark_lists))
   QfbookmarkUtils.info(vim.inspect(M.mark_lists_harpoon))
 end
@@ -497,6 +481,12 @@ function M.open_mark_harpoon_window()
               QfbookmarkUtils.warn "Something went wrong"
             end
 
+            if is_delete and vim.api.nvim_buf_is_valid(opts.bufnr) then
+              vim.schedule(function()
+                QfbookmarkBookmark.update_mark_sign(M.buffers, opts.bufnr)
+              end)
+            end
+
             ::continue::
           end
         end
@@ -509,6 +499,11 @@ function M.open_mark_harpoon_window()
       end
 
       M.mark_lists_harpoon = new_lines
+
+      vim.schedule(function()
+        local mark_lists = get_lists_marks()
+        QfbookmarkBookmark.save_marks(mark_lists)
+      end)
     end)
   end)
 end
@@ -516,7 +511,6 @@ end
 ---@param idx integer
 function M.goto_mark_index(idx)
   if not M.mark_lists_harpoon[idx] then
-    -- M.add_mark_sign()
     if Config.window.notify.mark then
       QfbookmarkUtils.warn("No registered signmark exists for index `" .. tostring(idx) .. "`")
     end
@@ -619,7 +613,7 @@ local function rename_header(list_type)
   end
 
   local title = string.format("Rename %s Title", cmd[2])
-  QfbookmarkUI._input_popup(title, "", "rename", function(input_msg)
+  QfbookmarkUI._input_popup(title, "", "rename", is_location_target, function(input_msg)
     if input_msg == "" or input_msg == nil then
       return
     end
@@ -798,10 +792,6 @@ function M.delete_item()
   elseif #data_lists == 0 then
     vim.api.nvim_command(close_cmd)
   end
-
-  -- if Config.extmarks.enabled then
-  --   QfbookmarkBookmark.update_render_extermark(vim.api.nvim_get_current_buf())
-  -- end
 end
 
 --  ───────────────────────────[ INTEGRATIONS ]────────────────────────

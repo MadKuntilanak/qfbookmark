@@ -266,7 +266,7 @@ end
 ---@param wincfg WinCfg
 ---@param lines? table
 ---@param second_buf? integer
----@param target_path string
+---@param target_path? string
 ---@param is_harpoon? boolean
 ---@param is_two_win? boolean
 ---@param is_loc? boolean
@@ -275,6 +275,7 @@ local function open_win(wincfg, lines, second_buf, is_two_win, is_harpoon, targe
   is_two_win = is_two_win or false
   is_harpoon = is_harpoon or false
   is_loc = is_loc or false
+  target_path = target_path or nil
   lines = lines or {}
 
   local opts = wincfg

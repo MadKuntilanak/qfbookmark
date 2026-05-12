@@ -5,17 +5,14 @@ local QfbookmarkUtils = require "qfbookmark.utils"
 local M = {}
 
 local function should_set_keymap(entry)
-  -- If keys is a nil
   if entry.keys == nil then
     return false
   end
 
-  -- if keys is a string
   if type(entry.keys) == "string" and entry.keys == "" then
     return false
   end
 
-  -- if keys is a table
   if type(entry.keys) == "table" and vim.tbl_isempty(entry.keys) then
     return false
   end
