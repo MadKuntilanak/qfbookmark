@@ -75,40 +75,33 @@ local function get_win_width(is_input, lines)
   return { row = row, col = col, width = win_width, height = win_height }
 end
 
----@param tbl_contents table[]
----@param is_harpoon? boolean
----@param default_win_width? number
----@param max_width? number
+---@param is_buffers boolean
+---@param tbl_contents table
 ---@return number
-local function get_max_width_contents(tbl_contents, is_harpoon, default_win_width, max_width)
-  is_harpoon = is_harpoon or false
-  default_win_width = default_win_width or 50
-  max_width = max_width or 70 -- safety agar tidak kelebaran layar
+local function get_max_width_contents(is_buffers, tbl_contents)
+  local columns = vim.api.nvim_get_option_value("columns", { scope = "global" })
+  local base_width = math.floor(columns * 35 / 100)
 
-  local width = default_win_width
+  local width = base_width
 
   for _, item_content in ipairs(tbl_contents) do
-    local item = ""
+    local item
 
-    if is_harpoon then
+    if is_buffers then
+      item = type(item_content) == "string" and item_content or ""
+    else
       local t = type(item_content) == "table" and item_content.harpoon or ""
       item = type(t) == "string" and t or ""
-    else
-      item = type(item_content) == "string" and item_content or ""
     end
 
     local len = vim.fn.strdisplaywidth(item)
 
-    if is_harpoon then
-      len = len + 10
+    if is_buffers then
+      local p = math.floor(math.ceil(len * 48 / 100) * 2)
+      width = math.max(width, p)
+    else
+      width = math.max(width, math.floor(len * 50 / 100))
     end
-
-    width = math.max(width, len)
-  end
-
-  -- clamp biar tidak keluar layar
-  if width > max_width then
-    width = max_width
   end
 
   return width
@@ -904,7 +897,7 @@ local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
   local padding = PADDING
 
   local height = math.max(1, math.floor(win_opts.height / 2))
-  local width = get_max_width_contents(mark_lists, true)
+  local width = get_max_width_contents(false, mark_lists)
 
   local row = padding
   local col = editor.width - width - padding
@@ -987,7 +980,7 @@ local function buffers_popup(buffer_lists, cb, is_prev)
   local ui = vim.api.nvim_list_uis()[1]
 
   local height = math.floor(win_opts.height / 2)
-  local width = get_max_width_contents(buffer_lists)
+  local width = get_max_width_contents(true, buffer_lists)
 
   local padding = 2
 
