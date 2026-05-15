@@ -62,8 +62,8 @@ M.defaults = {
       delete_mark = "dm",
       delete_mark_buffer = "dM",
       delete_item = "dd",
-      delete_item_all = "<Leader>mC",
-      rename_title = "<Leader>mR",
+      delete_item_all = "<Localleader>qC",
+      rename_title = "<Localleader>qR",
 
       save_or_load = "<Leader>qy",
       mark_win_open = "gp",
@@ -128,17 +128,10 @@ M.defaults = {
     integrations = {
       trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
       grugfar = { enabled = true, toggle = "<Localleader>gg" },
-      copyline = { enabled = true, toggle = "<Leader>nl" },
+      copyline = { enabled = true, toggle = "<Leader>qc" },
       cmdline_strings = {
-        enabled = true,
-        commands = {
-          {
-            key = "<Leader>qrl",
-            cmd = "cdo %s/status//gi | update",
-            desc = "Descriptions about cdo..",
-            mode = "n", -- "i", "x", "s", "n", "o"
-          },
-        },
+        enabled = false,
+        commands = {},
       },
     },
   },
