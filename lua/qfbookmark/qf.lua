@@ -258,8 +258,13 @@ function M.setup_autocmds()
     end)
   end
 
-  local qfhighlights = require "qfbookmark.highlights"
-  qfhighlights(M.prefix_app)
+  -- local qfhighlights = require "qfbookmark.highlights"
+  -- qfhighlights(M.prefix_app)
+  vim.api.nvim_create_autocmd("ColorScheme", {
+    callback = function()
+      require "qfbookmark.highlights"(M.prefix_app)
+    end,
+  })
 end
 
 ---@param mark_mode QFBookMarkMode

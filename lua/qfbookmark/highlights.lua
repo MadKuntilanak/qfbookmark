@@ -9,9 +9,19 @@ local colors = {
   },
   PreviewCursorline = {
     bg = {
-      higroup = { fromTo = "Error", attr = "fg" },
-      darken = { fromTo = "Normal", attr = "bg", amount = 0.1 },
+      higroup = { fromTo = "type", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.3 },
     },
+  },
+  PreviewFloatCursorLineNr = {
+    fg = {
+      higroup = { fromTo = "Normal", attr = "bg" },
+    },
+    bg = {
+      higroup = { fromTo = "type", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.5 },
+    },
+    bold = true,
   },
   PreviewFloatTitle = {
     fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
@@ -25,23 +35,18 @@ local colors = {
     },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
   },
+
   SaveFloatNormal = {
     fg = { higroup = { fromTo = "Function", attr = "fg" } },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
   },
   FloatNormal = {
-    fg = {
-      higroup = { fromTo = "Error", attr = "fg" },
-      darken = { fromTo = "Normal", attr = "bg", amount = 0.4 },
-    },
-    bg = { higroup = { fromTo = "Normal", attr = "bg" } },
+    fg = { higroup = { fromTo = "type", attr = "fg" } },
+    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
   },
   FloatTitle = {
     fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
-    bold = true,
-  },
-  FloatTitleBuffers = {
-    fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
+    bg = { higroup = { fromTo = "FloatTitle", attr = "bg" } },
     bold = true,
   },
   FloatFooter = {
@@ -49,14 +54,15 @@ local colors = {
       higroup = { fromTo = "FloatBorder", attr = "fg" },
       darken = { fromTo = "FloatBorder", attr = "fg", amount = 5 },
     },
+    bg = { higroup = { fromTo = "FloatBorder", attr = "bg" } },
     bold = false,
   },
-  FloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
+  FloatBorder = {
+    fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } },
+    bg = { higroup = { fromTo = "FloatBorder", attr = "bg" } },
+  },
   FloatCursorLine = {
-    fg = {
-      higroup = { fromTo = "Error", attr = "fg" },
-      darken = { fromTo = "Keyword", attr = "bg", amount = 0.7 },
-    },
+    fg = { higroup = { fromTo = "type", attr = "fg" } },
     bold = true,
   },
 }
@@ -154,11 +160,6 @@ return function(prefix)
 
   for k, col in pairs(colors) do
     local hi_footer = prefix .. k
-    local existing = vim.api.nvim_get_hl(0, { name = hi_footer, link = false })
-
-    if existing and (existing.fg or existing.bg or existing.sp) then
-      goto continue
-    end
 
     local opts_hi = {}
 
@@ -175,6 +176,4 @@ return function(prefix)
 
     vim.api.nvim_set_hl(0, hi_footer, opts_hi)
   end
-
-  ::continue::
 end

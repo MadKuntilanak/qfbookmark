@@ -237,9 +237,10 @@ local function update_preview_harpoon(mark_lists, opts, secondary_win)
       vim.api.nvim_set_option_value("number", true, { win = secondary_win, scope = "local" })
       vim.api.nvim_set_option_value(
         "winhighlight",
-        "CursorLine:QFBookmarkPreviewCursorline,"
-          .. "FloatTitle:QFBookmarkPreviewFloatTitle,"
-          .. "Cursor:QFBookmarkPreviewFloatCursor,",
+        "FloatTitle:QFBookmarkPreviewFloatTitle,"
+          .. "Cursor:QFBookmarkPreviewFloatCursor,"
+          .. "CursorLine:QFBookmarkPreviewCursorline,"
+          .. "CursorLineNr:QFBookmarkPreviewFloatCursorLineNr,",
 
         { win = secondary_win, scope = "local" }
       )
@@ -696,10 +697,10 @@ local function build_popup(qfpopup, wincfg, lines, is_editable)
 
   vim.api.nvim_set_option_value(
     "winhighlight",
-    "FloatBorder:QFBookmarkFloatBorder,"
-      .. "Normal:QFBookmarkFloatNormal,"
+    "Normal:NormalFloat,"
       .. "NormalFloat:QFBookmarkFloatNormal,"
-      .. (is_editable and "FloatTitle:QFBookmarkFloatTitleBuffers," or "FloatTitle:QFBookmarkFloatTitle,")
+      .. "FloatBorder:QFBookmarkFloatBorder,"
+      .. "FloatTitle:QFBookmarkFloatTitle,"
       .. "FloatFooter:QFBookmarkFloatFooter,"
       .. "CursorLine:QFBookmarkFloatCursorLine,",
     { win = qfpopup.win, scope = "local" }
