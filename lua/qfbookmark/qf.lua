@@ -121,13 +121,17 @@ local function remove_augroup()
   end
 end
 
---  ───────────────────────────────[ -MISC ]───────────────────────────────
+-- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
+-- ╏                                    MISC                                     ╏
+-- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 function M.save_or_load()
   require("qfbookmark.pickers").handle_state(Config)
 end
 
---  ───────────────────────────────[ MARK ]────────────────────────────
+-- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
+-- ╏                                    MARK                                     ╏
+-- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 local function reset_harpoon_list()
   local mark_entry_lists = get_lists_marks()
@@ -201,6 +205,20 @@ local function clean_up_marks_harpoon()
 end
 
 function M.setup_autocmds()
+  vim.schedule(function()
+    local qfhighlights = require "qfbookmark.highlights"
+    qfhighlights(M.prefix_app)
+  end)
+
+  vim.api.nvim_create_autocmd("ColorScheme", {
+    callback = function()
+      -- vim.schedule agar jalan setelah semua ColorScheme handler lain selesai
+      vim.schedule(function()
+        require "qfbookmark.highlights"(M.prefix_app)
+      end)
+    end,
+  })
+
   if status_autocmd_enabled then
     vim.schedule(function()
       recall_augroup()
@@ -257,14 +275,6 @@ function M.setup_autocmds()
       end
     end)
   end
-
-  -- local qfhighlights = require "qfbookmark.highlights"
-  -- qfhighlights(M.prefix_app)
-  vim.api.nvim_create_autocmd("ColorScheme", {
-    callback = function()
-      require "qfbookmark.highlights"(M.prefix_app)
-    end,
-  })
 end
 
 ---@param mark_mode QFBookMarkMode
@@ -283,6 +293,7 @@ local function add_sign(mark_mode)
 
   local extmarkspec = Config.extmarks.keywords[mark_mode]
   QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec)
+  -- QfbookmarkUtils.info(vim.inspect(mark_tbl))
 
   sync_marks_harpoon()
 
@@ -402,7 +413,9 @@ function M.prev_mark()
   QfbookmarkNav.handle_nav_mark(mark_lists, true)
 end
 
---  ──────────────────────────────[ BUFFERS ]──────────────────────────────
+-- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
+-- ╏                                   BUFFERS                                   ╏
+-- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 ---@param is_prev? boolean
 local function load_buffers(is_prev)
@@ -423,7 +436,9 @@ function M.open_buffers()
   load_buffers()
 end
 
---  ──────────────────────────────[ HARPOON ]──────────────────────────────
+-- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
+-- ╏                                   HARPOON                                   ╏
+-- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 -- WARN: Delete this!
 function M.debug_qf()
@@ -545,7 +560,9 @@ function M.goto_mark_index(idx)
   end
 end
 
---  ─────────────────────────────[ QUICKFIX ]──────────────────────────
+-- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
+-- ╏                                  QUICKFIX                                   ╏
+-- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 ---@param list_type QFBookListType
 local function add_item(list_type)
@@ -799,7 +816,9 @@ function M.delete_item()
   end
 end
 
---  ───────────────────────────[ INTEGRATIONS ]────────────────────────
+-- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
+-- ╏                                INTEGRATIONS                                 ╏
+-- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 function M.integrations_trouble_qflist()
   if Config.keymaps.integrations.trouble.enabled then
@@ -855,7 +874,9 @@ function M.integrations_copyline()
   end
 end
 
---  ───────────────────────────────[ NOTE ]────────────────────────────
+-- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
+-- ╏                                    NOTE                                     ╏
+-- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 local is_open_global_note
 local window_command
@@ -884,7 +905,9 @@ function M.toggle_open_note_local()
   __note()
 end
 
---  ──────────────────────────────[ LAYOUT ]───────────────────────────
+-- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
+-- ╏                                   LAYOUT                                    ╏
+-- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 function M.move_layout_qf_up()
   if not Config.window.layout.enabled then

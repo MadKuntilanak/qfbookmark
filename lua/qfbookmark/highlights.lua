@@ -1,65 +1,47 @@
 ---@type QFBookHighlight[]
 local colors = {
-  PreviewFooter = {
-    fg = {
-      higroup = { fromTo = "Function", attr = "fg" },
-      darken = { fromTo = "Normal", attr = "bg", amount = 0.5 },
-    },
-    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
-  },
+  PreviewFloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
   PreviewCursorline = {
-    bg = {
-      higroup = { fromTo = "type", attr = "fg" },
-      darken = { fromTo = "Normal", attr = "bg", amount = 0.3 },
-    },
+    bg = { higroup = { fromTo = "type", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.15 } },
   },
   PreviewFloatCursorLineNr = {
-    fg = {
-      higroup = { fromTo = "Normal", attr = "bg" },
-    },
+    fg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bg = {
       higroup = { fromTo = "type", attr = "fg" },
-      darken = { fromTo = "Normal", attr = "bg", amount = 0.5 },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.8 },
     },
     bold = true,
   },
   PreviewFloatTitle = {
     fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
     bg = { higroup = { fromTo = "FloatTitle", attr = "bg" } },
-    bold = true,
+    bold = false,
   },
   PreviewFloatCursor = {
-    fg = {
-      higroup = { fromTo = "Function", attr = "fg" },
-      darken = { fromTo = "Normal", attr = "bg", amount = 0.5 },
-    },
+    fg = { higroup = { fromTo = "Function", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.5 } },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
+  },
+  PreviewFooter = {
+    fg = { higroup = { fromTo = "Function", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.5 } },
   },
 
-  SaveFloatNormal = {
-    fg = { higroup = { fromTo = "Function", attr = "fg" } },
-    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
-  },
-  FloatNormal = {
-    fg = { higroup = { fromTo = "type", attr = "fg" } },
+  NormalFloat = {
+    fg = { higroup = { fromTo = "type", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.5 } },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
   },
   FloatTitle = {
     fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
-    bg = { higroup = { fromTo = "FloatTitle", attr = "bg" } },
     bold = true,
   },
   FloatFooter = {
     fg = {
       higroup = { fromTo = "FloatBorder", attr = "fg" },
-      darken = { fromTo = "FloatBorder", attr = "fg", amount = 5 },
+      darken = { fromTo = "FloatBorder", attr = "fg", amount = 3.5 },
     },
-    bg = { higroup = { fromTo = "FloatBorder", attr = "bg" } },
     bold = false,
   },
   FloatBorder = {
     fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } },
-    bg = { higroup = { fromTo = "FloatBorder", attr = "bg" } },
   },
   FloatCursorLine = {
     fg = { higroup = { fromTo = "type", attr = "fg" } },
@@ -123,44 +105,43 @@ local function h(name)
   return get_hl_as_hex { name = name }
 end
 
----@param prefix string
-return function(prefix)
-  ---@param opts ColCfg
-  ---@return string
-  local function get_col(opts)
-    local col, c, basecol
+---@param opts ColCfg
+---@return string
+local function get_col(opts)
+  local color, color_edit, color_base
 
-    if opts.higroup.attr == "fg" then
-      basecol = h(opts.higroup.fromTo).fg
-    end
-    if opts.higroup.attr == "bg" then
-      basecol = h(opts.higroup.fromTo).bg
-    end
-
-    if opts.darken then
-      c = opts.darken
-      if c then
-        col = darken(basecol, c.amount, h(c.fromTo).bg)
-      end
-    end
-
-    if opts.tint then
-      c = opts.tint
-      if c then
-        col = blend(basecol, h(c.fromTo).bg, c.amount)
-      end
-    end
-
-    if not col then
-      return basecol
-    end
-
-    return col
+  if opts.higroup.attr == "fg" then
+    color_base = h(opts.higroup.fromTo).fg
+  end
+  if opts.higroup.attr == "bg" then
+    color_base = h(opts.higroup.fromTo).bg
   end
 
-  for k, col in pairs(colors) do
-    local hi_footer = prefix .. k
+  if opts.darken then
+    color_edit = opts.darken
+    if color_edit then
+      color = darken(color_base, color_edit.amount, h(color_edit.fromTo).bg)
+    end
+  end
 
+  if opts.tint then
+    color_edit = opts.tint
+    if color_edit then
+      color = blend(color_base, h(color_edit.fromTo).bg, color_edit.amount)
+    end
+  end
+
+  if color then
+    return color
+  end
+
+  return color_base
+end
+
+---@param prefix string
+return function(prefix)
+  for k, col in pairs(colors) do
+    local hl_name = prefix .. k
     local opts_hi = {}
 
     if col.fg then
@@ -169,11 +150,10 @@ return function(prefix)
     if col.bg then
       opts_hi["bg"] = get_col(col.bg)
     end
-
     if col.bold then
       opts_hi["bold"] = col.bold
     end
 
-    vim.api.nvim_set_hl(0, hi_footer, opts_hi)
+    vim.api.nvim_set_hl(0, hl_name, opts_hi)
   end
 end

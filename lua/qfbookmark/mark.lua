@@ -262,6 +262,16 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line
     QfbookmarkMarkVisual.insert_signs(id, mark_mode, bufnr, line, extmarkspec)
   end
 
+  -- DEBUG: check untuk reverse item
+  -- local function reverse(tbl)
+  --   local n = #tbl
+  --   for i = 1, math.floor(n / 2) do
+  --     tbl[i], tbl[n - i + 1] = tbl[n - i + 1], tbl[i]
+  --   end
+  -- end
+  --
+  -- reverse(mark_lists)
+
   return mark_lists
 end
 
