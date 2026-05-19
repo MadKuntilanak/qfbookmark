@@ -38,6 +38,10 @@ local function get_lists_marks()
     end
   end
 
+  table.sort(mark_lists, function(a, b)
+    return (a.inserted_at or 0) > (b.inserted_at or 0)
+  end)
+
   if #M.mark_lists_harpoon > 0 then
     local pos = {}
     for i, v in ipairs(M.mark_lists_harpoon) do
@@ -137,7 +141,7 @@ local function reset_harpoon_list()
   local mark_entry_lists = get_lists_marks()
 
   if #M.mark_lists_harpoon == 0 then
-    for m_idx, m in pairs(mark_entry_lists) do
+    for m_idx, m in ipairs(mark_entry_lists) do
       M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)
     end
   else
@@ -158,8 +162,8 @@ local function reset_harpoon_list()
       end
     end
 
-    -- 3. Add any new harpoon IDs that don't already exist
-    for m_idx, m in ipairs(mark_entry_lists) do
+    -- 3. Add any new harpoon IDs that don't already exist, insert at front (newest first)
+    for _, m in ipairs(mark_entry_lists) do
       local id = m.harpoon
       local exists = false
       for _, v in ipairs(M.mark_lists_harpoon) do
@@ -170,8 +174,14 @@ local function reset_harpoon_list()
         end
       end
       if not exists then
-        M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, id)
+        table.insert(M.mark_lists_harpoon, 1, QfbookmarkUtils.add_idx_m_harpoon(1, id))
       end
+    end
+
+    -- 4. Re-index all entries after modification
+    for idx, v in ipairs(M.mark_lists_harpoon) do
+      local harp = QfbookmarkUtils.remove_idx_m_harpoon(v)
+      M.mark_lists_harpoon[idx] = QfbookmarkUtils.add_idx_m_harpoon(idx, harp)
     end
   end
 end
@@ -212,7 +222,6 @@ function M.setup_autocmds()
 
   vim.api.nvim_create_autocmd("ColorScheme", {
     callback = function()
-      -- vim.schedule agar jalan setelah semua ColorScheme handler lain selesai
       vim.schedule(function()
         require "qfbookmark.highlights"(M.prefix_app)
       end)
@@ -246,7 +255,18 @@ function M.setup_autocmds()
           end
         end
 
+        -- Sort by inserted_at before loading into M.buffers (newest first)
+        local sorted_marks = {}
         for m_idx, m in pairs(mark_lists) do
+          sorted_marks[#sorted_marks + 1] = { idx = m_idx, data = m }
+        end
+        table.sort(sorted_marks, function(a, b)
+          return (a.data.inserted_at or 0) > (b.data.inserted_at or 0)
+        end)
+
+        for _, entry in ipairs(sorted_marks) do
+          local m_idx, m = entry.idx, entry.data
+
           if not M.buffers[m.mark_mode] then
             M.buffers[m.mark_mode] = {}
           end
@@ -260,6 +280,7 @@ function M.setup_autocmds()
             harpoon = m.harpoon,
             mark_mode = m.mark_mode,
             id = m.id,
+            inserted_at = m.inserted_at or 0, -- preserve from saved file
           }
 
           M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)
@@ -293,7 +314,6 @@ local function add_sign(mark_mode)
 
   local extmarkspec = Config.extmarks.keywords[mark_mode]
   QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec)
-  -- QfbookmarkUtils.info(vim.inspect(mark_tbl))
 
   sync_marks_harpoon()
 
@@ -425,7 +445,6 @@ local function load_buffers(is_prev)
 
   for _, buffer in pairs(list_buffers) do
     local buffer_item = vim.fn.fnamemodify(buffer.info.name, ":~:.") -- shorten path
-    -- table.insert(tbl_buffers, buffer.flag .. " " .. buffer_item)
     table.insert(tbl_buffers, buffer_item)
   end
 
@@ -453,7 +472,7 @@ function M.open_mark_harpoon_window()
   local key_open_win_harp = Config.keymaps.actions.mark_win_open
 
   local old_harpoon = {}
-  for _, harp in pairs(M.mark_lists_harpoon) do
+  for _, harp in ipairs(M.mark_lists_harpoon) do
     old_harpoon[#old_harpoon + 1] = QfbookmarkUtils.remove_idx_m_harpoon(harp)
   end
 

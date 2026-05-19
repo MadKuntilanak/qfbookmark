@@ -254,6 +254,7 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line
       text = QfbookmarkUtils.strip_whitespace(text),
       harpoon = harpoon,
       mark_mode = mark_mode,
+      inserted_at = vim.uv.hrtime(), -- nanosecond timestamp
       id = id,
     }
   end
@@ -261,16 +262,6 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line
   if Config.extmarks.enabled then
     QfbookmarkMarkVisual.insert_signs(id, mark_mode, bufnr, line, extmarkspec)
   end
-
-  -- DEBUG: check untuk reverse item
-  -- local function reverse(tbl)
-  --   local n = #tbl
-  --   for i = 1, math.floor(n / 2) do
-  --     tbl[i], tbl[n - i + 1] = tbl[n - i + 1], tbl[i]
-  --   end
-  -- end
-  --
-  -- reverse(mark_lists)
 
   return mark_lists
 end

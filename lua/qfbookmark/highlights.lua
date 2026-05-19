@@ -2,7 +2,7 @@
 local colors = {
   PreviewFloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
   PreviewCursorline = {
-    bg = { higroup = { fromTo = "type", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.15 } },
+    bg = { higroup = { fromTo = "type", attr = "fg" }, tint = { fromTo = "Normal", attr = "bg", amount = 0.15 } },
   },
   PreviewFloatCursorLineNr = {
     fg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
@@ -26,8 +26,8 @@ local colors = {
   },
 
   NormalFloat = {
-    fg = { higroup = { fromTo = "type", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.5 } },
-    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
+    fg = { higroup = { fromTo = "type", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.8 } },
+    bg = { higroup = { fromTo = "Normal", attr = "bg" } },
   },
   FloatTitle = {
     fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
