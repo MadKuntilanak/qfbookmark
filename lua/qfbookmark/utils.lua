@@ -609,6 +609,33 @@ end
 -- ┃                      BUFFER UTILS                       ┃
 -- ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
 
+---@param filename string
+---@return integer | nil
+function M.resolve_bufnr(filename)
+  if not filename then
+    return nil
+  end
+
+  if filename:match "^fugitive://" then
+    local bufnr = vim.fn.bufnr(filename)
+    if bufnr == -1 then
+      bufnr = vim.fn.bufadd(filename)
+    end
+    return bufnr ~= -1 and bufnr or nil
+  end
+
+  if vim.fn.filereadable(filename) == 1 then
+    local bufnr = vim.fn.bufnr(filename)
+    if bufnr == -1 then
+      bufnr = vim.fn.bufadd(filename)
+    end
+    vim.fn.bufload(bufnr)
+    return bufnr
+  end
+
+  return nil
+end
+
 function M.is_buf_readonly(buf)
   buf = buf or 0
   return not vim.bo[0].modifiable or vim.bo[0].readonly

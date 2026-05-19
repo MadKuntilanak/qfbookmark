@@ -149,15 +149,6 @@ local function refresh_mark(mark_lists, force_refresh, bufnr)
   end
 end
 
-----@param buf integer
--- local function update_render_extermark(buf)
---   if Config.ns > 0 then
---     -- Clear dahulu extemarks, sebelum di render di quickfix window
---     -- untuk mencegah duplikasi ketika `delete item` atau `update item`
---     vim.api.nvim_buf_clear_namespace(buf, Config.ns, 0, -1)
---   end
--- end
-
 local is_setup_path = false
 
 ---@param mark_lists QFbookBufferMarkEntry[]

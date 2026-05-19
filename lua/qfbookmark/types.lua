@@ -33,7 +33,7 @@
 ---@field NOTE QFBookSpec
 
 ---@class QFbookBufferMarkEntry
----@field bufnr integer
+---@field bufnr integer | nil
 ---@field filename string
 ---@field line integer
 ---@field col integer

@@ -167,6 +167,7 @@ local buffer_opts = {
   current_tab_only = false,
   sort_lastused = true,
   current_buffer_only = false,
+  show_unloaded = false,
 }
 
 ---@param is_prev? boolean

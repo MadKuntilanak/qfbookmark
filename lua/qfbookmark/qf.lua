@@ -72,6 +72,10 @@ local function exclude_buf(bufnr)
   local user_buftypes = excluded.buftypes
   local user_filetype = excluded.filetypes
 
+  if vim.api.nvim_buf_get_name(bufnr):match "^fugitive://" then
+    return true
+  end
+
   local buftype = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
 
   if #user_buftypes > 0 then
@@ -238,21 +242,9 @@ function M.setup_autocmds()
     vim.schedule(function()
       local mark_lists = QfbookmarkPaths.get_data_mark_local_project()
       if mark_lists and not vim.tbl_isempty(mark_lists) then
-        -- fix old bufnr
+        -- fix old bufnr and support fugitive
         for _, m in pairs(mark_lists) do
-          if m.filename and vim.fn.filereadable(m.filename) == 1 then
-            local new_bufnr = vim.fn.bufnr(m.filename)
-
-            if new_bufnr == -1 then
-              new_bufnr = vim.fn.bufadd(m.filename)
-            end
-
-            -- ensure the buffer is loaded and update the old buffer number
-            vim.fn.bufload(new_bufnr)
-            m.bufnr = new_bufnr
-          else
-            m.bufnr = nil
-          end
+          m.bufnr = QfbookmarkUtils.resolve_bufnr(m.filename)
         end
 
         -- Sort by inserted_at before loading into M.buffers (newest first)
@@ -477,73 +469,79 @@ function M.open_mark_harpoon_window()
   end
 
   vim.schedule(function()
-    QfbookmarkUI._mark_harpoon_popup(mark_entry_lists, key_open_win_harp, M.mark_lists_harpoon, function(lines)
-      if type(lines) == "string" then
-        return
-      end
+    QfbookmarkUI._mark_harpoon_popup(
+      M.buffers,
+      mark_entry_lists,
+      key_open_win_harp,
+      M.mark_lists_harpoon,
+      function(lines)
+        if type(lines) == "string" then
+          return
+        end
 
-      if #old_harpoon ~= #lines then
-        local idx_lookup = {}
-        for _, x in pairs(lines) do
-          local harp_no_idx = QfbookmarkUtils.remove_idx_m_harpoon(x)
-          if not idx_lookup[harp_no_idx] then
-            idx_lookup[harp_no_idx] = true
+        if #old_harpoon ~= #lines then
+          local idx_lookup = {}
+          for _, x in pairs(lines) do
+            local harp_no_idx = QfbookmarkUtils.remove_idx_m_harpoon(x)
+            if not idx_lookup[harp_no_idx] then
+              idx_lookup[harp_no_idx] = true
+            end
+          end
+
+          local harp_need_delete = {}
+          for _, x in pairs(old_harpoon) do
+            if not idx_lookup[x] then
+              harp_need_delete[#harp_need_delete + 1] = x
+            end
+          end
+
+          for _, m in pairs(mark_entry_lists) do
+            for _, x in pairs(harp_need_delete) do
+              if m.harpoon ~= x then
+                goto continue
+              end
+
+              local mark_lists = M.buffers
+
+              local opts = QfbookmarkBookmark.is_current_line_got_mark(mark_lists, { id = m.id })
+              if not opts then
+                return
+              end
+
+              if not vim.api.nvim_buf_is_valid(opts.bufnr) then
+                goto continue
+              end
+
+              local is_delete = QfbookmarkBookmark.delete_mark(mark_lists, opts.mark_mode, opts.id, opts.bufnr)
+              if not is_delete then
+                QfbookmarkUtils.warn "Something went wrong"
+              end
+
+              if is_delete and vim.api.nvim_buf_is_valid(opts.bufnr) then
+                vim.schedule(function()
+                  QfbookmarkBookmark.update_mark_sign(M.buffers, opts.bufnr)
+                end)
+              end
+
+              ::continue::
+            end
           end
         end
 
-        local harp_need_delete = {}
-        for _, x in pairs(old_harpoon) do
-          if not idx_lookup[x] then
-            harp_need_delete[#harp_need_delete + 1] = x
-          end
+        local new_lines = {}
+        for idx, x in pairs(lines) do
+          local harp_w_idx = QfbookmarkUtils.add_idx_m_harpoon(idx, x)
+          new_lines[#new_lines + 1] = harp_w_idx
         end
 
-        for _, m in pairs(mark_entry_lists) do
-          for _, x in pairs(harp_need_delete) do
-            if m.harpoon ~= x then
-              goto continue
-            end
+        M.mark_lists_harpoon = new_lines
 
-            local mark_lists = M.buffers
-
-            local opts = QfbookmarkBookmark.is_current_line_got_mark(mark_lists, { id = m.id })
-            if not opts then
-              return
-            end
-
-            if not vim.api.nvim_buf_is_valid(opts.bufnr) then
-              goto continue
-            end
-
-            local is_delete = QfbookmarkBookmark.delete_mark(mark_lists, opts.mark_mode, opts.id, opts.bufnr)
-            if not is_delete then
-              QfbookmarkUtils.warn "Something went wrong"
-            end
-
-            if is_delete and vim.api.nvim_buf_is_valid(opts.bufnr) then
-              vim.schedule(function()
-                QfbookmarkBookmark.update_mark_sign(M.buffers, opts.bufnr)
-              end)
-            end
-
-            ::continue::
-          end
-        end
+        vim.schedule(function()
+          local mark_lists = get_lists_marks()
+          QfbookmarkBookmark.save_marks(mark_lists)
+        end)
       end
-
-      local new_lines = {}
-      for idx, x in pairs(lines) do
-        local harp_w_idx = QfbookmarkUtils.add_idx_m_harpoon(idx, x)
-        new_lines[#new_lines + 1] = harp_w_idx
-      end
-
-      M.mark_lists_harpoon = new_lines
-
-      vim.schedule(function()
-        local mark_lists = get_lists_marks()
-        QfbookmarkBookmark.save_marks(mark_lists)
-      end)
-    end)
+    )
   end)
 end
 

@@ -156,35 +156,46 @@ end
 ---@param filename string
 ---@param bufnr? integer
 local function load_content(filename, bufnr)
+  -- Handle fugitive virtual buffers
+  if filename and filename:match "^fugitive://" then
+    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+      local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
+      if ok and lines and #lines > 0 then
+        return lines
+      end
+    end
+    return { "⚠ Unable to load fugitive buffer: " .. filename }
+  end
+
   if not bufnr then
     local real = read_file(filename)
     if real then
       return real
     end
-    return { "⚠ Tidak dapat memuat konten. Buffer tidak ditemukan." }
+    return { "⚠ Unable to load content. Buffer not found." }
   end
 
   local bt = vim.bo[bufnr].buftype
 
-  -- buffer virtual (git, octo, lsp, prompt, terminal, dsb)
+  -- Virtual buffer (git, octo, lsp, prompt, terminal, etc)
   if bt ~= "" and bt ~= "file" then
     return vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
   end
 
-  -- try read file from hardisk
+  -- Try read file from disk
   local real = read_file(filename)
   if real then
     return real
   end
 
-  -- fallback if path invalid
+  -- Fallback if path invalid
   return vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 end
 
 ---@param mark_lists QFbookBufferMarkEntry[]
 ---@param opts {buf: integer}
 ---@param secondary_win integer
-local function update_preview_harpoon(mark_lists, opts, secondary_win)
+local function update_preview_harpoon(buffers, mark_lists, opts, secondary_win)
   local getlines = vim.api.nvim_get_current_line()
   getlines = QfbookmarkUtils.remove_idx_m_harpoon(getlines)
 
@@ -206,7 +217,31 @@ local function update_preview_harpoon(mark_lists, opts, secondary_win)
   local content
   local buffer_status = QfbookmarkUtils.get_buffer_status(bufnr)
 
-  if buffer_status == "alive" then
+  if filename:match "^fugitive://" then
+    local new_bufnr = vim.fn.bufnr(filename)
+
+    if new_bufnr == -1 then
+      new_bufnr = vim.fn.bufadd(filename)
+    end
+
+    if new_bufnr ~= -1 then
+      if not vim.api.nvim_buf_is_loaded(new_bufnr) then
+        vim.api.nvim_buf_call(new_bufnr, function()
+          vim.cmd("doautocmd BufReadCmd " .. vim.fn.fnameescape(filename))
+        end)
+      end
+
+      bufnr = new_bufnr
+      for mode, _ in pairs(buffers) do
+        for id, m in pairs(buffers[mode]) do
+          if m.filename == filename then
+            buffers[mode][id].bufnr = new_bufnr
+          end
+        end
+      end
+      content = load_content(filename, bufnr)
+    end
+  elseif buffer_status == "alive" then
     content = load_content(filename, bufnr)
   elseif buffer_status == "hidden" or buffer_status == "gone" then
     content = read_file(filename)
@@ -223,8 +258,16 @@ local function update_preview_harpoon(mark_lists, opts, secondary_win)
     end
 
     local ft
-    if vim.api.nvim_buf_is_valid(bufnr) then
-      ft = vim.filetype.match { buf = bufnr }
+    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+      local ok, result = pcall(vim.filetype.match, { buf = bufnr })
+      if ok then
+        ft = result
+      end
+    end
+
+    -- Fallback filetype for fugitive buffers
+    if not ft and filename and filename:match "^fugitive://" then
+      ft = bufnr and vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].filetype or "git"
     end
 
     if ft then
@@ -878,11 +921,11 @@ end
 ---@param main_buf integer
 ---@param preview_buf integer
 ---@param preview_win integer
-local function setup_harpoon_preview(mark_lists, main_buf, preview_buf, preview_win)
+local function setup_harpoon_preview(buffers, mark_lists, main_buf, preview_buf, preview_win)
   vim.api.nvim_create_autocmd("CursorMoved", {
     buffer = main_buf,
     callback = function()
-      update_preview_harpoon(mark_lists, { buf = preview_buf }, preview_win)
+      update_preview_harpoon(buffers, mark_lists, { buf = preview_buf }, preview_win)
     end,
   })
 end
@@ -891,7 +934,7 @@ end
 ---@param keymap_harpoon string|string[]
 ---@param harpoon_lines table
 ---@param cb function
-local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
+local function mark_harpoon_popup(buffers, mark_lists, keymap_harpoon, harpoon_lines, cb)
   local win_opts = get_win_width()
   local win_buf = vim.api.nvim_create_buf(false, true)
 
@@ -940,7 +983,7 @@ local function mark_harpoon_popup(mark_lists, keymap_harpoon, harpoon_lines, cb)
   end
 
   local main_buf = buf
-  setup_harpoon_preview(mark_lists, main_buf, preview_buf, preview_win)
+  setup_harpoon_preview(buffers, mark_lists, main_buf, preview_buf, preview_win)
 
   local is_harpoon = true
   local qf_win_popup = {
