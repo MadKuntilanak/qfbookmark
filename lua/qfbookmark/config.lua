@@ -28,7 +28,7 @@ M.defaults = {
   },
   window = {
     notify = { mark = true, plugin = true },
-    theme = { qf = { enabled = true, limit = 50 } },
+    theme = { qf = { enabled = true, limit = 50, highlight = true } },
     layout = {
       enabled = true,
       copen = "belowright copen",
@@ -218,9 +218,10 @@ function M.update_settings(user_opts)
   if M.defaults.window.theme.qf.enabled then
     make_qftf(M.defaults.window)
 
-    -- FIX: broken!
-    -- Setup highlight groups + autocmds untuk inject warna ke qf buffer.
-    require("qfbookmark.qftf_highlight").setup()
+    -- Setup highlights and autocmds for qf buffer coloring
+    if M.defaults.window.theme.qf.highlight then
+      require("qfbookmark.qftf_highlight").setup()
+    end
   end
 
   return M.defaults

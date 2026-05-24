@@ -109,7 +109,7 @@ local function qf_to_trouble_items(qf_entries, origin_mode)
           },
         }
       elseif is_diagnostic_mode then
-        -- diag format: "{severity_icon|item.type:DiagnosticSignWarn} {text:ts} {pos}"
+        -- diag format: "{severity_icon|item.type:DiagnosticSignWarn} {message:ts} {pos}"
         ret[#ret + 1] = Item.new {
           buf = bufnr,
           filename = fname,
@@ -173,8 +173,8 @@ local function open_trouble_with_items(mode, items)
   -- create a new one and inject items before the first render.
   local view = View.new(opts)
 
-  -- Freeze: M:refresh() in view/init.lua checks view._frozen and skips
-  -- section:refresh() (the LSP query path) when true.
+  -- Freeze: M:refresh() in view/init.lua checks view._frozen and skips section:refresh()
+  -- (the LSP query path) when true.
   view._frozen = true
 
   for _, section in ipairs(view.sections) do
@@ -280,8 +280,8 @@ local function toggle_qf_window(list_type, is_loc)
   -- Read raw entries BEFORE closing the window.
   local raw_entries
   if origin and origin.mode then
-    local raw = is_loc and vim.fn.getloclist(0, { items = true, all = true })
-      or vim.fn.getqflist { items = true, all = true }
+    local raw_data = QfbookmarkUtils.get_data_qf(is_loc)
+    local raw = is_loc and raw_data.location or raw_data.quickfix
     raw_entries = raw and raw.items or {}
   end
 
@@ -301,9 +301,9 @@ local function toggle_qf_window(list_type, is_loc)
   end
 end
 
--- ---------------------------------------------------------------------------
--- Public API
--- ---------------------------------------------------------------------------
+-- ╓─────────────────────────────────────────────────────────────────────────────╖
+-- ║                                 Public API                                  ║
+-- ╙─────────────────────────────────────────────────────────────────────────────╜
 ---@param is_trouble_ft? boolean
 ---@param list_type QFBookListType
 ---@param is_loc? boolean
