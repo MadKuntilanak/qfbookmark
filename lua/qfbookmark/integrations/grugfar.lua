@@ -41,6 +41,9 @@ end
 
 local is_silent_opts_grugfar_changed = false
 
+-- ╓─────────────────────────────────────────────────────────────────────────────╖
+-- ║                                 Public API                                  ║
+-- ╙─────────────────────────────────────────────────────────────────────────────╜
 ---@param list_type QFBookListType
 ---@param is_grugfar_ft? boolean
 ---@param is_loc? boolean

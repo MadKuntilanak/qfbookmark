@@ -67,7 +67,7 @@
 
 ---@class WindowConfig
 ---@field notify { enabled: boolean, mark: boolean, plugin: boolean }
----@field theme { enabled: boolean, maxheight: integer }
+---@field theme { qf : { enabled: boolean, maxheight: integer, limit: integer } }
 ---@field layout { enabled: boolean, copen: string, lopen: string }
 ---@field actions { auto_center: boolean, auto_unfold: boolean }
 ---@field popup PopupConfig

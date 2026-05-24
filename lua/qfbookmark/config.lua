@@ -28,8 +28,7 @@ M.defaults = {
   },
   window = {
     notify = { mark = true, plugin = true },
-    -- theme = { enabled = true, maxheight = 10 },
-    theme = { enabled = true },
+    theme = { qf = { enabled = true, limit = 50 } },
     layout = {
       enabled = true,
       copen = "belowright copen",
@@ -137,30 +136,77 @@ M.defaults = {
   },
 }
 
+-- +-----------------------------------------------------------------------------+
+-- |                    QFTF: Quickfix Title Format Function                     |
+-- +-----------------------------------------------------------------------------+
+---@param opts WindowConfig
+local function make_qftf(opts)
+  local _qftf_limit = opts.theme.qf.limit
+  local _fname_fmt1 = "%-" .. _qftf_limit .. "s"
+  local _fname_fmt2 = "…%." .. (_qftf_limit - 1) .. "s"
+  local _valid_fmt = "%s │%5d:%-3d│%s %s"
+
+  function _G.qftf(info)
+    local items
+    if info.quickfix == 1 then
+      items = vim.fn.getqflist({ id = info.id, items = 0 }).items
+    else
+      items = vim.fn.getloclist(info.winid, { id = info.id, items = 0 }).items
+    end
+
+    local ret = {}
+    for i = info.start_idx, info.end_idx do
+      local e = items[i]
+      local str = ""
+      if e.valid == 1 then
+        local fname = ""
+        if e.bufnr > 0 then
+          fname = vim.fn.bufname(e.bufnr)
+          local is_git = fname:match "%.git//(%x%x%x%x%x%x%x)" or fname:match "%.git/([a-f0-9]+)"
+          if fname == "" then
+            fname = "[No Name]"
+          elseif is_git then
+            fname = is_git
+          else
+            fname = vim.fn.fnamemodify(fname, ":~:.")
+          end
+          if #fname <= _qftf_limit then
+            fname = _fname_fmt1:format(fname)
+          else
+            fname = _fname_fmt2:format(fname:sub(1 - _qftf_limit))
+          end
+        end
+        local lnum = e.lnum > 99999 and -1 or e.lnum
+        local col = e.col > 999 and -1 or e.col
+        local qtype = e.type == "" and "" or " " .. e.type:sub(1, 1):upper()
+        str = _valid_fmt:format(fname, lnum, col, qtype, e.text)
+      end
+      table.insert(ret, str)
+    end
+    return ret
+  end
+
+  vim.o.qftf = "{info -> v:lua.qftf(info)}"
+end
+
 ---@param defaults QFBookmarkConfig
 ---@param user_opts QFBookmarkConfig
 ---@return QFBookmarkConfig
 local function merge_settings(defaults, user_opts)
   local user_keymaps = user_opts.keymaps or {}
   local disable_all = user_keymaps.disable_all == true
-
-  -- do a normal merge unless `disable_all` is set to true
   if not disable_all then
     return vim.tbl_deep_extend("force", defaults, user_opts)
   end
-
   local new_defaults = vim.deepcopy(defaults)
-
   for section, _ in pairs(new_defaults.keymaps) do
     if section ~= "disable_all" then
-      -- clear all default keymaps for each section except "disable_all"
       new_defaults.keymaps[section] = {}
     end
   end
-
   local final = vim.deepcopy(user_opts)
   final = vim.tbl_deep_extend("force", new_defaults, final)
-  final.keymaps.disable_all = true -- set it back to true
+  final.keymaps.disable_all = true
   return final
 end
 
@@ -169,97 +215,13 @@ function M.update_settings(user_opts)
   user_opts = user_opts or {}
   M.defaults = merge_settings(M.defaults, user_opts)
 
-  function _G.qftf(info)
-    local items
-    local ret = {}
-    if info.quickfix == 1 then
-      items = vim.fn.getqflist({ id = info.id, items = 0 }).items
-    else
-      items = vim.fn.getloclist(info.winid, { id = info.id, items = 0 }).items
-    end
-    local limit = 50
-    local fname_fmt1, fname_fmt2 = "%-" .. limit .. "s", "…%." .. (limit - 1) .. "s"
-    local valid_fmt = "%s │%5d:%-3d│%s %s"
-    for i = info.start_idx, info.end_idx do
-      local e = items[i]
-      local fname = ""
-      local str
-      if e.valid == 1 then
-        if e.bufnr > 0 then
-          fname = vim.fn.bufname(e.bufnr)
+  if M.defaults.window.theme.qf.enabled then
+    make_qftf(M.defaults.window)
 
-          -- Detect git pattern
-          local is_git = fname:match "%.git//(%x%x%x%x%x%x%x)" or fname:match "%.git/([a-f0-9]+)"
-
-          if fname == "" then
-            fname = "[No Name]"
-          elseif is_git then
-            fname = is_git
-          else
-            fname = vim.fn.fnamemodify(fname, ":~:.")
-          end
-
-          if #fname <= limit then
-            fname = fname_fmt1:format(fname)
-          else
-            fname = fname_fmt2:format(fname:sub(1 - limit))
-          end
-        end
-        local lnum = e.lnum > 99999 and -1 or e.lnum
-        local col = e.col > 999 and -1 or e.col
-        local qtype = e.type == "" and "" or " " .. e.type:sub(1, 1):upper()
-        str = valid_fmt:format(fname, lnum, col, qtype, e.text)
-      end
-      table.insert(ret, str)
-    end
-    return ret
+    -- FIX: broken!
+    -- Setup highlight groups + autocmds untuk inject warna ke qf buffer.
+    require("qfbookmark.qftf_highlight").setup()
   end
-
-  -- local function addjustWindowHWQf(maxheight)
-  --   maxheight = maxheight or 7
-  --   local l = 1
-  --   local n_lines = 0
-  --   local w_width = fn.winwidth(vim.api.nvim_get_current_win())
-  --
-  --   for i = l, fn.line "$" do
-  --     local l_len = fn.strlen(fn.getline(l)) + 0.0
-  --     local line_width = l_len / w_width
-  --     n_lines = n_lines + fn.float2nr(fn.ceil(line_width))
-  --     i = i + 1
-  --   end
-  --   --
-  --   local height = math.min(n_lines, maxheight)
-  --   vim.cmd(fmt("%swincmd _", height + 1))
-  -- end
-
-  if M.defaults.window.theme.enabled then
-    vim.o.qftf = "{info -> v:lua.qftf(info)}" -- uncomment this line if needed..
-  end
-
-  -- if settings.theme_list.auto_height.enabled then
-  --   local augroup = vim.api.nvim_create_augroup("QFSiletThemeQF", { clear = true })
-  --   vim.api.nvim_create_autocmd("FileType", {
-  --     pattern = { "qf" },
-  --     group = augroup,
-  --     callback = function()
-  --       addjustWindowHWQf(settings.theme_list.maxheight)
-  --     end,
-  --   })
-  -- end
-
-  -- if settings.marks.enabled then
-  --   require("qfsilet.marks").setup(settings.marks.refresh_interval)
-  -- end
-  --
-  -- for i_ext, _ in pairs(Visual.extmarks) do
-  --   for i_ext_set, _ in pairs(settings.extmarks) do
-  --     if i_ext == i_ext_set then
-  --       Visual.extmarks[i_ext] = settings.extmarks[i_ext_set]
-  --     end
-  --   end
-  -- end
-
-  -- setup_highlight_groups()
 
   return M.defaults
 end
