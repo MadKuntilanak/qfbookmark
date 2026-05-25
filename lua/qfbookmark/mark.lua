@@ -167,12 +167,12 @@ local function __save_marks(mark_lists)
     is_setup_path = true
   end
 
-  local path_local_cwd = QfbookmarkPaths.get_target_path_with_gitcwd(is_save_global_mark)
-  if not QfbookmarkPathUtils.is_file(path_local_cwd) then
-    QfbookmarkPathUtils.create_file(path_local_cwd)
+  local path_git_cwd = QfbookmarkPaths.get_target_path_with_gitcwd(is_save_global_mark)
+  if not QfbookmarkPathUtils.is_file(path_git_cwd) then
+    QfbookmarkPathUtils.create_file(path_git_cwd)
   end
 
-  QfbookmarkUtils.save_table_to_file(mark_lists, path_local_cwd)
+  QfbookmarkUtils.save_table_to_file(mark_lists, path_git_cwd)
 end
 
 ---@param mark_lists QFbookBufferMarkEntry[]

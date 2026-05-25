@@ -50,11 +50,16 @@ function M.get_target_path_with_gitcwd(is_global)
   is_global = is_global or false
 
   local cwd_local_project = M.get_target_path(is_global)
+
   local git_branch = QfbookmarkPathUtils.git_branch()
   if not git_branch then
     return cwd_local_project
   end
+
   git_branch = "_" .. git_branch .. ""
+  git_branch = git_branch:gsub("/", "-")
+  git_branch = git_branch:gsub(":", "-")
+
   return cwd_local_project .. "/mark" .. git_branch .. ".lua"
 end
 
@@ -66,13 +71,18 @@ local function get_marks_cwd(is_global)
   local mark_lists = {}
 
   local cwd_local_project = M.get_target_path(is_global)
-  if QfbookmarkPathUtils.is_dir(cwd_local_project) then
-    local fn_mark_lua = M.get_target_path_with_gitcwd(is_global)
-    if QfbookmarkPathUtils.is_file(fn_mark_lua) then
-      mark_lists = dofile(fn_mark_lua)
-    end
+
+  if not QfbookmarkPathUtils.is_dir(cwd_local_project) then
+    return mark_lists
   end
 
+  local fn_mark_lua = M.get_target_path_with_gitcwd(is_global)
+
+  if not QfbookmarkPathUtils.is_file(fn_mark_lua) then
+    return mark_lists
+  end
+
+  mark_lists = dofile(fn_mark_lua)
   return mark_lists
 end
 
