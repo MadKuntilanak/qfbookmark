@@ -272,7 +272,7 @@ function M.setup_autocmds()
             harpoon = m.harpoon,
             mark_mode = m.mark_mode,
             id = m.id,
-            inserted_at = m.inserted_at or 0, -- preserve from saved file
+            inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0, -- preserve from saved file; reject stale hrtime values (> 1e13 = nanoseconds, not Unix seconds)
           }
 
           M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)

@@ -245,7 +245,7 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line
       text = QfbookmarkUtils.strip_whitespace(text),
       harpoon = harpoon,
       mark_mode = mark_mode,
-      inserted_at = vim.uv.hrtime(), -- nanosecond timestamp
+      inserted_at = os.time(), -- Unix timestamp (seconds); consistent across sessions
       id = id,
     }
   end
