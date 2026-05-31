@@ -410,19 +410,21 @@ function M.delete_mark_buffer(bufnr)
   end)
 end
 
-function M.next_mark()
+---@param is_prev_or_next boolean
+local function next_prev_mark(is_prev_or_next)
   if not M.status_mark() then
     QfbookmarkUtils.info "Marks is empty"
+    return
   end
   local mark_lists = get_lists_marks()
-  QfbookmarkNav.handle_nav_mark(mark_lists, false)
+  QfbookmarkNav.handle_nav_mark(mark_lists, is_prev_or_next)
+end
+
+function M.next_mark()
+  next_prev_mark(false)
 end
 function M.prev_mark()
-  if not M.status_mark() then
-    QfbookmarkUtils.info "Marks is empty"
-  end
-  local mark_lists = get_lists_marks()
-  QfbookmarkNav.handle_nav_mark(mark_lists, true)
+  next_prev_mark(true)
 end
 
 -- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
