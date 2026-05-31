@@ -313,8 +313,10 @@ function M.save_to_qf_and_auto_open_qf(list_items, cmd_open, is_loc, winid)
 end
 
 ---@param wins string|string[]
+---@param is_tab? boolean
 ---@return { found: boolean, winbufnr: integer, winnr: integer, winid: integer, ft: string }
-function M.windows_is_opened(wins)
+function M.windows_is_opened(wins, is_tab)
+  is_tab = is_tab or false
   local ft_wins = { "incline" }
 
   if type(wins) == "table" then
@@ -330,7 +332,9 @@ function M.windows_is_opened(wins)
   end
 
   local outline_tbl = { found = false, winbufnr = 0, winnr = 0, winid = 0, ft = "" }
-  for _, winnr in ipairs(vim.api.nvim_list_wins()) do
+
+  local tab = vim.api.nvim_get_current_tabpage()
+  for _, winnr in ipairs(is_tab and vim.api.nvim_tabpage_list_wins(tab) or vim.api.nvim_list_wins()) do
     local win_bufnr = vim.api.nvim_win_get_buf(winnr)
 
     if tonumber(win_bufnr) == 0 then

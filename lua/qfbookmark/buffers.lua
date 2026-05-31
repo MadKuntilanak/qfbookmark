@@ -114,7 +114,10 @@ local function get_list_buffers(opts, bufnrs, winid)
     -- Get the name for missing/quickfix/location list buffers
     -- NOTE: we get it here due to `gen_buffer_entry` called within a fast event
     if not buf.info.name or #buf.info.name == 0 then
-      buf.info.name = QfbookmarkUtils.nvim_buf_get_name(buf.bufnr, buf.info)
+      local __buf_name = QfbookmarkUtils.nvim_buf_get_name(buf.bufnr, buf.info)
+      if not vim.tbl_contains({ "[No Name]", "[Quickfix List]", "[Location List]" }, __buf_name) then
+        buf.info.name = __buf_name
+      end
     end
 
     -- Use vim.b.term_title where possible (#2456)
