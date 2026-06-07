@@ -1,51 +1,118 @@
 ---@type QFBookHighlight[]
 local colors = {
+  -- +-----------------------------------------------------------------------------+
+  -- |                                  PREVIWER                                   |
+  -- +-----------------------------------------------------------------------------+
   PreviewFloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
-  PreviewCursorline = {
-    bg = { higroup = { fromTo = "type", attr = "fg" }, tint = { fromTo = "Normal", attr = "bg", amount = 0.15 } },
-  },
+  PreviewCursorline = { bg = { higroup = { fromTo = "type", attr = "fg" }, tint = { amount = -0.8 } } },
   PreviewFloatCursorLineNr = {
     fg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bg = {
       higroup = { fromTo = "type", attr = "fg" },
-      darken = { fromTo = "Normal", attr = "bg", amount = 0.8 },
+      tint = { amount = 0.5 },
     },
     bold = true,
   },
-  PreviewFloatTitle = {
-    fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
-    bg = { higroup = { fromTo = "FloatTitle", attr = "bg" } },
-    bold = false,
-  },
+  PreviewFloatTitle = { fg = { higroup = { fromTo = "FloatTitle", attr = "fg" }, tint = { amount = 0.5 } } },
   PreviewFloatCursor = {
-    fg = { higroup = { fromTo = "Function", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.5 } },
+    fg = {
+      higroup = { fromTo = "Function", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.5 },
+    },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
   },
   PreviewFooter = {
-    fg = { higroup = { fromTo = "Function", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.5 } },
+    fg = {
+      higroup = { fromTo = "Function", attr = "fg" },
+      tint = { amount = 0.5 },
+    },
   },
 
   NormalFloat = {
-    fg = { higroup = { fromTo = "type", attr = "fg" }, darken = { fromTo = "Normal", attr = "bg", amount = 0.8 } },
+    fg = { higroup = { fromTo = "Directory", attr = "fg" } },
     bg = { higroup = { fromTo = "Normal", attr = "bg" } },
   },
-  FloatTitle = {
-    fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } },
-    bold = true,
-  },
-  FloatFooter = {
-    fg = {
-      higroup = { fromTo = "FloatBorder", attr = "fg" },
-      darken = { fromTo = "FloatBorder", attr = "fg", amount = 3.5 },
-    },
-    bold = false,
-  },
-  FloatBorder = {
-    fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } },
-  },
+  FloatTitle = { fg = { higroup = { fromTo = "FloatTitle", attr = "fg" }, tint = { amount = 0.5 } } },
+  FloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
+  FloatFooter = { fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } } },
   FloatCursorLine = {
-    fg = { higroup = { fromTo = "type", attr = "fg" } },
+    fg = {
+      higroup = { fromTo = "Directory", attr = "fg" },
+      tint = { amount = 0.1 },
+    },
     bold = true,
+  },
+
+  -- +-----------------------------------------------------------------------------+
+  -- |                entry highlight groups for mark_harpoon_popup                |
+  -- +-----------------------------------------------------------------------------+
+
+  -- index number " N "
+  EntryIdx = {
+    fg = { higroup = { fromTo = "Comment", attr = "fg" } },
+  },
+  -- path on the header line
+  EntryPath = {
+    fg = { higroup = { fromTo = "Directory", attr = "fg" } },
+  },
+  -- current-file indicator "●"
+  EntryCurrentFile = {
+    fg = { higroup = { fromTo = "String", attr = "fg" } },
+    bold = true,
+  },
+  -- lnum + preview text on the detail line
+  EntryDetail = {
+    fg = {
+      higroup = { fromTo = "String", attr = "fg" },
+      darken = { fromTo = "NormalFloat", attr = "fg", amount = 0.8 },
+    },
+  },
+  -- lnum portion ":92" on the detail line
+  EntryLnum = {
+    fg = {
+      higroup = { fromTo = "type", attr = "fg" },
+      tint = { amount = -0.4 },
+    },
+  },
+
+  -- badge: MARK (blue)
+  BadgeMark = {
+    fg = { higroup = { fromTo = "Function", attr = "fg" } },
+    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
+    bold = true,
+  },
+  -- badge: FIX (red)
+  BadgeFix = {
+    fg = { higroup = { fromTo = "DiagnosticError", attr = "fg" } },
+    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
+    bold = true,
+  },
+  -- badge: NOTE (green)
+  BadgeNote = {
+    fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
+    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
+    bold = true,
+  },
+  -- badge: DEBUG (orange / warning colour)
+  BadgeDebug = {
+    fg = { higroup = { fromTo = "DiagnosticWarn", attr = "fg" } },
+    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
+    bold = true,
+  },
+
+  -- +-----------------------------------------------------------------------------+
+  -- |                                   BUFFER                                    |
+  -- +-----------------------------------------------------------------------------+
+  EntryFlag = {
+    fg = {
+      higroup = { fromTo = "type", attr = "fg" },
+      tint = { amount = 0.4 },
+    },
+  },
+
+  -- directory value in save footer (cyan-ish)
+  EntryDirectory = {
+    fg = { higroup = { fromTo = "Special", attr = "fg" } },
   },
 }
 
@@ -77,26 +144,62 @@ local function get_hl_as_hex(opts, ns)
   return hl
 end
 
----@param fg string
----@param bg string
----@param alpha number number between 0 and 1. 0 results in bg, 1 results in fg
-local function blend(fg, bg, alpha)
-  bg = hex_to_rgb(bg)
-  fg = hex_to_rgb(fg)
-
-  local blendChannel = function(i)
-    local ret = (alpha * fg[i] + ((1 - alpha) * bg[i]))
-    return math.floor(math.min(math.max(0, ret), 255) + 0.5)
-  end
-
-  return string.format("#%02X%02X%02X", blendChannel(1), blendChannel(2), blendChannel(3))
+local function clamp(val)
+  return math.max(0, math.min(255, math.floor(val + 0.5)))
 end
 
----@param hex string
----@param amount integer
----@param bg string
+---@param fg    string hex foreground color
+---@param bg    string hex background color
+---@param alpha number 0.0 – 1.0
+---@return string blended hex color
+local function blend(fg, bg, alpha)
+  assert(type(fg) == "string", "blend: 'fg' must be a hex string, got: " .. type(fg))
+  assert(type(bg) == "string", "blend: 'bg' must be a hex string, got: " .. type(bg))
+  assert(type(alpha) == "number", "blend: 'alpha' must be a number, got: " .. type(alpha))
+  alpha = math.max(0.0, math.min(1.0, alpha))
+  local f = hex_to_rgb(fg)
+  local b = hex_to_rgb(bg)
+  return string.format(
+    "#%02x%02x%02x",
+    clamp(alpha * f[1] + (1 - alpha) * b[1]),
+    clamp(alpha * f[2] + (1 - alpha) * b[2]),
+    clamp(alpha * f[3] + (1 - alpha) * b[3])
+  )
+end
+
+--- Blend a color toward a background (legacy alias for M.blend).
+---@param hex    string hex source color
+---@param amount number 0.0 – 1.0
+---@param bg    string hex background color
 local function darken(hex, amount, bg)
+  assert(type(hex) == "string", "darken: 'hex' must be a hex string, got: " .. type(hex))
+  assert(type(bg) == "string", "darken: 'bg' must be a hex string, got: " .. type(bg))
+  assert(type(amount) == "number", "darken: 'amount' must be a number, got: " .. type(amount))
   return blend(hex, bg, math.abs(amount))
+end
+
+--- Adjust brightness by a signed percentage.
+---   percent < 0 → darken  (e.g. -0.2 = 20% darker)
+---   percent > 0 → brighten (e.g.  0.2 = 20% brighter)
+---@param color   string hex color
+---@param percent number signed float
+local function tint(color, percent)
+  assert(type(color) == "string", "tint: 'color' must be a hex string, got: " .. type(color))
+  assert(type(percent) == "number", "tint: 'percent' must be a number, got: " .. type(percent))
+  local r = tonumber(color:sub(2, 3), 16)
+  local g = tonumber(color:sub(4, 5), 16)
+  local b = tonumber(color:sub(6, 7), 16)
+  if not r or not g or not b then
+    print(
+      string.format(
+        "tint: could not parse color '%s'.\n" .. "  Expected format: #rrggbb (e.g. #ff0000)\n" .. "  Returning 'NONE'.",
+        color
+      ),
+      "Highlight: tint"
+    )
+    return "NONE"
+  end
+  return string.format("#%02x%02x%02x", clamp(r * (1 + percent)), clamp(g * (1 + percent)), clamp(b * (1 + percent)))
 end
 
 ---@param name string
@@ -117,6 +220,7 @@ local function get_col(opts)
     color_base = h(opts.higroup.fromTo).bg
   end
 
+  -- Darken handle
   if opts.darken then
     color_edit = opts.darken
     if color_edit then
@@ -124,10 +228,11 @@ local function get_col(opts)
     end
   end
 
+  -- Tint handle
   if opts.tint then
     color_edit = opts.tint
     if color_edit then
-      color = blend(color_base, h(color_edit.fromTo).bg, color_edit.amount)
+      color = tint(color_base, color_edit.amount)
     end
   end
 

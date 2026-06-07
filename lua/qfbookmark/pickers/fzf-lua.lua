@@ -108,21 +108,38 @@ local function __fzf_open_files(title_prompt, path_cwd, opts)
   opts = opts or {}
   return FzfLua.files(vim.tbl_deep_extend("force", {
     cwd = path_cwd,
-    no_header = false,
-    no_header_i = true, -- hide interactive header?
+    no_header = true,
+    no_header_i = false, -- hide interactive header?
     fzf_opts = { ["--header"] = [[^x:delete  ^r:rename]] },
     cmd = "fd -d 1 -e json --exec stat --format '%Z %n' {} | sort -nr | cut -d' ' -f2- | sed 's/.json$//' | sed 's/\\.\\///'",
     winopts = { title = title_prompt, preview = { hidden = true } },
     actions = {
       ["default"] = Mapping.default_load_qf(path_cwd),
-      ["alt-q"] = Mapping.load_open_in_qf(path_cwd),
-      ["alt-v"] = Mapping.load_open_in_loc(path_cwd),
-      ["ctrl-x"] = function()
-        return Mapping.remove_itemqf(path_cwd)
-      end,
-      ["ctrl-r"] = function()
-        return Mapping.rename_itemqf(path_cwd)
-      end,
+      ["alt-q"] = {
+        fn = function()
+          return Mapping.load_open_in_qf(path_cwd)
+        end,
+        header = "open in qf",
+      },
+      ["alt-v"] = {
+        fn = function()
+          return Mapping.load_open_in_loc(path_cwd)
+        end,
+        header = "open in loclist",
+      },
+
+      ["ctrl-x"] = {
+        fn = function()
+          return Mapping.remove_itemqf(path_cwd)
+        end,
+        header = "delete",
+      },
+      ["ctrl-r"] = {
+        fn = function()
+          return Mapping.rename_itemqf(path_cwd)
+        end,
+        header = "rename",
+      },
     },
   }, opts))
 end

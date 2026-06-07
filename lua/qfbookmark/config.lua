@@ -52,6 +52,16 @@ M.defaults = {
       icons = {
         box_message = " ", -- " ",
       },
+      mark = {
+        anchor_win = "SE",
+        hl = "Visual",
+        keymap = {
+          up = "",
+          down = "",
+          move_down = "<a-n>",
+          move_up = "<a-p>",
+        },
+      },
     },
   },
   keymaps = {
@@ -71,7 +81,7 @@ M.defaults = {
       mark = "<Leader>qq",
       fix = "<Leader>qf",
       debug = "<Leader>qd",
-      note = "<Leader>qN",
+      note = "<Leader>qn",
 
       harpoon = {
         mark_1 = "<a-1>",

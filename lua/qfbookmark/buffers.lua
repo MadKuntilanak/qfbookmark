@@ -37,6 +37,15 @@ local getbuf = function(buf)
   }
 end
 
+---@param b integer
+local function is_valid_buf(b)
+  return vim.api.nvim_buf_is_valid(b)
+    and vim.bo[b].buftype ~= "nofile"
+    and vim.bo[b].buftype ~= "prompt"
+    and vim.bo[b].buftype ~= "terminal"
+    and vim.api.nvim_buf_get_name(b) ~= ""
+end
+
 ---@param opts QFBuffersCfg
 ---@param unfiltered integer[]|fun():integer[]
 ---@return integer[], table, integer
@@ -45,55 +54,79 @@ local filter_buffers = function(opts, unfiltered)
     unfiltered = unfiltered()
   end
 
-  ---@return string
   local function cwd()
-    return (assert(vim.uv.cwd()))
+    return assert(vim.uv.cwd())
   end
 
   local curtab_bufnrs = {}
   if opts.current_tab_only then
-    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(vim.api.nvim_win_get_tabpage(0))) do
+    for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
       local b = vim.api.nvim_win_get_buf(w)
       curtab_bufnrs[b] = true
     end
   end
 
-  local excluded, max_bufnr = {}, 0
-  local bufnrs = type(opts.buffers) == "table"
-      and vim.tbl_map(function(b)
-        max_bufnr = math.max(max_bufnr, b)
-        return b
-      end, opts.buffers)
-    or vim.tbl_filter(function(b)
-      local buf_valid = vim.api.nvim_buf_is_valid(b)
-      if not buf_valid then
+  local excluded = {}
+  local max_bufnr = 0
+  local bufnrs = vim.tbl_filter(function(b)
+    if not is_valid_buf(b) then
+      excluded[b] = true
+      return false
+    end
+
+    local bt = vim.bo[b].buftype
+    local name = vim.api.nvim_buf_get_name(b)
+
+    if bt ~= "" then
+      excluded[b] = true
+      return false
+    end
+
+    if name:match "^term://" then
+      excluded[b] = true
+      return false
+    end
+
+    if not opts.show_unlisted and b ~= M.get().bufnr and vim.fn.buflisted(b) ~= 1 then
+      excluded[b] = true
+      return false
+    end
+
+    if opts.ignore_current_buffer and b == M.get().bufnr then
+      excluded[b] = true
+      return false
+    end
+
+    if opts.current_tab_only and not curtab_bufnrs[b] then
+      excluded[b] = true
+      return false
+    end
+
+    if opts.no_term_buffers and QfbookmarkUtils.is_term_buffer(b) then
+      excluded[b] = true
+      return false
+    end
+
+    if opts.cwd_only and not QfbookmarkPathUtils.is_relative_to(name, cwd()) then
+      excluded[b] = true
+      return false
+    end
+
+    if opts.cwd and not QfbookmarkPathUtils.is_relative_to(name, opts.cwd) then
+      excluded[b] = true
+      return false
+    end
+
+    if type(opts.filter) == "function" then
+      if not opts.filter(b) then
         excluded[b] = true
-      elseif not opts.show_unlisted and b ~= M.get().bufnr and vim.fn.buflisted(b) ~= 1 then
-        excluded[b] = true
-      elseif not opts.show_unloaded and not vim.api.nvim_buf_is_loaded(b) then
-        excluded[b] = true
-      elseif opts.ignore_current_buffer and b == M.get().bufnr then
-        excluded[b] = true
-      elseif opts.current_tab_only and not curtab_bufnrs[b] then
-        excluded[b] = true
-      elseif opts.no_term_buffers and QfbookmarkUtils.is_term_buffer(b) then
-        excluded[b] = true
-      elseif opts.cwd_only and not QfbookmarkPathUtils.is_relative_to(vim.api.nvim_buf_get_name(b), cwd()) then
-        excluded[b] = true
-      elseif opts.cwd and not QfbookmarkPathUtils.is_relative_to(vim.api.nvim_buf_get_name(b), opts.cwd) then
-        excluded[b] = true
-      elseif type(opts.filter) == "function" then
-        -- Custom buffer filter #2162
-        excluded[b] = not opts.filter(b)
+        return false
       end
-      if buf_valid and vim.api.nvim_get_option_value("ft", { buf = b }) == "qf" then
-        excluded[b] = not opts.show_quickfix and true or nil
-      end
-      if not excluded[b] and b > max_bufnr then
-        max_bufnr = b
-      end
-      return not excluded[b]
-    end, unfiltered)
+    end
+
+    max_bufnr = math.max(max_bufnr, b)
+    return true
+  end, unfiltered)
 
   return bufnrs, excluded, max_bufnr
 end
@@ -126,11 +159,6 @@ local function get_list_buffers(opts, bufnrs, winid)
       if term_title and term_title ~= buf.info.name then
         buf.info.name = "term://" .. term_title:gsub("^term://", "")
       end
-    end
-
-    -- get the correct lnum for tabbed buffers
-    if winid then
-      buf.info.lnum = vim.api.nvim_win_get_cursor(winid)[1]
     end
 
     table.insert(buffers, buf)

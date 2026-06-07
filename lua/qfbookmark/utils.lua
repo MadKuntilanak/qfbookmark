@@ -312,46 +312,73 @@ function M.save_to_qf_and_auto_open_qf(list_items, cmd_open, is_loc, winid)
   vim.cmd(cmd_open)
 end
 
----@param wins string|string[]
+local function is_float(win)
+  return vim.api.nvim_win_get_config(win).relative ~= ""
+end
+
+---@param filetypes string|string[]
 ---@param is_tab? boolean
----@return { found: boolean, winbufnr: integer, winnr: integer, winid: integer, ft: string }
-function M.windows_is_opened(wins, is_tab)
+---@param is_more_guard? boolean
+---@return table
+function M.windows_is_opened(filetypes, is_tab, is_more_guard)
   is_tab = is_tab or false
-  local ft_wins = { "incline" }
 
-  if type(wins) == "table" then
-    if #wins > 0 then
-      for _, x in pairs(wins) do
-        ft_wins[#ft_wins + 1] = x
-      end
+  local exclude_filetypes = { "incline" }
+
+  if type(filetypes) == "table" then
+    for _, x in ipairs(filetypes) do
+      table.insert(exclude_filetypes, x)
     end
+  elseif type(filetypes) == "string" then
+    table.insert(exclude_filetypes, filetypes)
   end
 
-  if type(wins) == "string" then
-    ft_wins[#ft_wins + 1] = wins
-  end
-
-  local outline_tbl = { found = false, winbufnr = 0, winnr = 0, winid = 0, ft = "" }
+  local result = {
+    found = false,
+    winbufnr = 0,
+    winnr = 0,
+    winid = 0,
+    ft = "",
+  }
 
   local tab = vim.api.nvim_get_current_tabpage()
-  for _, winnr in ipairs(is_tab and vim.api.nvim_tabpage_list_wins(tab) or vim.api.nvim_list_wins()) do
-    local win_bufnr = vim.api.nvim_win_get_buf(winnr)
 
-    if tonumber(win_bufnr) == 0 then
-      return outline_tbl
+  local winids = is_tab and vim.api.nvim_tabpage_list_wins(tab) or vim.api.nvim_list_wins()
+
+  for _, winid in ipairs(winids) do
+    if is_more_guard and is_float(winid) then
+      goto continue
     end
 
-    local buf_ft = vim.api.nvim_get_option_value("filetype", { buf = win_bufnr })
-    local buf_buftype = vim.api.nvim_get_option_value("buftype", { buf = win_bufnr })
-
-    local winid = vim.fn.win_findbuf(win_bufnr)[1] -- example winid: 1004, 1005
-
-    if vim.tbl_contains(ft_wins, buf_ft) or vim.tbl_contains(ft_wins, buf_buftype) then
-      outline_tbl = { found = true, winbufnr = win_bufnr, winnr = winnr, winid = winid, ft = buf_ft }
+    if not vim.api.nvim_win_is_valid(winid) then
+      goto continue
     end
+
+    local bufnr = vim.api.nvim_win_get_buf(winid)
+
+    if bufnr == 0 then
+      goto continue
+    end
+
+    local ft = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
+    local bt = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
+
+    if vim.tbl_contains(exclude_filetypes, ft) or vim.tbl_contains(exclude_filetypes, bt) then
+      result = {
+        found = true,
+        winbufnr = bufnr,
+        winnr = winid,
+        winid = winid,
+        ft = ft,
+      }
+
+      break
+    end
+
+    ::continue::
   end
 
-  return outline_tbl
+  return result
 end
 
 ---@param filename string
@@ -562,7 +589,7 @@ end
 ---@param name string
 ---@param opts? {sign_group: string}
 function M.create_augroup_name(name, opts)
-  opts = opts or { sign_group = "QFBook" }
+  opts = opts or { sign_group = "QFBookmark" }
   return vim.api.nvim_create_augroup(opts.sign_group .. name, { clear = true })
 end
 
@@ -709,9 +736,31 @@ function M.nvim_buf_get_name(bufnr, bufinfo)
 end
 
 ---@param bufnr? integer
----@return vim.fn.getbufinfo.ret.item
+---@return vim.fn.getbufinfo.ret.item & { col?: integer }
 function M.getbufinfo(bufnr)
-  return vim.fn.getbufinfo(bufnr)[1] or {} ---@as vim.fn.getbufinfo.ret.item
+  local info = vim.fn.getbufinfo(bufnr)[1] or {}
+
+  if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+    return info
+  end
+
+  local winid = vim.fn.bufwinid(bufnr)
+
+  if winid ~= -1 then
+    local pos = vim.api.nvim_win_get_cursor(winid)
+
+    info.lnum = pos[1]
+    info.col = pos[2]
+  else
+    local mark = vim.api.nvim_buf_get_mark(bufnr, '"')
+
+    if mark[1] > 0 then
+      info.lnum = mark[1]
+      info.col = mark[2]
+    end
+  end
+
+  return info
 end
 
 function M.is_term_bufname(bufname)
@@ -739,6 +788,10 @@ function M.buf_del(selected)
       delete_bufnr(bufnr)
     end
   end
+end
+
+function M.echo_emtpy_mark()
+  M.info "Marks is empty!"
 end
 
 return M

@@ -32,6 +32,10 @@
 ---@field DEBUG QFBookSpec
 ---@field NOTE QFBookSpec
 
+---@class QFBufferItem
+---@field info vim.fn.getbufinfo.ret.item & { col?: integer }
+---@field bufnr integer
+
 ---@class QFbookBufferMarkEntry
 ---@field bufnr integer | nil
 ---@field filename string
@@ -40,6 +44,7 @@
 ---@field text string
 ---@field harpoon string
 ---@field mark_mode string
+---@field inserted_at integer
 ---@field id integer
 
 ---@class QFBookExtermarks
@@ -64,6 +69,7 @@
 ---@field higroup_title string
 ---@field quickfix boolean
 ---@field icons { box_message: string }
+---@field mark { anchor_win: string, hl: string, keymap: { up: string, down: string, move_up: string,move_down: string}}
 
 ---@class WindowConfig
 ---@field notify { enabled: boolean, mark: boolean, plugin: boolean }
@@ -198,16 +204,16 @@
 ---@field mode string | string[]
 ---@field from_user? boolean
 
----@class QfBookUiWinPopup
+---@class QFBookUiCfg
 ---@field win integer?
 ---@field buf integer?
 ---@field augroup string?
 
 ---@class QfBookUIWin
----@field save_win QfBookUiWinPopup
----@field mark_win QfBookUiWinPopup
----@field footer_win QfBookUiWinPopup
----@field save_footer QfBookUiWinPopup
+---@field save_win QFBookUiCfg
+---@field mark_win QFBookUiCfg
+---@field footer_win QFBookUiCfg
+---@field save_footer QFBookUiCfg
 
 ---@class ColCfg
 ---@field higroup? { fromTo: string, attr: "fg"|"bg"}

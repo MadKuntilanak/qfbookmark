@@ -165,7 +165,7 @@ local function get_keymap(tbl, ...)
     return nil
   end
 
-  if type(node) == "string" and #node == "" then
+  if type(node) == "string" and #node == 0 then
     return nil
   end
 
@@ -305,7 +305,7 @@ function M.setup()
     {
       desc = "Qf: -- debug -- [QFbookmark]",
       func = "debug_qf",
-      keys = "<Leader>qP",
+      keys = "<Leader>q?",
       mode = "n",
     },
   }
@@ -477,7 +477,7 @@ function M.setup()
     end
 
     keys = merge_with_concatenate(user_key, keys)
-    keys_ft = merge_with_concatenate(user_keyft, keys_ft)
+    keys_ft = merge_with_concatenate(keys_ft, user_keyft)
   end
 
   -- Mark_Harpoon

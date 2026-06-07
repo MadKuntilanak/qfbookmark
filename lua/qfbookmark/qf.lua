@@ -13,6 +13,7 @@ Config.sign_group = "QFBook"
 
 local last_winid = 0
 local status_autocmd_enabled = false
+local MARK_MODE = vim.tbl_keys(Config.extmarks.keywords) -- { mark, debug, note .. }
 
 ---@type QFbookBufferMark
 M.buffers = {}
@@ -52,7 +53,6 @@ local function get_lists_marks()
     -- Sort tabel mark_lists base on mark_lists_harpoon
     table.sort(mark_lists, function(x, y)
       if not x or not y then
-        -- QfbookmarkUtils.info("DEBUG: " .. x .. " or " .. y .. "nil")
         return false
       end
       local px = pos[x.harpoon]
@@ -188,6 +188,8 @@ local function reset_harpoon_list()
       M.mark_lists_harpoon[idx] = QfbookmarkUtils.add_idx_m_harpoon(idx, harp)
     end
   end
+
+  -- QfbookmarkBookmark.save_marks(M.buffers)
 end
 local function sync_marks_harpoon()
   reset_harpoon_list()
@@ -219,10 +221,8 @@ local function clean_up_marks_harpoon()
 end
 
 function M.setup_autocmds()
-  vim.schedule(function()
-    local qfhighlights = require "qfbookmark.highlights"
-    qfhighlights(M.prefix_app)
-  end)
+  local qfhighlights = require "qfbookmark.highlights"
+  qfhighlights(M.prefix_app)
 
   vim.api.nvim_create_autocmd("ColorScheme", {
     callback = function()
@@ -240,54 +240,73 @@ function M.setup_autocmds()
 
   if not status_autocmd_enabled then
     vim.schedule(function()
-      local mark_lists = QfbookmarkPaths.get_data_mark_local_project()
-      if mark_lists and not vim.tbl_isempty(mark_lists) then
-        -- fix old bufnr and support fugitive
-        for _, m in pairs(mark_lists) do
-          m.bufnr = QfbookmarkUtils.resolve_bufnr(m.filename)
+      local mark_lists = QfbookmarkPaths.get_data_marks_from_local_project()
+      if not mark_lists or vim.tbl_isempty(mark_lists) then
+        return
+      end
+
+      -- fix old bufnr and support fugitive
+      for _, m in pairs(mark_lists) do
+        m.bufnr = QfbookmarkUtils.resolve_bufnr(m.filename)
+      end
+
+      -- Sort by inserted_at before loading into M.buffers (newest first)
+      local sorted_marks = {}
+      for m_idx, m in pairs(mark_lists) do
+        sorted_marks[#sorted_marks + 1] = { idx = m_idx, data = m }
+      end
+      table.sort(sorted_marks, function(a, b)
+        return (a.data.inserted_at or 0) > (b.data.inserted_at or 0)
+      end)
+
+      for _, entry in ipairs(sorted_marks) do
+        local m_idx, m = entry.idx, entry.data
+
+        if not M.buffers[m.mark_mode] then
+          M.buffers[m.mark_mode] = {}
         end
 
-        -- Sort by inserted_at before loading into M.buffers (newest first)
-        local sorted_marks = {}
-        for m_idx, m in pairs(mark_lists) do
-          sorted_marks[#sorted_marks + 1] = { idx = m_idx, data = m }
-        end
-        table.sort(sorted_marks, function(a, b)
-          return (a.data.inserted_at or 0) > (b.data.inserted_at or 0)
-        end)
+        M.buffers[m.mark_mode][m.id] = {
+          bufnr = m.bufnr,
+          filename = m.filename,
+          line = m.line,
+          col = m.col,
+          text = m.text,
+          harpoon = m.harpoon,
+          mark_mode = m.mark_mode,
+          id = m.id,
+          inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0, -- preserve from saved file; reject stale hrtime values (> 1e13 = nanoseconds, not Unix seconds)
+        }
 
-        for _, entry in ipairs(sorted_marks) do
-          local m_idx, m = entry.idx, entry.data
+        M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)
+      end
 
-          if not M.buffers[m.mark_mode] then
-            M.buffers[m.mark_mode] = {}
-          end
+      sync_marks_harpoon()
+      M.invalidate_mark_cache()
 
-          M.buffers[m.mark_mode][m.id] = {
-            bufnr = m.bufnr,
-            filename = m.filename,
-            line = m.line,
-            col = m.col,
-            text = m.text,
-            harpoon = m.harpoon,
-            mark_mode = m.mark_mode,
-            id = m.id,
-            inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0, -- preserve from saved file; reject stale hrtime values (> 1e13 = nanoseconds, not Unix seconds)
-          }
-
-          M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)
-        end
-
-        sync_marks_harpoon()
-
-        for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-          if vim.api.nvim_buf_is_loaded(bufnr) then
-            QfbookmarkBookmark.update_mark_sign(M.buffers, bufnr)
-          end
+      for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+        if vim.api.nvim_buf_is_loaded(bufnr) then
+          QfbookmarkBookmark.update_mark_sign(M.buffers, bufnr)
         end
       end
     end)
   end
+end
+
+local _cache_mark = false
+local _cache_dirty = true
+
+function M.invalidate_mark_cache()
+  _cache_dirty = true
+end
+
+function M.status_mark()
+  if _cache_dirty then
+    reset_harpoon_list()
+    _cache_mark = #M.mark_lists_harpoon > 0
+    _cache_dirty = false
+  end
+  return _cache_mark
 end
 
 ---@param mark_mode QFBookMarkMode
@@ -305,20 +324,22 @@ local function add_sign(mark_mode)
   end
 
   local extmarkspec = Config.extmarks.keywords[mark_mode]
+  for _, mode in pairs(MARK_MODE) do
+    local _, is_mark_found = QfbookmarkBookmark.has_mark(mark_tbl, mode)
+    if is_mark_found then
+      M.delete_mark()
+      return
+    end
+  end
+
   QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec)
-
   sync_marks_harpoon()
+  M.invalidate_mark_cache()
 
-  -- Save langsung setelah add mark, jangan hanya andalkan VimLeavePre
   vim.schedule(function()
     local mark_lists = get_lists_marks()
     QfbookmarkBookmark.save_marks(mark_lists)
   end)
-end
-
-function M.status_mark()
-  reset_harpoon_list()
-  return #M.mark_lists_harpoon > 0
 end
 
 function M.add_mark_sign()
@@ -347,6 +368,9 @@ local function delete_mark_builtin()
   if #marks > 0 then
     vim.cmd("delmarks " .. table.concat(marks, ""))
   end
+
+  -- Delete marks that have uppercase letters
+  vim.cmd "delmarks A-Z"
 end
 
 function M.delete_mark()
@@ -382,6 +406,7 @@ function M.delete_mark()
   vim.schedule(function()
     clean_up_marks_harpoon()
     reset_harpoon_list()
+    M.invalidate_mark_cache()
   end)
 end
 ---@param bufnr? integer
@@ -407,13 +432,15 @@ function M.delete_mark_buffer(bufnr)
   -- Clean up a bit
   vim.schedule(function()
     clean_up_marks_harpoon()
+    M.invalidate_mark_cache()
   end)
 end
 
 ---@param is_prev_or_next boolean
 local function next_prev_mark(is_prev_or_next)
-  if not M.status_mark() then
-    QfbookmarkUtils.info "Marks is empty"
+  local status_mark = M.status_mark()
+  if not status_mark then
+    QfbookmarkUtils.echo_emtpy_mark()
     return
   end
   local mark_lists = get_lists_marks()
@@ -434,15 +461,7 @@ end
 ---@param is_prev? boolean
 local function load_buffers(is_prev)
   local list_buffers = QfbookmarkBuffers.load_buffers(is_prev)
-
-  local tbl_buffers = {}
-
-  for _, buffer in pairs(list_buffers) do
-    local buffer_item = vim.fn.fnamemodify(buffer.info.name, ":~:.") -- shorten path
-    table.insert(tbl_buffers, buffer_item)
-  end
-
-  QfbookmarkUI._select_buffer(tbl_buffers, function() end)
+  QfbookmarkUI.buffers_popup(list_buffers)
 end
 
 function M.open_buffers()
@@ -455,95 +474,78 @@ end
 
 -- WARN: Delete this!
 function M.debug_qf()
+  QfbookmarkUtils.info(vim.inspect(M.buffers))
   QfbookmarkUtils.info(vim.inspect(M.mark_lists))
   QfbookmarkUtils.info(vim.inspect(M.mark_lists_harpoon))
 end
 
 function M.open_mark_harpoon_window()
   sync_marks_harpoon()
+  M.invalidate_mark_cache()
 
   local mark_entry_lists = get_lists_marks()
-  local key_open_win_harp = Config.keymaps.actions.mark_win_open
 
   local old_harpoon = {}
   for _, harp in ipairs(M.mark_lists_harpoon) do
     old_harpoon[#old_harpoon + 1] = QfbookmarkUtils.remove_idx_m_harpoon(harp)
   end
 
-  vim.schedule(function()
-    QfbookmarkUI._mark_harpoon_popup(
-      M.buffers,
-      mark_entry_lists,
-      key_open_win_harp,
-      M.mark_lists_harpoon,
-      function(lines)
-        if type(lines) == "string" then
-          return
-        end
+  QfbookmarkUI.mark_harpoon_popup(M.buffers, mark_entry_lists, function(harpoon_vals)
+    if type(harpoon_vals) == "string" then
+      return
+    end
 
-        if #old_harpoon ~= #lines then
-          local idx_lookup = {}
-          for _, x in pairs(lines) do
-            local harp_no_idx = QfbookmarkUtils.remove_idx_m_harpoon(x)
-            if not idx_lookup[harp_no_idx] then
-              idx_lookup[harp_no_idx] = true
-            end
-          end
-
-          local harp_need_delete = {}
-          for _, x in pairs(old_harpoon) do
-            if not idx_lookup[x] then
-              harp_need_delete[#harp_need_delete + 1] = x
-            end
-          end
-
-          for _, m in pairs(mark_entry_lists) do
-            for _, x in pairs(harp_need_delete) do
-              if m.harpoon ~= x then
-                goto continue
-              end
-
-              local mark_lists = M.buffers
-
-              local opts = QfbookmarkBookmark.is_current_line_got_mark(mark_lists, { id = m.id })
-              if not opts then
-                return
-              end
-
-              if not vim.api.nvim_buf_is_valid(opts.bufnr) then
-                goto continue
-              end
-
-              local is_delete = QfbookmarkBookmark.delete_mark(mark_lists, opts.mark_mode, opts.id, opts.bufnr)
-              if not is_delete then
-                QfbookmarkUtils.warn "Something went wrong"
-              end
-
-              if is_delete and vim.api.nvim_buf_is_valid(opts.bufnr) then
-                vim.schedule(function()
-                  QfbookmarkBookmark.update_mark_sign(M.buffers, opts.bufnr)
-                end)
-              end
-
-              ::continue::
-            end
-          end
-        end
-
-        local new_lines = {}
-        for idx, x in pairs(lines) do
-          local harp_w_idx = QfbookmarkUtils.add_idx_m_harpoon(idx, x)
-          new_lines[#new_lines + 1] = harp_w_idx
-        end
-
-        M.mark_lists_harpoon = new_lines
-
-        vim.schedule(function()
-          local mark_lists = get_lists_marks()
-          QfbookmarkBookmark.save_marks(mark_lists)
-        end)
+    if #old_harpoon ~= #harpoon_vals then
+      local idx_lookup = {}
+      for _, x in pairs(harpoon_vals) do
+        idx_lookup[x] = true
       end
-    )
+
+      local harp_need_delete = {}
+      for _, x in pairs(old_harpoon) do
+        if not idx_lookup[x] then
+          harp_need_delete[#harp_need_delete + 1] = x
+        end
+      end
+
+      for _, m in pairs(mark_entry_lists) do
+        for _, x in pairs(harp_need_delete) do
+          if m.harpoon ~= x then
+            goto continue
+          end
+
+          local mark_lists = M.buffers
+          local opts = QfbookmarkBookmark.is_current_line_got_mark(mark_lists, { id = m.id })
+          if not opts then
+            return
+          end
+
+          if not opts.bufnr or not vim.api.nvim_buf_is_valid(opts.bufnr) then
+            QfbookmarkBookmark.delete_mark(mark_lists, opts.mark_mode, opts.id, opts.bufnr)
+            goto continue
+          end
+
+          local is_delete = QfbookmarkBookmark.delete_mark(mark_lists, opts.mark_mode, opts.id, opts.bufnr)
+          if not is_delete then
+            QfbookmarkUtils.warn "Something went wrong"
+          end
+
+          ::continue::
+        end
+      end
+    end
+
+    -- Rebuild mark_lists_harpoon dengan idx prefix baru
+    local new_lines = {}
+    for idx, hval in ipairs(harpoon_vals) do
+      new_lines[#new_lines + 1] = QfbookmarkUtils.add_idx_m_harpoon(idx, hval)
+    end
+    M.mark_lists_harpoon = new_lines
+
+    vim.schedule(function()
+      local mark_lists = get_lists_marks()
+      QfbookmarkBookmark.save_marks(mark_lists)
+    end)
   end)
 end
 
@@ -654,7 +656,7 @@ local function rename_header(list_type)
   end
 
   local title = string.format("Rename %s Title", cmd[2])
-  QfbookmarkUI._input_popup(title, "", "rename", is_location_target, function(input_msg)
+  QfbookmarkUI.saveqf_popup(title, "", "rename", is_location_target, function(input_msg)
     if input_msg == "" or input_msg == nil then
       return
     end
@@ -952,6 +954,6 @@ function M.toggle_rotate_note_window()
   __note(true)
 end
 
-remove_augroup()
+-- remove_augroup()
 
 return M

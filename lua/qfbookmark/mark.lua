@@ -218,9 +218,11 @@ end
 ---@param line integer
 ---@param col integer
 ---@param text string
+---@param inserted_at? integer
 ---@return QFbookBufferMark | nil
-local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line, col, text)
+local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line, col, text, inserted_at)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
+  inserted_at = inserted_at or os.time()
   local filename = vim.api.nvim_buf_get_name(bufnr)
 
   -- Validate line before registering
@@ -245,7 +247,7 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line
       text = QfbookmarkUtils.strip_whitespace(text),
       harpoon = harpoon,
       mark_mode = mark_mode,
-      inserted_at = os.time(), -- Unix timestamp (seconds); consistent across sessions
+      inserted_at = inserted_at, -- Unix timestamp (seconds); consistent across sessions
       id = id,
     }
   end
@@ -342,7 +344,8 @@ function M.update_mark_sign(mark_lists, bufnr)
             bufnr,
             mark_data.line,
             mark_data.col,
-            mark_data.text
+            mark_data.text,
+            mark_data.inserted_at
           )
         end
 
@@ -356,25 +359,36 @@ end
 ---@param mark_mode QFBookMarkMode
 ---@param id? integer
 ---@param bufnr? integer
----@return boolean
-function M.delete_mark(mark_lists, mark_mode, id, bufnr)
+---@return integer|nil, boolean
+function M.has_mark(mark_lists, mark_mode, id, bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
-  if not id then
-    local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
-    id = tonumber(line_opts.line .. bufnr)
+  local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
+  id = id or tonumber(line_opts.line .. bufnr)
+
+  if not mark_lists[mark_mode] or not mark_lists[mark_mode][id] then
+    return nil, false
+  end
+
+  return id, true
+end
+
+---@param mark_lists QFbookBufferMark
+---@param mark_mode QFBookMarkMode
+---@param id? integer
+---@param bufnr? integer
+---@return boolean
+function M.delete_mark(mark_lists, mark_mode, id, bufnr)
+  local _, ok = M.has_mark(mark_lists, mark_mode, id, bufnr)
+  if not ok then
+    return false
   end
 
   if id then
-    if not mark_lists[mark_mode] or not mark_lists[mark_mode][id] then
-      return false
-    end
-
     mark_lists[mark_mode][id] = nil
     QfbookmarkMarkVisual.remove_sign(id, bufnr)
     return true
   end
-
   return false
 end
 
@@ -396,11 +410,6 @@ function M.add_mark(mark_lists, mark_mode, extmarkspec, toggle_delete)
   local id = tonumber(line_opts.line .. bufnr)
   if not id then
     QfbookmarkUtils.warn "Unexpected error while getting line number"
-    return nil
-  end
-
-  if toggle_delete then
-    M.delete_mark(mark_lists, mark_mode, id, bufnr)
     return nil
   end
 

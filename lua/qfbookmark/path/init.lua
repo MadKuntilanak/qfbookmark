@@ -68,26 +68,21 @@ end
 local function get_marks_cwd(is_global)
   is_global = is_global or false
 
-  local mark_lists = {}
-
   local cwd_local_project = M.get_target_path(is_global)
-
   if not QfbookmarkPathUtils.is_dir(cwd_local_project) then
-    return mark_lists
+    return {}
   end
-
   local fn_mark_lua = M.get_target_path_with_gitcwd(is_global)
-
   if not QfbookmarkPathUtils.is_file(fn_mark_lua) then
-    return mark_lists
+    return {}
   end
 
-  mark_lists = dofile(fn_mark_lua)
+  local mark_lists = dofile(fn_mark_lua)
   return mark_lists
 end
 
 ---@return QFbookBufferMarkEntry[]
-function M.get_data_mark_local_project()
+function M.get_data_marks_from_local_project()
   return get_marks_cwd()
 end
 
@@ -111,9 +106,9 @@ function M.save_data_lists(list_items, is_global, is_loc)
   local target_path = M.path_opts.current_target
 
   local QfbookmarkUI = require "qfbookmark.ui"
-  local title_popup = "󰋚  Save to File " .. (is_global and "Global" or "Local")
+  local title_popup = "📁 Save to File " .. (is_global and "Global" or "Local")
 
-  QfbookmarkUI._input_popup(title_popup, target_path, "save", is_loc, function(input)
+  QfbookmarkUI.saveqf_popup(title_popup, target_path, "save", is_loc, function(input)
     if #input == 0 or input == "" then
       return
     end
