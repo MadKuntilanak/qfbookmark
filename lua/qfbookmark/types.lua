@@ -63,8 +63,8 @@
 ---@field open_cmd string
 ---@field size_split integer
 ---@field size_vsplit integer
----@field file_ext string
 ---@field filetype string
+---@field current_project { enabled: boolean, filename: string }
 
 ---@class PopupConfig
 ---@field winhighlight string

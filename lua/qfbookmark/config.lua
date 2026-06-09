@@ -42,8 +42,11 @@ M.defaults = {
       open_cmd = "botright vsplit",
       size_split = 12,
       size_vsplit = 50,
-      filetype = "org", -- Ex: "orgmode" "norg", "markdown", "text"
-      file_ext = "org", -- Ex: "org" "norg" "md" "txt"
+      filetype = "org",
+      current_project = {
+        enabled = true,
+        filename = "TODO.org",
+      },
     },
     popup = {
       winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder",

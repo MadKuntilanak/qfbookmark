@@ -1,4 +1,4 @@
-# Todo
+* Todo
 
 - [x] resolve path git
 - [x] Support for Fugitive MARK signs
@@ -9,4 +9,4 @@
   - [ ] for Rust
   - [ ] for TypeScript
 
-- [ ] support note extmarks 
+- [ ] support note extmarks

@@ -908,13 +908,10 @@ end
 local is_open_global_note
 local window_command
 
----@param first_close? boolean
-local function __note(first_close)
-  first_close = first_close or false
-
+local function __note()
   local note = require "qfbookmark.note"
-  local note_window_opts = Config.window.note
-  note.handle_open(is_open_global_note, window_command, note_window_opts, first_close)
+  local cfg_note = Config.window.note
+  note.handle_open(is_open_global_note, window_command, cfg_note)
 end
 function M.toggle_open_note_global()
   if not window_command then
@@ -957,7 +954,7 @@ function M.toggle_rotate_note_window()
   local opts_note_window = Config.window.note
   local next_win_layout = QfbookmarkWindow.get_next_rotate_note_window(opts_note_window)
   window_command = next_win_layout
-  __note(true)
+  __note()
 end
 
 -- remove_augroup()

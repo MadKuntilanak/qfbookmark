@@ -320,6 +320,36 @@ local function is_float(win)
   return vim.api.nvim_win_get_config(win).relative ~= ""
 end
 
+---@param winid integer
+---@param exclude_filetypes string[]
+---@return {found: boolean, winbufnr: integer, winnr: integer, ft: string} | nil
+local function check_window(winid, exclude_filetypes)
+  if not vim.api.nvim_win_is_valid(winid) then
+    return nil
+  end
+
+  local bufnr = vim.api.nvim_win_get_buf(winid)
+
+  if bufnr == 0 then
+    return nil
+  end
+
+  local ft = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
+  local bt = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
+
+  if vim.tbl_contains(exclude_filetypes, ft) or vim.tbl_contains(exclude_filetypes, bt) then
+    return {
+      found = true,
+      winbufnr = bufnr,
+      winnr = winid,
+      winid = winid,
+      ft = ft,
+    }
+  end
+
+  return nil
+end
+
 ---@param filetypes string|string[]
 ---@param is_tab? boolean
 ---@param is_more_guard? boolean
@@ -337,33 +367,6 @@ function M.windows_is_opened(filetypes, is_tab, is_more_guard)
     table.insert(exclude_filetypes, filetypes)
   end
 
-  local function check_window(winid)
-    if not vim.api.nvim_win_is_valid(winid) then
-      return nil
-    end
-
-    local bufnr = vim.api.nvim_win_get_buf(winid)
-
-    if bufnr == 0 then
-      return nil
-    end
-
-    local ft = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
-    local bt = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
-
-    if vim.tbl_contains(exclude_filetypes, ft) or vim.tbl_contains(exclude_filetypes, bt) then
-      return {
-        found = true,
-        winbufnr = bufnr,
-        winnr = winid,
-        winid = winid,
-        ft = ft,
-      }
-    end
-
-    return nil
-  end
-
   local tab = vim.api.nvim_get_current_tabpage()
   local winids = is_tab and vim.api.nvim_tabpage_list_wins(tab) or vim.api.nvim_list_wins()
 
@@ -371,7 +374,7 @@ function M.windows_is_opened(filetypes, is_tab, is_more_guard)
   if not is_more_guard then
     for _, winid in ipairs(winids) do
       if is_float(winid) then
-        local result = check_window(winid)
+        local result = check_window(winid, exclude_filetypes)
         if result then
           return result
         end
@@ -385,7 +388,7 @@ function M.windows_is_opened(filetypes, is_tab, is_more_guard)
       goto continue
     end
 
-    local result = check_window(winid)
+    local result = check_window(winid, exclude_filetypes)
     if result then
       return result
     end
@@ -402,19 +405,36 @@ function M.windows_is_opened(filetypes, is_tab, is_more_guard)
   }
 end
 
+---@param exclude_filetypes? string[]
+---@return integer | nil
+function M.windows_is_opened_by_name(filename, exclude_filetypes)
+  exclude_filetypes = exclude_filetypes or {}
+
+  local buffers = vim.api.nvim_list_bufs()
+
+  local _buf = nil
+
+  for _, buf in ipairs(buffers) do
+    -- local ft = vim.bo[buf].filetype
+    -- if vim.tbl_contains(exclude_filetypes, ft) or vim.tbl_contains(exclude_filetypes, bt) then
+    -- end
+    local bufname = vim.api.nvim_buf_get_name(buf)
+
+    local bufname_normalize = vim.fs.normalize(bufname)
+    local filename_normalize = vim.fs.normalize(filename)
+
+    if bufname_normalize == filename_normalize then
+      _buf = buf
+      break
+    end
+  end
+  return _buf
+end
+
 ---@param filename string
 ---@return integer | nil
 local function is_file_in_buffers(filename)
-  local buffers = vim.api.nvim_list_bufs()
-
-  for _, buf in ipairs(buffers) do
-    local bufname = vim.api.nvim_buf_get_name(buf)
-    if bufname == filename then
-      return buf
-    end
-  end
-
-  return nil
+  return M.windows_is_opened_by_name(filename)
 end
 
 local function delete_bufnr(buf)
