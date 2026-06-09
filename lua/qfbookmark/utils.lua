@@ -459,19 +459,25 @@ function M.feedkey(key, mode)
 end
 
 ---@return boolean, QFBookListType
-function M.is_vim_list_open()
-  local curbuf = vim.api.nvim_get_current_buf()
-  for _, win in ipairs(vim.api.nvim_list_wins()) do
-    local buf = vim.api.nvim_win_get_buf(win)
-    if curbuf == buf then
+function M.is_vim_list_open(is_tab)
+  is_tab = is_tab or false
+
+  local tab = vim.api.nvim_get_current_tabpage()
+  local buf = vim.api.nvim_get_current_buf()
+  local wins = is_tab and vim.api.nvim_tabpage_list_wins(tab) or vim.api.nvim_list_wins()
+
+  for _, win in ipairs(wins) do
+    local winbuf = vim.api.nvim_win_get_buf(win)
+    if buf == winbuf then
       if M.is_loclist(win) then
         return true, "loclist"
       end
-      if vim.bo[buf].filetype == "qf" then
+      if vim.bo[winbuf].filetype == "qf" then
         return true, "quickfix"
       end
     end
   end
+
   return false, "none"
 end
 

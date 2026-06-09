@@ -635,7 +635,7 @@ local function add_item(list_type)
   end
 
   if Config.window.popup.quickfix then
-    local is_open, _ = QfbookmarkUtils.is_vim_list_open()
+    local is_open, _ = QfbookmarkUtils.is_vim_list_open(true)
     if not is_open then
       vim.cmd(cmd_[2])
       vim.cmd "wincmd p"
@@ -687,7 +687,7 @@ local function toggle_list(list_type, force_close)
   local is_location_target = list_type == "loclist"
   local cmd_ = is_location_target and { "lclose", Config.window.layout.lopen }
     or { "cclose", Config.window.layout.copen }
-  local is_open, qf_or_loclist = QfbookmarkUtils.is_vim_list_open()
+  local is_open, qf_or_loclist = QfbookmarkUtils.is_vim_list_open(true)
 
   if (is_open and (list_type == qf_or_loclist)) or force_close then
     vim.fn.win_gotoid(last_winid)
