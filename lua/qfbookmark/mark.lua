@@ -1,5 +1,6 @@
 local Config = require("qfbookmark.config").defaults
 local QfbookmarkUtils = require "qfbookmark.utils"
+local QfbookmarkTreesitter = require "qfbookmark.treesitter"
 local QfbookmarkMarkVisual = require "qfbookmark.visual"
 local QfbookmarkPaths = require "qfbookmark.path"
 local QfbookmarkPathUtils = require "qfbookmark.path.utils"
@@ -73,6 +74,26 @@ local function get_signs_at_line(bufnr, line)
   end
 
   return {}
+end
+
+local function resolve_mark_sign(bufnr)
+  pcall(vim.api.nvim_buf_clear_namespace, bufnr, Config.ns, 0, -1)
+
+  -- clear all signs
+  local ok_signs, signinfo = pcall(vim.fn.sign_getplaced, bufnr, { group = Config.sign_group })
+  if ok_signs and signinfo and signinfo[1] and signinfo[1].signs then
+    for _, sign in pairs(signinfo[1].signs) do
+      pcall(vim.fn.sign_unplace, Config.sign_group, { buffer = bufnr, id = sign.id })
+    end
+  end
+end
+
+local function insert_sign(mark_lists, id, mark_mode, bufnr, line, extmarkspec)
+  -- resolve_mark_sign(bufnr)
+  local _, is_has_mark = M.has_mark_data(mark_lists, mark_mode, id, bufnr)
+  if is_has_mark then
+    QfbookmarkMarkVisual.insert_signs(id, mark_mode, bufnr, line, extmarkspec)
+  end
 end
 
 ---@param mark_lists QFbookBufferMark
@@ -247,13 +268,14 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line
       text = QfbookmarkUtils.strip_whitespace(text),
       harpoon = harpoon,
       mark_mode = mark_mode,
+      fn_name = QfbookmarkTreesitter.resolve_symbol(bufnr, line, col or 0),
       inserted_at = inserted_at, -- Unix timestamp (seconds); consistent across sessions
       id = id,
     }
   end
 
   if Config.extmarks.enabled then
-    QfbookmarkMarkVisual.insert_signs(id, mark_mode, bufnr, line, extmarkspec)
+    insert_sign(mark_lists, id, mark_mode, bufnr, line, extmarkspec)
   end
 
   return mark_lists
@@ -279,21 +301,13 @@ function M.update_mark_sign(mark_lists, bufnr)
     return
   end
 
-  if not vim.api.nvim_buf_is_valid(bufnr) then
+  if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
     return
   end
 
-  pcall(vim.api.nvim_buf_clear_namespace, bufnr, Config.ns, 0, -1)
+  resolve_mark_sign(bufnr)
 
   local filename = vim.api.nvim_buf_get_name(bufnr)
-
-  -- clear all signs
-  local ok_signs, signinfo = pcall(vim.fn.sign_getplaced, bufnr, { group = Config.sign_group })
-  if ok_signs and signinfo and signinfo[1] and signinfo[1].signs then
-    for _, sign in pairs(signinfo[1].signs) do
-      pcall(vim.fn.sign_unplace, Config.sign_group, { buffer = bufnr, id = sign.id })
-    end
-  end
 
   local existing_ids = {}
   local mark_list_active_ids = {}
@@ -355,12 +369,15 @@ function M.update_mark_sign(mark_lists, bufnr)
   end
 end
 
+--- Check whether mark data exists in the bookmark storage.
+--- This only checks the internal `mark_lists` table and does not inspect
+--- placed signs or extmarks in the buffer.
 ---@param mark_lists QFbookBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param id? integer
 ---@param bufnr? integer
 ---@return integer|nil, boolean
-function M.has_mark(mark_lists, mark_mode, id, bufnr)
+function M.has_mark_data(mark_lists, mark_mode, id, bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
   local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
@@ -373,25 +390,28 @@ function M.has_mark(mark_lists, mark_mode, id, bufnr)
   return id, true
 end
 
+--- Remove a mark entry and its associated sign.
+--- Returns `true` when the mark exists and is successfully removed from
+--- the internal storage; otherwise returns `false`.
 ---@param mark_lists QFbookBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param id? integer
 ---@param bufnr? integer
 ---@return boolean
 function M.delete_mark(mark_lists, mark_mode, id, bufnr)
-  local _, ok = M.has_mark(mark_lists, mark_mode, id, bufnr)
-  if not ok then
+  local _, ok = M.has_mark_data(mark_lists, mark_mode, id, bufnr)
+  if not ok or not id then
     return false
   end
 
-  if id then
-    mark_lists[mark_mode][id] = nil
-    QfbookmarkMarkVisual.remove_sign(id, bufnr)
-    return true
-  end
-  return false
+  mark_lists[mark_mode][id] = nil
+  QfbookmarkMarkVisual.remove_sign(id, bufnr)
+  return true
 end
 
+--- Add a new mark at the current cursor position.
+--- Uses the current buffer, line, and column to create a mark and store
+--- it through `place_next_mark()`.
 ---@param mark_lists QFbookBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param extmarkspec QFBookSpec

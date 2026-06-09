@@ -63,9 +63,9 @@ end
 --- buffers, and input popups.
 ---@param width_editor integer
 ---@param height_editor integer
----@param width_max_content integer
+---@param width_main_popup integer
 ---@return integer, integer
-function M.get_col_row(height_editor, width_editor, width_max_content, is_center)
+function M.get_col_row(height_editor, width_editor, width_main_popup, is_center)
   is_center = is_center or false
 
   if is_center then
@@ -77,7 +77,7 @@ function M.get_col_row(height_editor, width_editor, width_max_content, is_center
 
   local row = math.floor(height_editor * 15 / 100)
 
-  local _col = width_editor - width_max_content - M.PADDING
+  local _col = width_editor - width_main_popup - M.PADDING
   local col_minus = 5
   local col = Config.window.popup.mark.anchor_win == "NW" and col_minus or _col
 
@@ -85,24 +85,21 @@ function M.get_col_row(height_editor, width_editor, width_max_content, is_center
 end
 
 --- Shorten a path by trimming from the left, keeping the meaningful tail.
---- Example: "nvim/.config/nvim/lua/r/plugins/qf.lua" → "plugins/qf.lua"
+--- Example: "nvim/.config/nvim/lua/r/plugins/qf.lua" → "r/plugins/qf.lua"
 ---@param path string
 ---@param max_len integer
 ---@return string
 function M.shorten_path(path, max_len)
-  -- first shorten to cwd-relative path via fnamemodify
   local short = vim.fn.fnamemodify(path, ":~:.")
   if vim.fn.strdisplaywidth(short) <= max_len then
     return short
   end
-  -- trim from the left, preserving the rightmost components
   local parts = vim.split(short, "/", { plain = true })
-  local result = table.remove(parts) -- ambil filename dulu
-  for i = #parts, 1, -1 do
+  local result = parts[#parts]
+  for i = #parts - 1, 1, -1 do
     local candidate = parts[i] .. "/" .. result
     if vim.fn.strdisplaywidth(candidate) > max_len - 2 then
-      result = "…/" .. result
-      break
+      return "…/" .. result
     end
     result = candidate
   end
@@ -148,12 +145,7 @@ end
 ---@param mark_mode string
 ---@return string
 function M.get_mode_badge(mark_mode)
-  local badges = {
-    -- MARK = "MARK",
-    -- FIX = "FIX ",
-    -- DEBUG = "DBG ",
-    -- NOTE = "NOTE",
-  }
+  local badges = {}
   for key_, val_ in pairs(Config.extmarks.keywords) do
     badges[key_] = val_.icon
   end
@@ -200,8 +192,6 @@ function M.clean_up(windows)
       end
     end
   end
-
-  -- RUtils.info(vim.inspect(windows))
 
   if #wins > 0 then
     M.close_win(wins)
@@ -264,6 +254,24 @@ function M.close_win(wins)
       vim.api.nvim_win_close(wins, true)
     end
   end
+end
+
+---@param bufnr integer
+---@return "gone" | "alive" | "hidden"
+function M.get_buffer_status(bufnr)
+  if not vim.api.nvim_buf_is_valid(bufnr) then
+    return "gone"
+  end
+
+  local buffers = vim.api.nvim_list_bufs()
+  for _, b in ipairs(buffers) do
+    if b == bufnr then
+      return "alive"
+    end
+  end
+
+  -- buffer still valid, but hidden (bdelete, bwipeout)
+  return "hidden"
 end
 
 return M

@@ -40,64 +40,69 @@ local colors = {
       higroup = { fromTo = "Directory", attr = "fg" },
       tint = { amount = 0.1 },
     },
-    bold = true,
+    bg = {
+      higroup = { fromTo = "FloatBorder", attr = "fg" },
+      tint = { amount = -0.1 },
+    },
+    bold = false,
   },
 
   -- +-----------------------------------------------------------------------------+
-  -- |                entry highlight groups for mark_harpoon_popup                |
+  -- |                   Entry highlight groups for mark harpoon                   |
   -- +-----------------------------------------------------------------------------+
 
   -- index number " N "
-  EntryIdx = {
-    fg = { higroup = { fromTo = "Comment", attr = "fg" } },
-  },
+  EntryIdx = { fg = { higroup = { fromTo = "Comment", attr = "fg" } } },
   -- path on the header line
-  EntryPath = {
-    fg = { higroup = { fromTo = "Directory", attr = "fg" } },
-  },
+  EntryPath = { fg = { higroup = { fromTo = "Directory", attr = "fg" } }, bold = true },
   -- current-file indicator "●"
-  EntryCurrentFile = {
-    fg = { higroup = { fromTo = "String", attr = "fg" } },
-    bold = true,
-  },
-  -- lnum + preview text on the detail line
-  EntryDetail = {
-    fg = {
-      higroup = { fromTo = "String", attr = "fg" },
-      darken = { fromTo = "NormalFloat", attr = "fg", amount = 0.8 },
-    },
-  },
+  EntryCurrentFile = { fg = { higroup = { fromTo = "String", attr = "fg" } }, bold = true },
   -- lnum portion ":92" on the detail line
-  EntryLnum = {
-    fg = {
-      higroup = { fromTo = "type", attr = "fg" },
-      tint = { amount = -0.4 },
-    },
-  },
+  EntryLnum = { fg = { higroup = { fromTo = "type", attr = "fg" }, tint = { amount = -0.4 } } },
+  -- directory value in save footer (cyan-ish)
+  EntryDirectory = { fg = { higroup = { fromTo = "Special", attr = "fg" } } },
 
-  -- badge: MARK (blue)
+  -- badge: MARK
   BadgeMark = {
     fg = { higroup = { fromTo = "Function", attr = "fg" } },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bold = true,
   },
-  -- badge: FIX (red)
+  -- badge: FIX
   BadgeFix = {
     fg = { higroup = { fromTo = "DiagnosticError", attr = "fg" } },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bold = true,
   },
-  -- badge: NOTE (green)
+  -- badge: NOTE
   BadgeNote = {
-    fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
+    fg = { higroup = { fromTo = "String", attr = "fg" }, tint = { amount = 0.5 } },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bold = true,
   },
-  -- badge: DEBUG (orange / warning colour)
+  -- badge: DEBUG
   BadgeDebug = {
     fg = { higroup = { fromTo = "DiagnosticWarn", attr = "fg" } },
     bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bold = true,
+  },
+
+  -- Preview text on the detail line
+  EntryDetail = {
+    fg = {
+      higroup = { fromTo = "String", attr = "fg" },
+      tint = { amount = -0.4 },
+    },
+  },
+  -- function name context "ƒ fn_name" on the detail line (purple)
+  EntryFnName = {
+    fg = { higroup = { fromTo = "Function", attr = "fg" }, tint = { amount = -0.5 } },
+    italic = true,
+  },
+  -- class/struct/impl symbol kind (orange-ish, from type highlight)
+  EntrySymbolType = {
+    fg = { higroup = { fromTo = "Type", attr = "fg" }, tint = { amount = -0.1 } },
+    italic = true,
   },
 
   -- +-----------------------------------------------------------------------------+
@@ -108,11 +113,6 @@ local colors = {
       higroup = { fromTo = "type", attr = "fg" },
       tint = { amount = 0.4 },
     },
-  },
-
-  -- directory value in save footer (cyan-ish)
-  EntryDirectory = {
-    fg = { higroup = { fromTo = "Special", attr = "fg" } },
   },
 }
 
@@ -148,8 +148,8 @@ local function clamp(val)
   return math.max(0, math.min(255, math.floor(val + 0.5)))
 end
 
----@param fg    string hex foreground color
----@param bg    string hex background color
+---@param fg string hex foreground color
+---@param bg string hex background color
 ---@param alpha number 0.0 – 1.0
 ---@return string blended hex color
 local function blend(fg, bg, alpha)
@@ -168,9 +168,9 @@ local function blend(fg, bg, alpha)
 end
 
 --- Blend a color toward a background (legacy alias for M.blend).
----@param hex    string hex source color
+---@param hex string hex source color
 ---@param amount number 0.0 – 1.0
----@param bg    string hex background color
+---@param bg string hex background color
 local function darken(hex, amount, bg)
   assert(type(hex) == "string", "darken: 'hex' must be a hex string, got: " .. type(hex))
   assert(type(bg) == "string", "darken: 'bg' must be a hex string, got: " .. type(bg))
@@ -181,7 +181,7 @@ end
 --- Adjust brightness by a signed percentage.
 ---   percent < 0 → darken  (e.g. -0.2 = 20% darker)
 ---   percent > 0 → brighten (e.g.  0.2 = 20% brighter)
----@param color   string hex color
+---@param color string hex color
 ---@param percent number signed float
 local function tint(color, percent)
   assert(type(color) == "string", "tint: 'color' must be a hex string, got: " .. type(color))
@@ -257,6 +257,10 @@ return function(prefix)
     end
     if col.bold then
       opts_hi["bold"] = col.bold
+    end
+
+    if col.italic then
+      opts_hi["italic"] = col.italic
     end
 
     vim.api.nvim_set_hl(0, hl_name, opts_hi)

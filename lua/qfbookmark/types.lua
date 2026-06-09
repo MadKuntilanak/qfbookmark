@@ -35,6 +35,7 @@
 ---@class QFBufferItem
 ---@field info vim.fn.getbufinfo.ret.item & { col?: integer }
 ---@field bufnr integer
+---@field flag string
 
 ---@class QFbookBufferMarkEntry
 ---@field bufnr integer | nil
@@ -45,6 +46,7 @@
 ---@field harpoon string
 ---@field mark_mode string
 ---@field inserted_at integer
+---@field fn_name string
 ---@field id integer
 
 ---@class QFBookExtermarks
@@ -68,7 +70,6 @@
 ---@field winhighlight string
 ---@field higroup_title string
 ---@field quickfix boolean
----@field icons { box_message: string }
 ---@field mark { anchor_win: string, hl: string, keymap: { up: string, down: string, move_up: string,move_down: string}}
 
 ---@class WindowConfig

@@ -49,9 +49,6 @@ M.defaults = {
       winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder",
       higroup_title = "Function",
       quickfix = true,
-      icons = {
-        box_message = " ", -- " ",
-      },
       mark = {
         anchor_win = "SE",
         hl = "Visual",

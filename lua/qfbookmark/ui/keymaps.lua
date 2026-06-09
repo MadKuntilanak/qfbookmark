@@ -44,22 +44,19 @@ function Mapping.exit_close()
     vim.schedule(function()
       vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
 
-      -- each entry spans 2 lines; only header lines (odd) carry the " N  " prefix
       -- detail lines (even, leading indent) are skipped
       local out_lines = {}
       for _, raw in ipairs(lines_raw) do
         local idx_str = raw:match "^ (%d+) "
         if idx_str then
           local original_idx = tonumber(idx_str)
-          -- harpoon_map is keyed by line_nr; header of entry N is at line_nr (N-1)*2+1
-          local ln = (original_idx - 1) * 2 + 1
+          local ln = Mapping.entry_start_line and Mapping.entry_start_line[original_idx]
           local hval = Mapping.harpoon_map[ln]
           if hval then
             out_lines[#out_lines + 1] = hval
           end
         end
       end
-
       if not (#lines_raw == 0 and #lines_raw[1] == 0) then
         if Mapping.cb then
           Mapping.cb(out_lines)
@@ -148,46 +145,55 @@ end
 
 Mapping.mark = {}
 
----@param scroll_mode "up" | "down"
-function Mapping.mark.scroll_preview_window(scroll_mode)
+---@param direction integer
+---@param amount? integer
+function Mapping.mark.scroll_preview_window(direction, amount)
   if not Mapping.popup.preview.win or not vim.api.nvim_win_is_valid(Mapping.popup.preview.win) then
     QfbookmarkUIUtils.warn "`win` previewer is invalid!"
     return
   end
 
-  local function scroll_down(win)
-    vim.api.nvim_win_call(win, function()
-      vim.cmd "normal! 2j"
-    end)
-  end
+  amount = amount or 2
+  local next_or = amount .. (direction * 2 > 0 and "j" or "k")
 
-  local function scroll_up(win)
-    vim.api.nvim_win_call(win, function()
-      vim.cmd "normal! 2k"
-    end)
-  end
-
-  if scroll_mode == "up" then
-    scroll_up(Mapping.popup.preview.win)
-  else
-    scroll_down(Mapping.popup.preview.win)
-  end
+  vim.api.nvim_win_call(Mapping.popup.preview.win, function()
+    vim.cmd("normal! " .. next_or)
+  end)
 end
 
--- move by 2 lines at a time to jump between entries (header + detail)
+-- Navigate by entry using entry_start_line lookup
 function Mapping.mark.nav_entry(direction)
   local cur = vim.api.nvim_win_get_cursor(0)[1]
-  local total = vim.api.nvim_buf_line_count(Mapping.buf)
-  -- always land on a header line (odd)
-  local header = cur % 2 == 0 and cur - 1 or cur
-  local next_header = header + direction * 2
-  if next_header < 1 then
-    next_header = 1
+  local total = vim.api.nvim_buf_line_count(0)
+
+  if not Mapping.entry_start_line or vim.tbl_isempty(Mapping.entry_start_line) then
+    return
   end
-  if next_header > total then
-    next_header = total - (total % 2 == 0 and 1 or 0)
+
+  local entry_starts = {}
+  for _, ln in pairs(Mapping.entry_start_line) do
+    entry_starts[#entry_starts + 1] = ln
   end
-  vim.api.nvim_win_set_cursor(0, { next_header, 0 })
+  table.sort(entry_starts)
+
+  if #entry_starts == 0 then
+    return
+  end
+
+  local cur_entry_pos = 1
+  for i, ln in ipairs(entry_starts) do
+    if ln <= cur then
+      cur_entry_pos = i
+    end
+  end
+
+  local next_pos = math.max(1, math.min(cur_entry_pos + direction, #entry_starts))
+  local target = entry_starts[next_pos]
+  if not target or target < 1 or target > total then
+    return
+  end
+
+  vim.api.nvim_win_set_cursor(0, { target, 0 })
 end
 
 local renew_preview = true
@@ -228,46 +234,91 @@ function Mapping.mark.move_item_to(is_prev)
     is_let = true
   end
 
-  local row = vim.api.nvim_win_get_cursor(0)[1]
-
-  local start = row % 2 == 0 and row - 1 or row
-  local finish = start + 1
-  local winnr = vim.api.nvim_get_current_win()
-  local line_count = vim.api.nvim_buf_line_count(Mapping.buf)
-
-  local can_move_up = start > 1
-  local can_move_down = finish < line_count
-
-  -- Disable moving when the cursor is on the first or last entry.
-  -- stylua: ignore start
-  if is_prev and not can_move_up then return end
-  if not is_prev and not can_move_down then return end
-
-  local new_start
-  if not is_prev then new_start = start + 2 else new_start = start - 2 end
-  -- stylua: ignore end
-
-  -- add highlight with matchaddpos
-  local hl_group = Config.window.popup.mark and Config.window.popup.mark.hl or "Visual"
-  local matchid = vim.fn.matchaddpos(hl_group, { { new_start }, { new_start + 1 } }, 10, -1, { window = winnr })
-  local durationMs = 400
-
-  if not is_prev then
-    vim.cmd(string.format("%d,%dmove %d", start, finish, finish + 2))
-  else
-    vim.cmd(string.format("%d,%dmove %d", start, finish, start - 3))
-  end
-
-  vim.defer_fn(function()
+  local function restore_readonly()
     if is_let then
       vim.api.nvim_set_option_value("modifiable", false, { buf = Mapping.buf })
       vim.api.nvim_set_option_value("readonly", true, { buf = Mapping.buf })
     end
-    pcall(vim.fn.matchdelete, matchid, winnr)
+  end
 
-    -- optional: refresh?
+  local row = vim.api.nvim_win_get_cursor(0)[1]
+  local line_count = vim.api.nvim_buf_line_count(Mapping.buf)
+  local winnr = vim.api.nvim_get_current_win()
+
+  local entry_starts = {}
+  for _, ln in pairs(Mapping.entry_start_line) do
+    entry_starts[#entry_starts + 1] = ln
+  end
+  table.sort(entry_starts)
+
+  if #entry_starts == 0 then
+    restore_readonly()
+    return
+  end
+
+  local cur_pos = 1
+  for i, ln in ipairs(entry_starts) do
+    if ln <= row then
+      cur_pos = i
+    end
+  end
+
+  local can_move_up = cur_pos > 1
+  local can_move_down = cur_pos < #entry_starts
+
+  if is_prev and not can_move_up then
+    restore_readonly()
+    return
+  end
+  if not is_prev and not can_move_down then
+    restore_readonly()
+    return
+  end
+
+  local cur_start = entry_starts[cur_pos]
+  local cur_finish = (entry_starts[cur_pos + 1] or (line_count + 1)) - 1
+
+  local tgt_pos = is_prev and (cur_pos - 1) or (cur_pos + 1)
+  local tgt_start = entry_starts[tgt_pos]
+  local tgt_finish = (entry_starts[tgt_pos + 1] or (line_count + 1)) - 1
+
+  -- flash-highlight target entry
+  local hl_group = Config.window.popup.mark and Config.window.popup.mark.hl or "Visual"
+  local hl_lines = {}
+  for ln = tgt_start, tgt_finish do
+    hl_lines[#hl_lines + 1] = { ln }
+  end
+  local matchid = vim.fn.matchaddpos(hl_group, hl_lines, 10, -1, { window = winnr })
+
+  if not is_prev then
+    vim.cmd(string.format("%d,%dmove %d", cur_start, cur_finish, tgt_finish))
+  else
+    vim.cmd(string.format("%d,%dmove %d", cur_start, cur_finish, tgt_start - 1))
+  end
+
+  -- rebuild both harpoon_map and entry_start_line from actual buffer content
+  local QfbookmarkUI = require "qfbookmark.ui.view"
+  if QfbookmarkUI.rebuild_mark_maps then
+    QfbookmarkUI.rebuild_mark_maps()
+  end
+
+  -- move cursor to the header of the entry we just moved
+  local new_entry_starts = {}
+  for _, ln in pairs(Mapping.entry_start_line) do
+    new_entry_starts[#new_entry_starts + 1] = ln
+  end
+  table.sort(new_entry_starts)
+  local new_pos = is_prev and (cur_pos - 1) or (cur_pos + 1)
+  local new_header = new_entry_starts[new_pos]
+  if new_header then
+    vim.api.nvim_win_set_cursor(0, { new_header, 0 })
+  end
+
+  vim.defer_fn(function()
+    restore_readonly()
+    pcall(vim.fn.matchdelete, matchid, winnr)
     vim.cmd "redraw"
-  end, durationMs)
+  end, 400)
 end
 
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
@@ -321,6 +372,7 @@ function M.build_keymaps(opts_popup, buf, cb)
   Mapping.popup.preview = opts_popup.popup.preview and opts_popup.popup.preview or nil
   Mapping.contents = opts_popup.contents
   Mapping.wincfg = opts_popup.win_opts.wincfg
+  Mapping.entry_start_line = opts_popup.entry_start_line and opts_popup.entry_start_line or {}
   Mapping.harpoon_map = opts_popup.content_map
   Mapping.is_harpoon = opts_popup.is_harpoon and true or false
   Mapping.is_buffers = opts_popup.is_buffers and true or false
@@ -406,12 +458,6 @@ function M.build_keymaps(opts_popup, buf, cb)
     -- |                                  MODE OPEN                                  |
     -- +-----------------------------------------------------------------------------+
 
-    ["<c-y>"] = {
-      mode = "n",
-      fun = function()
-        Mapping.setup_open_key "buffer"
-      end,
-    },
     ["<c-s>"] = {
       mode = "n",
       fun = function()
@@ -485,15 +531,26 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
         is_let = true
       end
       local cur = vim.api.nvim_win_get_cursor(0)[1]
-      local total = vim.api.nvim_buf_line_count(buf)
-      -- if cursor is on the detail line (even), step up to its header (odd)
-      local header_line = cur % 2 == 0 and cur - 1 or cur
-      -- remove header + detail; guard against last line having no pair
-      if header_line + 1 <= total then
-        vim.api.nvim_buf_set_lines(buf, header_line - 1, header_line + 1, false, {})
-      else
-        vim.api.nvim_buf_set_lines(buf, header_line - 1, header_line, false, {})
+      local total = vim.api.nvim_buf_line_count(Mapping.buf)
+
+      -- find the header line of the current entry
+      local entry_starts = {}
+      for _, ln in pairs(Mapping.entry_start_line) do
+        entry_starts[#entry_starts + 1] = ln
       end
+      table.sort(entry_starts)
+
+      local header_ln = entry_starts[1] or 1
+      local next_ln = total + 1
+      for i, ln in ipairs(entry_starts) do
+        if ln <= cur then
+          header_ln = ln
+          next_ln = entry_starts[i + 1] or (total + 1)
+        end
+      end
+
+      -- delete from header_ln to next entry's header - 1 (0-based end is exclusive)
+      vim.api.nvim_buf_set_lines(buf, header_ln - 1, next_ln - 1, false, {})
 
       if is_let then
         vim.api.nvim_set_option_value("modifiable", false, { buf = Mapping.buf })
@@ -505,13 +562,26 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
   _keys["<c-u>"] = {
     mode = "n",
     fun = function()
-      Mapping.mark.scroll_preview_window "up"
+      Mapping.mark.scroll_preview_window(-1)
     end,
   }
   _keys["<c-d>"] = {
     mode = "n",
     fun = function()
-      Mapping.mark.scroll_preview_window "down"
+      Mapping.mark.scroll_preview_window(1)
+    end,
+  }
+  _keys["<c-b>"] = {
+    mode = "n",
+    fun = function()
+      Mapping.mark.scroll_preview_window(-1, 10)
+    end,
+  }
+
+  _keys["<c-f>"] = {
+    mode = "n",
+    fun = function()
+      Mapping.mark.scroll_preview_window(1, 10)
     end,
   }
 

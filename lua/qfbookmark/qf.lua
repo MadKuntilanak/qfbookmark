@@ -274,6 +274,7 @@ function M.setup_autocmds()
           text = m.text,
           harpoon = m.harpoon,
           mark_mode = m.mark_mode,
+          fn_name = m.fn_name,
           id = m.id,
           inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0, -- preserve from saved file; reject stale hrtime values (> 1e13 = nanoseconds, not Unix seconds)
         }
@@ -325,7 +326,7 @@ local function add_sign(mark_mode)
 
   local extmarkspec = Config.extmarks.keywords[mark_mode]
   for _, mode in pairs(MARK_MODE) do
-    local _, is_mark_found = QfbookmarkBookmark.has_mark(mark_tbl, mode)
+    local _, is_mark_found = QfbookmarkBookmark.has_mark_data(mark_tbl, mode)
     if is_mark_found then
       M.delete_mark()
       return
@@ -412,24 +413,28 @@ end
 ---@param bufnr? integer
 function M.delete_mark_buffer(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local mark_lists = M.buffers
 
-  for mode_mark, _ in pairs(mark_lists) do
-    for j, x in pairs(mark_lists[mode_mark]) do
-      local filename = vim.api.nvim_buf_get_name(bufnr)
-      if string.match(x.filename, filename) then
-        local id = tonumber(j)
-        if id then
-          QfbookmarkBookmark.delete_mark(mark_lists, mode_mark, id)
-        end
+  local filename = vim.fs.normalize(vim.api.nvim_buf_get_name(bufnr))
+
+  local to_delete = {}
+
+  for mode_mark, marks in pairs(M.buffers) do
+    for id, mark in pairs(marks) do
+      if vim.fs.normalize(mark.filename) == filename then
+        table.insert(to_delete, {
+          mode_mark = mode_mark,
+          id = tonumber(id),
+        })
       end
     end
   end
 
-  -- Remove all builtin marks
+  for _, item in ipairs(to_delete) do
+    QfbookmarkBookmark.delete_mark(M.buffers, item.mode_mark, item.id)
+  end
+
   vim.cmd "delmarks!"
 
-  -- Clean up a bit
   vim.schedule(function()
     clean_up_marks_harpoon()
     M.invalidate_mark_cache()
@@ -490,7 +495,7 @@ function M.open_mark_harpoon_window()
     old_harpoon[#old_harpoon + 1] = QfbookmarkUtils.remove_idx_m_harpoon(harp)
   end
 
-  QfbookmarkUI.mark_harpoon_popup(M.buffers, mark_entry_lists, function(harpoon_vals)
+  QfbookmarkUI.mark_harpoon_popup(mark_entry_lists, function(harpoon_vals)
     if type(harpoon_vals) == "string" then
       return
     end
@@ -515,17 +520,17 @@ function M.open_mark_harpoon_window()
           end
 
           local mark_lists = M.buffers
-          local opts = QfbookmarkBookmark.is_current_line_got_mark(mark_lists, { id = m.id })
-          if not opts then
+          local _, is_has_mark = QfbookmarkBookmark.has_mark_data(mark_lists, m.mark_mode, m.id, m.bufnr)
+          if not is_has_mark then
             return
           end
 
-          if not opts.bufnr or not vim.api.nvim_buf_is_valid(opts.bufnr) then
-            QfbookmarkBookmark.delete_mark(mark_lists, opts.mark_mode, opts.id, opts.bufnr)
+          if not m.bufnr or not vim.api.nvim_buf_is_valid(m.bufnr) then
+            QfbookmarkBookmark.delete_mark(mark_lists, m.mark_mode, m.id, m.bufnr)
             goto continue
           end
 
-          local is_delete = QfbookmarkBookmark.delete_mark(mark_lists, opts.mark_mode, opts.id, opts.bufnr)
+          local is_delete = QfbookmarkBookmark.delete_mark(mark_lists, m.mark_mode, m.id, m.bufnr)
           if not is_delete then
             QfbookmarkUtils.warn "Something went wrong"
           end
@@ -533,6 +538,9 @@ function M.open_mark_harpoon_window()
           ::continue::
         end
       end
+
+      sync_marks_harpoon()
+      M.invalidate_mark_cache()
     end
 
     -- Rebuild mark_lists_harpoon dengan idx prefix baru
@@ -542,10 +550,8 @@ function M.open_mark_harpoon_window()
     end
     M.mark_lists_harpoon = new_lines
 
-    vim.schedule(function()
-      local mark_lists = get_lists_marks()
-      QfbookmarkBookmark.save_marks(mark_lists)
-    end)
+    local mark_lists = get_lists_marks()
+    QfbookmarkBookmark.save_marks(mark_lists)
   end)
 end
 
@@ -655,7 +661,7 @@ local function rename_header(list_type)
     return
   end
 
-  local title = string.format("Rename %s Title", cmd[2])
+  local title = string.format("📝 Rename %s Title", cmd[2])
   QfbookmarkUI.saveqf_popup(title, "", "rename", is_location_target, function(input_msg)
     if input_msg == "" or input_msg == nil then
       return

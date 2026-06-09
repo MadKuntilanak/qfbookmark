@@ -1,36 +1,47 @@
 local QfbookmarkUtils = require "qfbookmark.utils"
+local QfbookmarkTreesitter = require "qfbookmark.treesitter"
 local QfbookmarkUIUtils = require "qfbookmark.ui.utils"
 local QfbookmarkUIView = require "qfbookmark.ui.view"
 
 ---@alias WinSizeCfg { row: integer, col: integer, height: integer, width: integer, title: string, title_pos: string, buf?: integer}
 
---- Build two display lines per entry:
+--- Build display lines per entry — 2 lines when no symbol, 3 lines when symbol exists:
 ---   Line 1 (header): " N  BADGE  path/file.lua ●"
 ---   Line 2 (detail): "         :lnum  preview text"
----
----@param idx integer                     1-based display index
----@param mark QFbookBufferMarkEntry      mark entry to render
----@param path_width integer              column width for path alignment
----@return string line1                   header line
----@return string line2                   detail line
----@return string harpoon                 harpoon value for lookup
-local function build_entry_lines(idx, mark, path_width)
+---   Line 3 (symbol): "         icon name > icon name"  ← only when chain != ""
+---@param idx integer 1-based display index
+---@param mark QFbookBufferMarkEntry mark entry to render
+---@param path_width integer column width for path alignment
+---@param symbol QFBookSymbol resolved symbol (kind + name)
+---@return string line1 header line
+---@return string line2 detail line
+---@return string|nil line3 symbol line, nil when no symbol context
+---@return string harpoon harpoon value for lookup
+local function build_entry_lines(idx, mark, path_width, symbol)
   local badge = QfbookmarkUIUtils.get_mode_badge(mark.mark_mode)
-  local path = QfbookmarkUIUtils.shorten_path(mark.filename, math.min(path_width, 20))
+  local path = QfbookmarkUIUtils.shorten_path(mark.filename, path_width)
   local cur_marker = QfbookmarkUIUtils.is_current_file(mark.filename) and " ●" or ""
   local lnum = string.format(":%d", mark.line)
-  local preview = QfbookmarkUIUtils.shorten_text(mark.text or "", path_width + 4)
+  local preview = QfbookmarkUIUtils.shorten_text(mark.text or "", path_width)
 
   -- header: " N  BADGE  plugins/qf.lua ●"
   local line1 = string.format(" %d  %s  %s%s", idx, badge, path, cur_marker)
 
-  -- detail: 9-space indent to align under path, then lnum + preview text
+  -- detail: indent + lnum + preview (full width, no truncation for symbol)
   local indent = string.rep(" ", 9)
   local line2 = string.format("%s%s  %s", indent, lnum, preview)
 
-  return line1, line2, mark.harpoon
+  -- symbol line: only emit when there is context
+  local sym_part = symbol.chain or ""
+  local line3 = sym_part ~= "" and (indent .. sym_part) or nil
+
+  return line1, line2, line3, mark.harpoon
 end
 
+---@param buffer_opts QFBufferItem
+---@param path_width integer
+---@return string line
+---@return QFBufferItem buffer_opts
 local function build_entry_line_buffers(buffer_opts, path_width)
   local badge = buffer_opts.flag
   local path = QfbookmarkUIUtils.shorten_path(buffer_opts.info.name, path_width)
@@ -40,16 +51,35 @@ local function build_entry_line_buffers(buffer_opts, path_width)
   return line, buffer_opts
 end
 
+--- Resolve symbol for a mark entry.
+--- Live when buffer loaded; falls back to cached fn_name when gone.
+---@param mark QFbookBufferMarkEntry
+---@return QFBookSymbol
+local function resolve_fn_name(mark)
+  local status = QfbookmarkUIUtils.get_buffer_status(mark.bufnr)
+
+  if (status == "alive" or status == "hidden") and vim.api.nvim_buf_is_valid(mark.bufnr) then
+    local result = QfbookmarkTreesitter.resolve_symbol(mark.bufnr, mark.line, mark.col or 0)
+    return result
+  end
+
+  -- buffer gone: render cached fn_name as a plain fn symbol
+  local cached = mark.fn_name or ""
+  if cached == "" or cached == "[--]" then
+    return { kind = "unknown", chain = "" }
+  end
+  return { kind = "fn", chain = QfbookmarkTreesitter.SYMBOL_ICONS.fn .. " " .. cached }
+end
+
 --- Compute optimal path column width across all mark entries
----@param enter_lists QFbookBufferMarkEntry[] | QFBufferItem[]
----@param max_path integer
----@param is_buffers? boolean
+---@param mark_lists QFbookBufferMarkEntry[] | QFBufferItem[]
+---@param max_path? integer
+---@param is_buffers boolean
 ---@return integer
-local function calc_path_width(enter_lists, max_path, is_buffers)
-  is_buffers = is_buffers or false
+local function calc_path_width(mark_lists, is_buffers, max_path)
   max_path = max_path or 32
-  local w = 10
-  for _, m in ipairs(enter_lists) do
+  local w = 15
+  for _, m in ipairs(mark_lists) do
     local short
     if is_buffers then
       short = vim.fn.fnamemodify(m.info.name or "", ":~:.")
@@ -57,12 +87,8 @@ local function calc_path_width(enter_lists, max_path, is_buffers)
       short = vim.fn.fnamemodify(m.filename or "", ":~:.")
     end
     -- keep only the last directory component + filename for display
-    local parts
-    if short:match "%/" then
-      parts = vim.split(short, "/", { plain = true })
-    end
-    local display = parts and (#parts >= 2 and (parts[#parts - 1] .. "/" .. parts[#parts]) or parts[#parts]) or short
-
+    local parts = vim.split(short, "/", { plain = true })
+    local display = #parts >= 2 and (parts[#parts - 1] .. "/" .. parts[#parts]) or parts[#parts] or short
     local len = vim.fn.strdisplaywidth(display)
     if len > w then
       w = len
@@ -73,14 +99,16 @@ end
 
 --- Compute popup width from entry content
 ---@param mark_lists QFbookBufferMarkEntry[]
+---@param is_buffers? boolean
 ---@return integer
-local function calc_popup_width(mark_lists)
+local function calc_popup_width(mark_lists, is_buffers)
+  is_buffers = is_buffers or false
+  local path_w = calc_path_width(mark_lists, is_buffers, 32)
+  -- " N  BADGE  path ●" → 1+1+2+4+2+path+2 = path + ~12
+  local estimated = path_w + 14
+
   local min_w = 38
   local max_w = 60
-  local path_w = calc_path_width(mark_lists, 32)
-
-  -- " N  BADGE  path ●" → 1+1+2+4+2+path+2 = path + ~12
-  local estimated = path_w + 25
   return math.max(min_w, math.min(estimated, max_w))
 end
 
@@ -142,7 +170,7 @@ end
 
 ---@param mark_lists QFbookBufferMarkEntry[]
 ---@param cb function
-local function mark_harpoon_popup(buffers, mark_lists, cb)
+local function mark_harpoon_popup(mark_lists, cb)
   if #mark_lists == 0 then
     QfbookmarkUtils.echo_emtpy_mark()
     return
@@ -150,36 +178,47 @@ local function mark_harpoon_popup(buffers, mark_lists, cb)
 
   local editor = QfbookmarkUIUtils.get_editor_size()
 
-  local height = math.max(1, math.floor(editor.height / 5))
+  local height = math.max(2, math.floor(editor.height / 2))
   local width = calc_popup_width(mark_lists)
 
   local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
 
   -- ── Build display lines dan harpoon_map ────────────────────────────────
-  -- two lines per entry:
-  --   odd  line_nr (1,3,5,...) → header line → harpoon_map[line_nr] = hval
-  --   even line_nr (2,4,6,...) → detail line → harpoon_map[line_nr] = hval (same value)
+  -- entries are 2 or 3 lines depending on whether symbol context exists:
+  --   line 1 (header)  → harpoon_map[line_nr] = hval
+  --   line 2 (detail)  → harpoon_map[line_nr] = hval
+  --   line 3 (symbol)  → harpoon_map[line_nr] = hval  (only when chain != "")
   local display_lines = {}
   ---@type table<integer, string>
   local content_map = {}
-
-  local path_width = math.max(calc_path_width(mark_lists, 100), 20)
+  -- entry_start_line[idx] = 1-based line_nr of header for entry idx
+  local entry_start_line = {}
 
   for idx, mark in ipairs(mark_lists) do
-    local line1, line2, hval = build_entry_lines(idx, mark, path_width)
+    local symbol = resolve_fn_name(mark)
+    local line1, line2, line3, hval = build_entry_lines(idx, mark, width, symbol)
+
+    local ln_start = #display_lines + 1 -- 1-based header line_nr
+    entry_start_line[idx] = ln_start
+
     display_lines[#display_lines + 1] = line1
     display_lines[#display_lines + 1] = line2
+    if line3 then
+      display_lines[#display_lines + 1] = line3
+    end
 
-    local ln1 = (idx - 1) * 2 + 1 -- line number of the header row (1-based)
-    local ln2 = ln1 + 1 -- line number of the detail row
-    content_map[ln1] = hval
-    content_map[ln2] = hval
+    -- Map every line of this entry to its harpoon value
+    for ln = ln_start, #display_lines do
+      content_map[ln] = hval
+    end
   end
 
-  -- ensure popup is tall enough to show all entries (2 lines each)
-  height = math.max(height, #mark_lists * 2)
+  width = math.max(width + 20, 20)
 
-  -- total mark count shown in the popup title
+  -- Ensure popup is tall enough to show all entries
+  height = math.min(height, #display_lines) + 2
+
+  -- Total mark count shown in the popup title
   local total = #mark_lists
   local icon = "🔗 "
   local title_str = total > 0 and icon .. string.format("QFMarks (%d)", total) or icon .. "QFMarks"
@@ -210,6 +249,7 @@ local function mark_harpoon_popup(buffers, mark_lists, cb)
     content_map = content_map,
     display_lines = display_lines,
     win_opts = wincfg,
+    entry_start_line = entry_start_line,
   }
 
   QfbookmarkUIView.build_popup("mark", __opts, cb)
@@ -220,7 +260,7 @@ local function buffers_popup(buffer_lists)
   -- Build display lines
   local display_lines = {}
   local content_map = {}
-  local path_width = calc_path_width(buffer_lists, 30, true)
+  local path_width = calc_path_width(buffer_lists, true, 30)
 
   for idx, buffer in pairs(buffer_lists) do
     local line, hval = build_entry_line_buffers(buffer, path_width)
@@ -236,6 +276,7 @@ local function buffers_popup(buffer_lists)
 
   local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
 
+  -- Total mark buffer
   local total = #buffer_lists
   local icon = "📑 "
   local title_str = total > 0 and icon .. string.format("QFBuffers (%d)", total) or icon .. "QFBuffers"

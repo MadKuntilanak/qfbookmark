@@ -1,6 +1,5 @@
 local Config = require("qfbookmark.config").defaults
 
-local QfbookmarkUtils = require "qfbookmark.utils"
 local QFbookmarkPathUtils = require "qfbookmark.path.utils"
 local QfbookmarkUIUtils = require "qfbookmark.ui.utils"
 local QfbookmarkMarkVisual = require "qfbookmark.visual"
@@ -29,7 +28,7 @@ local function update_save_footer(main_buf, buf_preview, target_path, is_loc)
 
   local type_label = fn_opts.is_loc and "LocList" or "QuickFix"
 
-  -- truncate long directory hashes to keep the footer readable
+  -- Truncate long directory hashes to keep the footer readable
   local dir_display = #part2 > 32 and (part2:sub(1, 14) .. "…" .. part2:sub(-10)) or part2
 
   local footer_text = {
@@ -81,13 +80,14 @@ end
 local function load_content(filename, bufnr)
   -- Handle fugitive virtual buffers
   if filename and filename:match "^fugitive://" then
-    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
-      local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
-      if ok and lines and #lines > 0 then
-        return lines
-      end
+    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+      return { "⚠ Unable to load fugitive buffer:\n" .. filename }
     end
-    return { "⚠ Unable to load fugitive buffer: " .. filename }
+
+    local ok, lines = pcall(vim.api.nvim_buf_get_lines, bufnr, 0, -1, false)
+    if ok and lines and #lines > 0 then
+      return lines
+    end
   end
 
   if not bufnr then
@@ -133,6 +133,7 @@ local function update_mark_preview(opts_popup, win, buf)
   end
 
   local filename, col, line, bufnr
+
   for _, m in pairs(opts_popup.contents) do
     if m.harpoon == harpoon_val then
       filename = m.filename
@@ -148,7 +149,7 @@ local function update_mark_preview(opts_popup, win, buf)
   end
 
   local content
-  local buffer_status = QfbookmarkUtils.get_buffer_status(bufnr)
+  local buffer_status = QfbookmarkUIUtils.get_buffer_status(bufnr)
 
   if filename:match "^fugitive://" then
     local new_bufnr = vim.fn.bufnr(filename)
@@ -161,19 +162,19 @@ local function update_mark_preview(opts_popup, win, buf)
       if not vim.api.nvim_buf_is_loaded(new_bufnr) then
         vim.api.nvim_buf_call(new_bufnr, function()
           vim.cmd("doautocmd BufReadCmd " .. vim.fn.fnameescape(filename))
+          vim.api.nvim_set_option_value("filetype", "git", { buf = new_bufnr })
         end)
       end
 
       bufnr = new_bufnr
-      for mode, _ in pairs(opts_popup.contents) do
-        for id, m in pairs(opts_popup.contents[mode]) do
-          if m.filename == filename then
-            opts_popup.contents[mode][id].bufnr = new_bufnr
-          end
+      for _, m in pairs(opts_popup.contents) do
+        if m.filename == filename then
+          m.bufnr = new_bufnr
         end
       end
       content = load_content(filename, bufnr)
     end
+    content = load_content(filename, bufnr)
   elseif buffer_status == "alive" then
     content = load_content(filename, bufnr)
   elseif buffer_status == "hidden" or buffer_status == "gone" then
@@ -238,7 +239,7 @@ end
 ---@param win_preview integer
 ---@param buf_preview integer
 function M.setup_mark_preview_contents(opts_popup, main_buf, win_preview, buf_preview)
-  -- but immediately show preview for the first entry when the popup opens
+  -- But immediately show preview for the first entry when the popup opens
   vim.schedule(function()
     if vim.api.nvim_win_is_valid(win_preview) then
       update_mark_preview(opts_popup, win_preview, buf_preview)
@@ -256,14 +257,14 @@ end
 ---@param main_wincfg vim.api.keyset.win_config
 ---@param width integer
 ---@param height? integer
----@return integer, integer
+---@return integer | nil, integer | nil
 function M.mark_preview(main_wincfg, width, height)
   local editor = QfbookmarkUIUtils.get_editor_size()
 
   height = height or math.max(1, math.floor(editor.height * 2 / 3.5))
-  width = math.floor(width * 2)
+  width = math.max(editor.width - math.floor(width * 2) + QfbookmarkUIUtils.PADDING_PREVIEW + 10, 50)
 
-  local _col = main_wincfg.col - width - QfbookmarkUIUtils.PADDING_PREVIEW
+  local _col = main_wincfg.col - width - QfbookmarkUIUtils.PADDING_PREVIEW - 12
   local _col_minus = main_wincfg.col + main_wincfg.width + QfbookmarkUIUtils.PADDING_PREVIEW
   local col = Config.window.popup.mark.anchor_win == "NW" and _col_minus or _col
   local row = main_wincfg.row
@@ -303,8 +304,6 @@ end
 ---@param main_cfg vim.api.keyset.win_config_ret
 ---@return integer, integer
 function M.save_footer(opts_popup, main_cfg)
-  -- local win_opts = QfbookmarkUIUtils.get_win_width(true)
-
   local row = main_cfg.row + main_cfg.height + QfbookmarkUIUtils.PADDING_PREVIEW
   local footer_col = main_cfg.col
 

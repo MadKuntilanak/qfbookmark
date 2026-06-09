@@ -1,5 +1,55 @@
 local M = {}
 
+-- ├─────────────────────────────────┤ NOTIFY ├─────────────────────────────────┤
+
+---@param title? string
+local function get_prefix_notify_title(title)
+  if not title or (title == "") then
+    title = "QFBookmark"
+  end
+  return title
+end
+
+---@param msg string|table
+---@param title? string
+function M.info(msg, title)
+  title = get_prefix_notify_title(title)
+  if type(msg) == "table" then
+    vim.api.nvim_echo(msg, false, {})
+    return
+  end
+  vim.notify(msg, vim.log.levels.INFO, { title = title })
+end
+
+---@param msg string
+---@param title? string
+function M.warn(msg, title)
+  title = get_prefix_notify_title(title)
+  vim.notify(msg, vim.log.levels.WARN, { title = title })
+end
+
+---@param msg string
+---@param title? string
+function M.error(msg, title)
+  title = get_prefix_notify_title(title)
+  vim.notify(msg, vim.log.levels.WARN, { title = title })
+end
+
+---@param msg? string
+function M.not_implemented_yet(msg)
+  if msg == nil then
+    msg = ""
+  end
+  if #msg > 0 then
+    msg = "Not impelemented, -> " .. msg
+  else
+    msg = "Not impelemented yet"
+  end
+  M.warn(msg)
+end
+
+-- ═════════════════════════════════════════════════════════════════════════════
+
 M.__IS_WINDOWS = vim.fn.has "win32" == 1 or vim.fn.has "win64" == 1
 
 ---@type QFBookListResults
@@ -83,6 +133,12 @@ end
 function M.is_loclist_win(winnr)
   local wininfo = vim.fn.getwininfo(vim.fn.win_getid(winnr))[1]
   return M.is_quickfix_win(winnr) and wininfo.loclist == 1
+end
+
+---@param buf? integer
+function M.is_loclist(buf)
+  buf = buf or 0
+  return vim.fn.getloclist(buf, { filewinid = 1 }).filewinid ~= 0
 end
 
 ---@param is_loc? boolean
@@ -219,58 +275,6 @@ function M.get_populate_data_qf(is_loc)
   return qf_list
 end
 
----@param buf? integer
-function M.is_loclist(buf)
-  buf = buf or 0
-  return vim.fn.getloclist(buf, { filewinid = 1 }).filewinid ~= 0
-end
-
----@param title? string
-local function get_prefix_notify_title(title)
-  if not title or (title == "") then
-    title = "QFBookmark"
-  end
-  return title
-end
-
----@param msg string|table
----@param title? string
-function M.info(msg, title)
-  title = get_prefix_notify_title(title)
-  if type(msg) == "table" then
-    vim.api.nvim_echo(msg, false, {})
-    return
-  end
-  vim.notify(msg, vim.log.levels.INFO, { title = title })
-end
-
----@param msg string
----@param title? string
-function M.warn(msg, title)
-  title = get_prefix_notify_title(title)
-  vim.notify(msg, vim.log.levels.WARN, { title = title })
-end
-
----@param msg string
----@param title? string
-function M.error(msg, title)
-  title = get_prefix_notify_title(title)
-  vim.notify(msg, vim.log.levels.WARN, { title = title })
-end
-
----@param msg? string
-function M.not_implemented_yet(msg)
-  if msg == nil then
-    msg = ""
-  end
-  if #msg > 0 then
-    msg = "Not impelemented, -> " .. msg
-  else
-    msg = "Not impelemented yet"
-  end
-  M.warn(msg)
-end
-
 ---@param str string
 ---@return string
 local rstrip_whitespace = function(str)
@@ -333,52 +337,69 @@ function M.windows_is_opened(filetypes, is_tab, is_more_guard)
     table.insert(exclude_filetypes, filetypes)
   end
 
-  local result = {
-    found = false,
-    winbufnr = 0,
-    winnr = 0,
-    winid = 0,
-    ft = "",
-  }
-
-  local tab = vim.api.nvim_get_current_tabpage()
-
-  local winids = is_tab and vim.api.nvim_tabpage_list_wins(tab) or vim.api.nvim_list_wins()
-
-  for _, winid in ipairs(winids) do
-    if is_more_guard and is_float(winid) then
-      goto continue
-    end
-
+  local function check_window(winid)
     if not vim.api.nvim_win_is_valid(winid) then
-      goto continue
+      return nil
     end
 
     local bufnr = vim.api.nvim_win_get_buf(winid)
 
     if bufnr == 0 then
-      goto continue
+      return nil
     end
 
     local ft = vim.api.nvim_get_option_value("filetype", { buf = bufnr })
     local bt = vim.api.nvim_get_option_value("buftype", { buf = bufnr })
 
     if vim.tbl_contains(exclude_filetypes, ft) or vim.tbl_contains(exclude_filetypes, bt) then
-      result = {
+      return {
         found = true,
         winbufnr = bufnr,
         winnr = winid,
         winid = winid,
         ft = ft,
       }
+    end
 
-      break
+    return nil
+  end
+
+  local tab = vim.api.nvim_get_current_tabpage()
+  local winids = is_tab and vim.api.nvim_tabpage_list_wins(tab) or vim.api.nvim_list_wins()
+
+  -- Prioritize floating windows when the guard is disabled
+  if not is_more_guard then
+    for _, winid in ipairs(winids) do
+      if is_float(winid) then
+        local result = check_window(winid)
+        if result then
+          return result
+        end
+      end
+    end
+  end
+
+  -- Then check the remaining windows
+  for _, winid in ipairs(winids) do
+    if is_more_guard and is_float(winid) then
+      goto continue
+    end
+
+    local result = check_window(winid)
+    if result then
+      return result
     end
 
     ::continue::
   end
 
-  return result
+  return {
+    found = false,
+    winbufnr = 0,
+    winnr = 0,
+    winid = 0,
+    ft = "",
+  }
 end
 
 ---@param filename string
@@ -438,7 +459,6 @@ end
 function M.exclude_default_filetype_dan_buftype(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
-  local is_float = vim.api.nvim_win_get_config(0).relative ~= ""
   local is_buftype = vim.tbl_contains({ "help", "prompt", "nofile" }, vim.bo[bufnr].buftype)
   local is_filetype = vim.tbl_contains({
     "DiffviewFileHistory",
@@ -455,7 +475,7 @@ function M.exclude_default_filetype_dan_buftype(bufnr)
     "orgagenda",
   }, vim.bo[bufnr].filetype)
 
-  if is_float or is_buftype or is_filetype then
+  if is_float(vim.api.nvim_get_current_win()) or is_buftype or is_filetype then
     return false
   end
 
@@ -550,24 +570,6 @@ function M.find_win_ls(opts)
   return win_found
 end
 
----@param bufnr integer
----@return "gone" | "alive" | "hidden"
-function M.get_buffer_status(bufnr)
-  if not vim.api.nvim_buf_is_valid(bufnr) then
-    return "gone"
-  end
-
-  local buffers = vim.api.nvim_list_bufs()
-  for _, b in ipairs(buffers) do
-    if b == bufnr then
-      return "alive"
-    end
-  end
-
-  -- buffer still valid, but hidden (bdelete, bwipeout)
-  return "hidden"
-end
-
 ---@param harp string
 ---@return string
 function M.remove_idx_m_harpoon(harp)
@@ -612,30 +614,6 @@ function M.save_table_to_file(contents, filename)
   end
 end
 
----@param bufnr integer
-function M.ensure_treesitter(bufnr)
-  if not vim.api.nvim_buf_is_valid(bufnr) then
-    return
-  end
-
-  local ft = vim.bo[bufnr].filetype
-  if ft == "" then
-    return
-  end
-
-  -- Cek apakah filetype punya mapping language treesitter
-  local ok = pcall(vim.treesitter.language.get_lang, ft)
-  if not ok then
-    return
-  end
-
-  -- Start ulang hanya jika belum aktif
-  -- if not vim.treesitter.highlighter.active[bufnr] and can_start_treesitter(bufnr) then
-  if not vim.treesitter.highlighter.active[bufnr] then
-    pcall(vim.treesitter.start, bufnr)
-  end
-end
-
 -- ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
 -- ┃                      BUFFER UTILS                       ┃
 -- ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
@@ -677,36 +655,6 @@ function M.tbl_isempty(T)
   return next(T) == nil
 end
 
--- returns:
---   1 for qf list
---   2 for loc list
----@param winid integer
----@return 1|2|false
-function M.win_is_qf(winid)
-  local winty = vim.api.nvim_win_is_valid(winid) and vim.fn.win_gettype(winid) or nil
-  return winty == "quickfix" and 1 or winty == "loclist" and 2 or false
-end
-
----@param bufnr integer
----@param bufinfo (vim.fn.getbufinfo.ret.item|vim.fn.getbufinfo.ret.item[]|false|table)?
----@return 1|2|false
-function M.buf_is_qf(bufnr, bufinfo)
-  bufinfo = bufinfo or (vim.api.nvim_buf_is_valid(bufnr) and M.getbufinfo(bufnr))
-  if
-    bufinfo
-    and bufinfo.variables
-    and bufinfo.variables.current_syntax == "qf"
-    and not M.tbl_isempty(bufinfo.windows)
-  then
-    local window = bufinfo
-      .windows --[[@cast -?]]
-      [1]
-    ---@cast window integer
-    return M.win_is_qf(window)
-  end
-  return false
-end
-
 ---@param bufnr integer
 ---@param bufinfo table?
 ---@return string?
@@ -723,12 +671,8 @@ function M.nvim_buf_get_name(bufnr, bufinfo)
     if vim.bo[bufnr].buftype == "nofile" then
       bufname = "[Scratch]"
     else
-      local is_qf = M.buf_is_qf(bufnr, bufinfo)
-      if is_qf then
-        bufname = is_qf == 1 and "[Quickfix List]" or "[Location List]"
-      else
-        bufname = "[No Name]"
-      end
+      local is_loc = M.is_loclist(bufnr)
+      bufname = is_loc and "[Quickfix List]" or "[Location List]"
     end
   end
   assert(#bufname > 0)

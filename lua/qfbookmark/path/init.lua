@@ -52,14 +52,13 @@ function M.get_target_path_with_gitcwd(is_global)
   local cwd_local_project = M.get_target_path(is_global)
 
   local git_branch = QfbookmarkPathUtils.git_branch()
-  if not git_branch then
-    return cwd_local_project
+  if git_branch then
+    git_branch = "_" .. git_branch .. ""
+    git_branch = git_branch:gsub("/", "-")
+    git_branch = git_branch:gsub(":", "-")
+  else
+    git_branch = ""
   end
-
-  git_branch = "_" .. git_branch .. ""
-  git_branch = git_branch:gsub("/", "-")
-  git_branch = git_branch:gsub(":", "-")
-
   return cwd_local_project .. "/mark" .. git_branch .. ".lua"
 end
 

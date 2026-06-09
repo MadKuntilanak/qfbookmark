@@ -5,7 +5,7 @@ local QfbookmarkMarkVisual = require "qfbookmark.visual"
 
 ---@alias WinCfg { buf: integer, enter: boolean, wincfg: vim.api.keyset.win_config }
 ---@alias QfBookUiWinCfg {  save: QFBookUiCfg, save_footer: QFBookUiCfg, mark_preview: QFBookUiCfg, mark: QFBookUiCfg, buffer: QFBookUiCfg  }
----@alias QfBookUiPopupCfg { contents: table, content_map:table<integer, string>, win_opts: WinCfg, display_lines: table, popup?: {win?: integer, buf?:integer, preview?: {win?: integer, buf?:integer} }, is_harpoon?: boolean, is_buffers?: boolean, save: {title: string, target_path: string, is_loc:boolean, cb:function, for_what:"save"|"rename"} }
+---@alias QfBookUiPopupCfg { contents: table, content_map:table<integer, string>, win_opts: WinCfg, display_lines: table, entry_start_line: table, popup?: {win?: integer, buf?:integer, preview?: {win?: integer, buf?:integer} }, is_harpoon?: boolean, is_buffers?: boolean, save: {title: string, target_path: string, is_loc:boolean, cb:function, for_what:"save"|"rename"} }
 
 local M = {}
 
@@ -39,24 +39,6 @@ M.window = {
     buf = nil,
   },
 }
-
----@param win integer
--- local setup_ui_autocmd = function(augroup, win)
---   -- keep the cursor locked inside the floating window
---   local group = QfbookmarkUtils.create_augroup_name(augroup)
---   vim.api.nvim_create_autocmd({ "WinLeave", "BufLeave" }, {
---     group = group,
---     callback = function()
---       if vim.api.nvim_win_is_valid(win) then
---         vim.defer_fn(function()
---           if vim.api.nvim_win_is_valid(win) then
---             vim.api.nvim_set_current_win(win)
---           end
---         end, 10)
---       end
---     end,
---   })
--- end
 
 ---@param win integer
 ---@param buf integer
@@ -104,10 +86,75 @@ local __popup_opts_for = {
 
     setup_option_main_popup(main_win, main_buf)
 
-    -- apply syntax highlights to all entries
-    QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.contents)
+    -- +-----------------------------------------------------------------------------+
+    -- | Rebuild both maps by scanning buffer header lines (" N  ").                 |
+    -- | called by move_item_to after every reorder.                                 |
+    -- +-----------------------------------------------------------------------------+
+    M.rebuild_mark_maps = function()
+      if not vim.api.nvim_buf_is_valid(main_buf) then
+        return
+      end
+      local raw_lines = vim.api.nvim_buf_get_lines(main_buf, 0, -1, false)
+      local new_entry_start = {}
+      local new_harpoon_map = {}
+      local entry_idx = 0
 
-    -- re-apply highlights after dd deletes lines
+      for ln, line in ipairs(raw_lines) do
+        local idx_str = line:match "^ (%d+) "
+        if idx_str then
+          -- this is a header line — start of a new entry
+          entry_idx = entry_idx + 1
+          new_entry_start[entry_idx] = ln
+          -- new_harpoon_map[ln] = opts_popup.content_map[M.mark_harpoon_map and ln or ln]
+          new_harpoon_map[ln] = opts_popup.content_map[opts_popup.content_map and ln or ln]
+          -- look up harpoon value by the original idx stored in the line
+          local orig_idx = tonumber(idx_str)
+          local orig_start = opts_popup.entry_start_line[orig_idx]
+          if orig_start then
+            local hval = opts_popup.content_map[orig_start]
+            -- map all consecutive lines until next header to this hval
+            new_harpoon_map[ln] = hval
+          end
+        else
+          -- detail or symbol line — same hval as the most recent header
+          if entry_idx > 0 and new_entry_start[entry_idx] then
+            local header_hval = new_harpoon_map[new_entry_start[entry_idx]]
+            if header_hval then
+              new_harpoon_map[ln] = header_hval
+            end
+          end
+        end
+      end
+
+      -- update both M state and the closure tables in-place
+      -- (in-place update so update_cursorline closure sees new values)
+      for k in pairs(opts_popup.content_map) do
+        opts_popup.content_map[k] = nil
+      end
+      for k, v in pairs(new_harpoon_map) do
+        opts_popup.content_map[k] = v
+      end
+
+      for k in pairs(opts_popup.entry_start_line) do
+        opts_popup.entry_start_line[k] = nil
+      end
+      for k, v in pairs(new_entry_start) do
+        opts_popup.entry_start_line[k] = v
+      end
+
+      -- opts_popup.entry_start_line = opts_popup. entry_start_line
+      -- opts_popup.content_map = harpoon_map
+
+      -- re-apply extmark highlights with updated positions
+      QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.contents, opts_popup.entry_start_line)
+    end
+
+    -- Apply syntax highlights to all entries
+    QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.contents, opts_popup.entry_start_line)
+
+    -- +-----------------------------------------------------------------------------+
+    -- | Re-apply highlights after dd deletes lines                                  |
+    -- +-----------------------------------------------------------------------------+
     vim.api.nvim_create_autocmd("TextChanged", {
       buffer = main_buf,
       callback = function()
@@ -129,11 +176,50 @@ local __popup_opts_for = {
             end
           end
         end
-        QfbookmarkMarkVisual.apply_entry_highlights(main_buf, remaining)
+        QfbookmarkMarkVisual.apply_entry_highlights(main_buf, remaining, opts_popup.entry_start_line)
       end,
     })
 
-    --- PREVIEW WIN
+    -- +-----------------------------------------------------------------------------+
+    -- | Multi-line cursorline: highlight all lines of the current entry             |
+    -- +-----------------------------------------------------------------------------+
+    local cursorline_ns = vim.api.nvim_create_namespace "qfbookmark_cursorline"
+    local function update_cursorline()
+      if not main_buf or not vim.api.nvim_buf_is_valid(main_buf) then
+        return
+      end
+
+      vim.api.nvim_buf_clear_namespace(main_buf, cursorline_ns, 0, -1)
+      local cur = vim.api.nvim_win_get_cursor(0)[1]
+      local hval = opts_popup.content_map[cur]
+      if not hval then
+        return
+      end
+      -- find all lines that belong to the same entry
+      for ln, h in pairs(opts_popup.content_map) do
+        if h == hval then
+          pcall(vim.api.nvim_buf_set_extmark, main_buf, cursorline_ns, ln - 1, 0, {
+            end_col = 0,
+            end_row = ln,
+            hl_group = "QFBookmarkFloatCursorLine",
+            hl_eol = true,
+            priority = 50,
+          })
+        end
+      end
+    end
+
+    vim.api.nvim_create_autocmd("CursorMoved", {
+      buffer = main_buf,
+      callback = update_cursorline,
+    })
+
+    -- Trigger immediately on open
+    vim.schedule(update_cursorline)
+
+    -- +-----------------------------------------------------------------------------+
+    -- | PREVIEW WIN                                                                 |
+    -- +-----------------------------------------------------------------------------+
     local main_win_cfg = vim.api.nvim_win_get_config(main_win)
 
     local buf_preview, win_preview = QfbookmarkUIPopup.mark_preview(main_win_cfg, opts_popup.win_opts.wincfg.width)
@@ -144,7 +230,7 @@ local __popup_opts_for = {
     M.window.mark_preview.buf = buf_preview
     M.window.mark_preview.win = win_preview
 
-    -- wire up CursorMoved preview with the new harpoon_map
+    -- Wire up CursorMoved preview with the new harpoon_map
     QfbookmarkUIPopup.setup_mark_preview_contents(opts_popup, main_buf, win_preview, buf_preview)
 
     if not opts_popup.popup then
@@ -167,27 +253,7 @@ local __popup_opts_for = {
       end
     end
 
-    -- local keymap_harpoon = Config.keymaps.actions.mark_win_open
     QfbookmarkUIKeymaps.setup_keymap_mark(opts_popup, main_buf, cb_wrapper)
-
-    -- bind the toggle key to close the popup
-    -- local keys = {}
-    -- if type(keymap_harpoon) == "string" then
-    --   keys[#keys + 1] = keymap_harpoon
-    -- elseif type(keymap_harpoon) == "table" then
-    --   for _, x in pairs(keymap_harpoon) do
-    --     keys[#keys + 1] = x
-    --   end
-    -- end
-    --
-    -- if #keys > 0 then
-    --   for _, key in pairs(keys) do
-    --     vim.keymap.set("n", key, function()
-    --       QfbookmarkUIPopup.close_win(win, preview_win)
-    --       QfbookmarkUIPopup.clean_up(M.window.mark_win)
-    --     end, { buffer = buf, nowait = true })
-    --   end
-    -- end
   end,
   ---@param opts_popup QfBookUiPopupCfg
   ["buffer"] = function(opts_popup)
@@ -268,7 +334,7 @@ function M.build_popup(for_what, opts_popup, cb, is_editable)
   cb = cb or nil
   is_editable = is_editable or false
 
-  ---Clean up leftover windows and buffers before opening the popup.
+  -- Clean up leftover windows and buffers before opening the popup.
   M.window = QfbookmarkUIUtils.clean_up(M.window)
   if opts_popup.popup then
     opts_popup.popup = nil
