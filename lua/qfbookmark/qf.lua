@@ -914,7 +914,7 @@ local function __note()
   note.handle_open(is_open_global_note, window_command, cfg_note)
 end
 function M.toggle_open_note_global()
-  if not window_command then
+  if not window_command and type(Config.window.note.open_cmd) ~= "table" then
     window_command = QfbookmarkWindow.get_size_note_window(Config.window.note)
   end
 
@@ -922,7 +922,7 @@ function M.toggle_open_note_global()
   __note()
 end
 function M.toggle_open_note_local()
-  if not window_command then
+  if not window_command and type(Config.window.note.open_cmd) ~= "table" then
     window_command = QfbookmarkWindow.get_size_note_window(Config.window.note)
   end
   is_open_global_note = false
@@ -950,13 +950,21 @@ function M.move_layout_qf_down()
   end)
 end
 
+local was_warn = false
+
 function M.toggle_rotate_note_window()
-  local opts_note_window = Config.window.note
-  local next_win_layout = QfbookmarkWindow.get_next_rotate_note_window(opts_note_window)
+  if type(Config.window.note.open_cmd) == "table" and Config.window.note.open_cmd.mode == "float" then
+    if not was_warn then
+      QfbookmarkUtils.warn "This action is cancelled because a floating note window is in use"
+      was_warn = true
+    end
+    return
+  end
+
+  local next_win_layout = QfbookmarkWindow.get_next_rotate_note_window()
+
   window_command = next_win_layout
   __note()
 end
-
--- remove_augroup()
 
 return M

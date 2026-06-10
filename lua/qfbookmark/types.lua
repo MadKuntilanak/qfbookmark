@@ -60,9 +60,8 @@
 ---@field keywords QFBookKeywords
 
 ---@class QFBookNotes
----@field open_cmd string
----@field size_split integer
----@field size_vsplit integer
+---@field open_cmd string | { mode: string, anchor: string }
+---@field size string
 ---@field filetype string
 ---@field current_project { enabled: boolean, filename: string }
 

@@ -4,7 +4,7 @@ local QfbookmarkUIPopup = require "qfbookmark.ui.popup"
 local QfbookmarkMarkVisual = require "qfbookmark.visual"
 
 ---@alias WinCfg { buf: integer, enter: boolean, wincfg: vim.api.keyset.win_config }
----@alias QfBookUiWinCfg {  save: QFBookUiCfg, save_footer: QFBookUiCfg, mark_preview: QFBookUiCfg, mark: QFBookUiCfg, buffer: QFBookUiCfg  }
+---@alias QfBookUiWinCfg {  save: QFBookUiCfg, save_footer: QFBookUiCfg, mark_preview: QFBookUiCfg, mark: QFBookUiCfg, buffer: QFBookUiCfg, note: QFBookUiCfg }
 ---@alias QfBookUiPopupCfg { contents: table, content_map:table<integer, string>, win_opts: WinCfg, display_lines: table, entry_start_line: table, popup?: {win?: integer, buf?:integer, preview?: {win?: integer, buf?:integer} }, is_harpoon?: boolean, is_buffers?: boolean, save: {title: string, target_path: string, is_loc:boolean, cb:function, for_what:"save"|"rename"} }
 
 local M = {}
@@ -35,6 +35,11 @@ M.window = {
   },
   buffer = {
     augroup = "WinMarkBuffer",
+    win = nil,
+    buf = nil,
+  },
+  note = {
+    augroup = "WinMarkNote",
     win = nil,
     buf = nil,
   },
@@ -324,9 +329,29 @@ local __popup_opts_for = {
     -- unplan: I don't think this popup needs syntax highlighting..:(
     QfbookmarkUIKeymaps.setup_keymap_save_input(opts_popup, buf, cb)
   end,
+  ["note"] = function(opts_popup)
+    local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
+    if not win or not vim.api.nvim_win_is_valid(win) then
+      return
+    end
+    if not buf or not vim.api.nvim_buf_is_valid(buf) then
+      return
+    end
+
+    M.window.note.win = win
+    M.window.note.buf = buf
+
+    if not opts_popup.popup then
+      opts_popup.popup = {}
+      opts_popup.popup.win = M.window.note.win
+      opts_popup.popup.buf = M.window.note.buf
+    end
+
+    QfbookmarkUIKeymaps.setup_keymap_note(opts_popup, buf)
+  end,
 }
 
----@param for_what "mark" | "buffer" | "save"
+---@param for_what "mark" | "buffer" | "save"| "note"
 ---@param opts_popup QfBookUiPopupCfg
 ---@param is_editable? boolean
 ---@param cb? function | nil
@@ -341,7 +366,7 @@ function M.build_popup(for_what, opts_popup, cb, is_editable)
   end
 
   -- Call popup open window
-  if for_what == "buffer" then
+  if for_what == "buffer" or for_what == "note" then
     __popup_opts_for[for_what](opts_popup)
   elseif for_what == "save" then
     if cb then

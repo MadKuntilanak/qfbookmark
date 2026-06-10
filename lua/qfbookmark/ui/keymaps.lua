@@ -374,8 +374,8 @@ function M.build_keymaps(opts_popup, buf, cb)
   Mapping.wincfg = opts_popup.win_opts.wincfg
   Mapping.entry_start_line = opts_popup.entry_start_line and opts_popup.entry_start_line or {}
   Mapping.harpoon_map = opts_popup.content_map
-  Mapping.is_harpoon = opts_popup.is_harpoon and true or false
-  Mapping.is_buffers = opts_popup.is_buffers and true or false
+  Mapping.is_harpoon = opts_popup.is_harpoon and opts_popup.is_harpoon or false
+  Mapping.is_buffers = opts_popup.is_buffers and opts_popup.is_buffers or false
   Mapping.cb = cb
   Mapping.buf = buf
 
@@ -626,6 +626,19 @@ function M.setup_keymap_save_input(opts_popup, buf, cb)
   opts_popup.is_buffers = false
   opts_popup.is_harpoon = false
   local _keys = M.build_keymaps(opts_popup, buf, cb)
+
+  _keys["<c-d>"] = nil
+  _keys["<c-u>"] = nil
+
+  set_vim_keymaps(_keys)
+end
+
+---@param opts_popup QfBookUiPopupCfg
+---@param buf integer
+function M.setup_keymap_note(opts_popup, buf)
+  opts_popup.is_buffers = false
+  opts_popup.is_harpoon = false
+  local _keys = M.build_keymaps(opts_popup, buf)
 
   _keys["<c-d>"] = nil
   _keys["<c-u>"] = nil

@@ -68,7 +68,7 @@ require("qfbookmark").setup {
 ## Configuration
 
 <details>
-<summary>Default configuration</summary>
+<summary>Default configuration, click to expand</summary>
 
 ```lua
 require("qfbookmark").setup {
@@ -129,10 +129,29 @@ require("qfbookmark").setup {
       auto_unfold = true, -- unfold folds when jumping to a mark
     },
     note = {
+      -- Auto-save behavior:
+      -- Changes are automatically saved when opening, closing, or toggling the note window.
+      -- You don't need to manually save (no :w required),
+      -- but you can still do it if you want to.
+
+      -- Cursor state:
+      -- The last cursor position is saved automatically.
+      -- When reopening the note, the cursor will be restored
+      -- to its previous location, so you don't need to scroll
+      -- through long notes again.
+
+      -- `open_cmd` can be either:
+      --   string: Vim command used to open the note (e.g. "botright vsplit")
+      --   table : floating window configuration
+      --           { mode = "float", anchor = "NW|NE|SW|SE" }
       open_cmd = "botright vsplit",
-      size_split = 12,
-      size_vsplit = 50,
-      filetype = "org", -- "orgmode" | "norg" | "markdown" | "text"
+
+      size = "50", -- or 12%
+
+      -- Syntax highlighting is not provided by this plugin,
+      -- it relies on nvim built-in filetypes or external plugins :D
+      filetype = "org", -- "org" | "norg" | "md" | "txt"
+
       current_project = {
         enabled = true,
         filename = "TODO.org",

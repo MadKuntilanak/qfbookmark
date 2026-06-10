@@ -39,9 +39,21 @@ M.defaults = {
       auto_unfold = true,
     },
     note = {
-      open_cmd = "botright vsplit",
-      size_split = 12,
-      size_vsplit = 50,
+      -- Auto-save behavior:
+      -- Changes are automatically saved when opening, closing,
+      -- or toggling the note window.
+      -- You don't need to manually save (no :w required),
+      -- but you can still do it if you want to.
+
+      -- open_cmd can be either:
+      --   string: Vim command used to open the note (e.g. "botright vsplit")
+      --   table : floating window configuration
+      --           { mode = "float", anchor = "NW|NE|SW|SE" }
+      open_cmd = {
+        mode = "float",
+        anchor = "SE",
+      },
+      size = "40%",
       filetype = "org",
       current_project = {
         enabled = true,

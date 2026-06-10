@@ -1,20 +1,107 @@
 local QfbookmarkUtils = require "qfbookmark.utils"
 local QfbookmarkPath = require "qfbookmark.path"
 local QfbookmarkPathUtils = require "qfbookmark.path.utils"
+local QfbookmarkUiUtils = require "qfbookmark.ui.utils"
 
 local M = {}
 
 local last_position = nil
 
+local function get_position(anchor, width, height)
+  local lines = vim.o.lines
+  local cols = vim.o.columns
+
+  if anchor == "NW" then
+    return 0, 0
+  elseif anchor == "NE" then
+    return 0, cols - width
+  elseif anchor == "SW" then
+    return lines - height - 2, 0
+  elseif anchor == "SE" then
+    return lines - height - 2, cols - width
+  end
+end
+
+---@param note_path string
+---@param cfg_note QFBookNotes
+local function open_in_float(note_path, cfg_note)
+  local QfbookmarkUIView = require "qfbookmark.ui.view"
+
+  local editor = QfbookmarkUiUtils.get_editor_size()
+
+  local resnum = tonumber(cfg_note.size:match "%d+") or 60
+  local width = math.floor(editor.width * resnum / 100)
+  local height = editor.height
+
+  local row, col = get_position(cfg_note.open_cmd.anchor, width, height)
+
+  local shorten_path = QfbookmarkUiUtils.shorten_path(note_path, 40)
+  local title_str = "📝 Note: " .. shorten_path
+
+  local win_buf = vim.api.nvim_create_buf(false, true)
+
+  ---@type WinCfg
+  local wincfg = {
+    buf = win_buf,
+    enter = true,
+    wincfg = {
+      relative = "editor",
+      width = width,
+      height = height,
+      row = row,
+      col = col,
+      style = "minimal",
+      border = "rounded",
+      title = QfbookmarkUiUtils.format_title(title_str),
+      title_pos = "center",
+      footer = " Auto-save enabled ",
+      footer_pos = "center",
+    },
+  }
+
+  local __opts = {
+    contents = {},
+    win_opts = wincfg,
+    entry_start_line = {},
+  }
+
+  QfbookmarkUIView.build_popup("note", __opts)
+
+  vim.cmd("edit " .. vim.fn.fnameescape(note_path))
+
+  vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave" }, {
+    buffer = win_buf,
+    callback = function()
+      if vim.bo[win_buf].modified then
+        vim.cmd "silent write"
+      end
+    end,
+  })
+end
+
 ---@param note_path string
 ---@param window_command string
-local function toggle_note(note_path, window_command)
+---@param cfg_note QFBookNotes
+local function toggle_note(note_path, window_command, cfg_note)
   local buf_note = QfbookmarkUtils.windows_is_opened_by_name(note_path)
 
   if not buf_note then
-    vim.cmd(window_command)
-    vim.cmd("edit " .. vim.fn.fnameescape(note_path))
-    vim.api.nvim_set_option_value("winfixheight", true, { scope = "local", win = 0 })
+    if type(cfg_note) ~= "table" then
+      vim.cmd(window_command)
+      vim.cmd("edit " .. vim.fn.fnameescape(note_path))
+    else
+      open_in_float(note_path, cfg_note)
+    end
+
+    local win = vim.api.nvim_get_current_win()
+    vim.api.nvim_win_call(win, function()
+      local editor = QfbookmarkUiUtils.get_editor_size()
+      local resnum = tonumber(cfg_note.size:match "%d+")
+      local resize = math.floor(editor.width * resnum / 100)
+
+      vim.api.nvim_win_set_width(win, resize)
+      vim.api.nvim_set_option_value("winfixheight", true, { scope = "local", win = win })
+    end)
 
     vim.schedule(function()
       local line = vim.api.nvim_win_get_cursor(0)[1]
@@ -80,7 +167,7 @@ function M.handle_open(is_global, window_command, cfg_note)
     QfbookmarkPathUtils.create_file(note_path)
   end
 
-  toggle_note(note_path, window_command)
+  toggle_note(note_path, window_command, cfg_note)
 end
 
 return M
