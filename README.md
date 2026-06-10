@@ -20,7 +20,7 @@
 - Persistent marks saved to disk per project
 - QuickFix and LocList integration with custom formatter
 - Note files per local project or globally (supports org, md, txt, etc.)
-- Integrations: trouble.nvim, grug-far.nvim, fzf-lua
+- Quickfix integrations: works with trouble.nvim, grug-far.nvim, and fzf-lua
 
 ![qfbookmark](./assets/qfbookmark.png)
 
@@ -152,6 +152,12 @@ require("qfbookmark").setup {
       -- it relies on nvim built-in filetypes or external plugins :D
       filetype = "org", -- "org" | "norg" | "md" | "txt"
 
+      -- When enabled, notes are stored in a project-local file.
+      -- The target path will follow `filename` (e.g. "TODO.org") inside the current project directory.
+      -- This is useful for per-project notes (e.g. TODO.org per repo/workspace).
+
+      -- Global notes are always stored separately in `save_dir`,
+      -- and are shared across all projects/workspaces.
       current_project = {
         enabled = true,
         filename = "TODO.org",
