@@ -177,11 +177,16 @@ All options and their defaults: >lua
       },
     },
     popup = {
-      winhighlight  = "Normal:NormalFloat,FloatBorder:FloatBorder",
-      higroup_title = "Function",
-      quickfix      = true,
-      icons = {
-        box_message = " ",
+      quickfix     = true,
+      mark = {
+        anchor_win = "SE",
+        hl = "Visual",
+        keymap = {
+          up = "",
+          down = "",
+          move_down = "<a-n>",
+          move_up = "<a-p>",
+        },
       },
     },
   },

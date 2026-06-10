@@ -19,7 +19,7 @@
 - Treesitter-powered symbol resolution — shows enclosing function, class, struct, impl, or table context
 - Persistent marks saved to disk per project
 - QuickFix and LocList integration with custom formatter
-- Note files per buffer or global (supports org, norg, markdown, text)
+- Note files per local project or globally (supports org, md, txt, etc.)
 - Integrations: trouble.nvim, grug-far.nvim, fzf-lua
 
 ![qfbookmark](./assets/qfbookmark.png)
@@ -158,11 +158,16 @@ require("qfbookmark").setup {
       },
     },
     popup = {
-      winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder",
-      higroup_title = "Function",
       quickfix = true,
-      icons = {
-        box_message = " ",
+      mark = {
+        anchor_win = "SE",
+        hl = "Visual",
+        keymap = {
+          up = "",
+          down = "",
+          move_down = "<a-n>",
+          move_up = "<a-p>",
+        },
       },
     },
   },

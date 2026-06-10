@@ -1,0 +1,33 @@
+name: panvimdoc
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "README.md"
+  workflow_dispatch:
+
+jobs:
+  vimdoc:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Generate vimdoc from README
+        uses: kdheepak/panvimdoc@main
+        with:
+          vimdoc: qfbookmark
+          pandoc: README.md
+          demojify: true
+          treesitter: true
+
+      - name: Commit and push if changed
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "docs: sync vimdoc from README [skip ci]"
+          file_pattern: "doc/qfbookmark.txt"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"
