@@ -182,8 +182,15 @@ local function open_trouble_with_items(mode, items)
     section.node = Tree.build(items, section.section)
   end
 
-  view:open()
+  vim.schedule(function()
+    view:open()
+  end)
+
   view:wait(function()
+    if view.win.win and vim.api.nvim_win_is_valid(view.win.win) then
+      view.win:focus()
+    end
+
     view._frozen = false
   end)
 end
