@@ -5,8 +5,6 @@ local QfbookmarkUiUtils = require "qfbookmark.ui.utils"
 
 local M = {}
 
-local last_position = nil
-
 local function get_position(anchor, width, height)
   local lines = vim.o.lines
   local cols = vim.o.columns
@@ -22,9 +20,15 @@ local function get_position(anchor, width, height)
   end
 end
 
+local last_position = nil
+local toggle_open = false
+
 ---@param note_path string
 ---@param cfg_note QFBookNotes
-local function open_in_float(note_path, cfg_note)
+---@param is_global? boolean
+local function open_in_float(note_path, cfg_note, is_global)
+  is_global = is_global or false
+
   local QfbookmarkUIView = require "qfbookmark.ui.view"
 
   local editor = QfbookmarkUiUtils.get_editor_size()
@@ -36,7 +40,7 @@ local function open_in_float(note_path, cfg_note)
   local row, col = get_position(cfg_note.open_cmd.anchor, width, height)
 
   local shorten_path = QfbookmarkUiUtils.shorten_path(note_path, 40)
-  local title_str = "📝 Note: " .. shorten_path
+  local title_str = "📝 " .. (is_global and "Global " or "") .. "Note: " .. shorten_path
 
   local win_buf = vim.api.nvim_create_buf(false, true)
 
@@ -82,15 +86,16 @@ end
 ---@param note_path string
 ---@param window_command string
 ---@param cfg_note QFBookNotes
-local function toggle_note(note_path, window_command, cfg_note)
+local function toggle_note(note_path, window_command, cfg_note, is_global)
   local buf_note = QfbookmarkUtils.windows_is_opened_by_name(note_path)
 
-  if not buf_note then
+  if not buf_note or not toggle_open then
+    toggle_open = true
     if type(cfg_note) ~= "table" then
       vim.cmd(window_command)
       vim.cmd("edit " .. vim.fn.fnameescape(note_path))
     else
-      open_in_float(note_path, cfg_note)
+      open_in_float(note_path, cfg_note, is_global)
     end
 
     local win = vim.api.nvim_get_current_win()
@@ -127,6 +132,7 @@ local function toggle_note(note_path, window_command, cfg_note)
       end
     end)
   else
+    toggle_open = false
     local wins = vim.fn.win_findbuf(buf_note)
     for _, winid in ipairs(wins) do
       if winid and vim.api.nvim_win_is_valid(winid) then
@@ -167,7 +173,7 @@ function M.handle_open(is_global, window_command, cfg_note)
     QfbookmarkPathUtils.create_file(note_path)
   end
 
-  toggle_note(note_path, window_command, cfg_note)
+  toggle_note(note_path, window_command, cfg_note, is_global)
 end
 
 return M
