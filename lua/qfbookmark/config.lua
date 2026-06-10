@@ -5,15 +5,11 @@ M.defaults = {
   save_dir = vim.fn.stdpath "data" .. "/qfbookmark",
   picker = "default", -- fzf-lua
   extmarks = {
-    enabled = true,
     priority = 20,
     excluded = {
       buftypes = {},
       filetypes = {},
     },
-    builtin_marks = false,
-    cyclic_navigation = true,
-    refresh_interval = 250,
     throttle = 200,
     keywords = {
       MARK = { icon = "📌", hl_group = "QFBookMark", alt = " -> " },
@@ -22,33 +18,19 @@ M.defaults = {
       NOTE = { icon = "📝", hl_group = "QFBookNote", alt = " -> " },
     },
   },
-  persistence = {
-    builtin_marks = false,
-    force_write_shada = false,
-  },
   window = {
     notify = { mark = true, plugin = true },
-    theme = { qf = { enabled = true, limit = 50, highlight = true } },
-    layout = {
+    quickfix = {
       enabled = true,
       copen = "belowright copen",
       lopen = "belowright lopen",
-    },
-    actions = {
-      auto_center = true,
-      auto_unfold = true,
+      theme = { enabled = true, limit = 50, highlight = true },
+      actions = {
+        auto_center = true,
+        auto_unfold = true,
+      },
     },
     note = {
-      -- Auto-save behavior:
-      -- Changes are automatically saved when opening, closing,
-      -- or toggling the note window.
-      -- You don't need to manually save (no :w required),
-      -- but you can still do it if you want to.
-
-      -- open_cmd can be either:
-      --   string: Vim command used to open the note (e.g. "botright vsplit")
-      --   table : floating window configuration
-      --           { mode = "float", anchor = "NW|NE|SW|SE" }
       open_cmd = {
         mode = "float",
         anchor = "SE",
@@ -60,19 +42,14 @@ M.defaults = {
         filename = "TODO.org",
       },
     },
-    popup = {
-      winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder",
-      higroup_title = "Function",
-      quickfix = true,
-      mark = {
-        anchor_win = "SE",
-        hl = "Visual",
-        keymap = {
-          up = "",
-          down = "",
-          move_down = "<a-n>",
-          move_up = "<a-p>",
-        },
+    mark = {
+      anchor = "SE",
+      hl = "Visual",
+      keymap = {
+        up = "",
+        down = "",
+        move_down = "<a-n>",
+        move_up = "<a-p>",
       },
     },
   },
@@ -163,7 +140,7 @@ M.defaults = {
 -- +-----------------------------------------------------------------------------+
 ---@param opts WindowConfig
 local function make_qftf(opts)
-  local _qftf_limit = opts.theme.qf.limit
+  local _qftf_limit = opts.quickfix.theme.limit
   local _fname_fmt1 = "%-" .. _qftf_limit .. "s"
   local _fname_fmt2 = "…%." .. (_qftf_limit - 1) .. "s"
   local _valid_fmt = "%s │%5d:%-3d│%s %s"
@@ -237,11 +214,11 @@ function M.update_settings(user_opts)
   user_opts = user_opts or {}
   M.defaults = merge_settings(M.defaults, user_opts)
 
-  if M.defaults.window.theme.qf.enabled then
+  if M.defaults.window.quickfix.theme.enabled then
     make_qftf(M.defaults.window)
 
     -- Setup highlights and autocmds for qf buffer coloring
-    if M.defaults.window.theme.qf.highlight then
+    if M.defaults.window.quickfix.theme.highlight then
       require("qfbookmark.qftf_highlight").setup()
     end
   end

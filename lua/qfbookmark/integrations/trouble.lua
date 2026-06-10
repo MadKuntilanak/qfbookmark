@@ -264,7 +264,7 @@ local function toggle_trouble_window(list_type, is_loc)
     Trouble.close()
   end
 
-  local open_cmd = list_type == "loclist" and Config.window.layout.lopen or Config.window.layout.copen
+  local open_cmd = list_type == "loclist" and Config.window.quickfix.lopen or Config.window.quickfix.copen
 
   QfbookmarkUtils.save_to_qf_and_auto_open_qf(list_items, open_cmd, is_loc)
 

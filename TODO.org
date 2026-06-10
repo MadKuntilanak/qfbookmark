@@ -6,7 +6,7 @@
 - [x] test width popup window
 - [X] enhanced note window resizing by percentage
 - [X] support float note window
-- [ ] more test for node treesitter
+- [ ] more test for node treesitter [0/3]
   - [ ] for Go
   - [ ] for Rust
   - [ ] for TypeScript

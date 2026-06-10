@@ -283,7 +283,7 @@ function Mapping.mark.move_item_to(is_prev)
   local tgt_finish = (entry_starts[tgt_pos + 1] or (line_count + 1)) - 1
 
   -- flash-highlight target entry
-  local hl_group = Config.window.popup.mark and Config.window.popup.mark.hl or "Visual"
+  local hl_group = Config.window.mark and Config.window.mark.hl or "Visual"
   local hl_lines = {}
   for ln = tgt_start, tgt_finish do
     hl_lines[#hl_lines + 1] = { ln }
@@ -507,13 +507,13 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
   _keys["<c-j>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(1) end }
   -- stylua: ignore end
 
-  _keys[Config.window.popup.mark and Config.window.popup.mark.keymap.move_down or "<a-n>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymap.move_down or "<a-n>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.move_item_to()
     end,
   }
-  _keys[Config.window.popup.mark and Config.window.popup.mark.keymap.move_up or "<a-p>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymap.move_up or "<a-p>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.move_item_to(true)

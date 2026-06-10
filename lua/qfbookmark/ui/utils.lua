@@ -79,7 +79,7 @@ function M.get_col_row(height_editor, width_editor, width_main_popup, is_center)
 
   local _col = width_editor - width_main_popup - M.PADDING
   local col_minus = 5
-  local col = Config.window.popup.mark.anchor_win == "NW" and col_minus or _col
+  local col = Config.window.mark.anchor == "NW" and col_minus or _col
 
   return col, row
 end

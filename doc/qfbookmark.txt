@@ -143,10 +143,6 @@ All options and their defaults: >lua
       copen   = "belowright copen",
       lopen   = "belowright lopen",
     },
-    actions = {
-      auto_center = true, -- center buffer on jump
-      auto_unfold = true, -- unfold folds when jumping to a mark
-    },
     note = {
       -- Auto-save behavior:
       -- Changes are automatically saved when opening, closing, or toggling the note window.
@@ -179,7 +175,7 @@ All options and their defaults: >lua
     popup = {
       quickfix     = true,
       mark = {
-        anchor_win = "SE",
+        anchor = "SE",
         hl = "Visual",
         keymap = {
           up = "",

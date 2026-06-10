@@ -16,11 +16,11 @@ function M.move_to(direction, fn)
 
   if QfbookmarkUtils.is_loclist() then
     cmd_open = direction == "above" and "aboveleft lopen" or "belowright lopen"
-    Config.window.layout.lopen = cmd_open
+    Config.window.quickfix.lopen = cmd_open
     list_type = "loclist"
   else
     cmd_open = direction == "above" and "aboveleft copen" or "belowright copen"
-    Config.window.layout.copen = cmd_open
+    Config.window.quickfix.copen = cmd_open
     list_type = "quickfix"
   end
 

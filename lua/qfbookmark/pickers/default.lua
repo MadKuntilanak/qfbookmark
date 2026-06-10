@@ -100,7 +100,7 @@ local function save_to_qf(state, selected)
 
   local data_lists = QfbookmarkUtils.get_populate_data_qf(is_loc)
   if data_lists then
-    QfbookmarkPaths.save_data_lists(data_lists, is_loc)
+    QfbookmarkPaths.save_data_lists(data_lists, is_global, is_loc)
   end
 end
 

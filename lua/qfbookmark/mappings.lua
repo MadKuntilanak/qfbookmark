@@ -409,9 +409,9 @@ function M.setup()
     }
   end
 
-  if Config.window.layout and Config.window.layout.enabled then
+  if Config.window.quickfix and Config.window.quickfix.enabled then
     append_active_keymaps({
-      is_set = Config.window.layout.enabled,
+      is_set = Config.window.quickfix.enabled,
       keymaps = {
         {
           desc = "Qf: move window to up [QFbookmark]",

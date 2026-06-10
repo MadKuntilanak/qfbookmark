@@ -50,13 +50,9 @@
 ---@field id integer
 
 ---@class QFBookExtermarks
----@field enabled boolean
 ---@field excluded { buftypes: string[], filetypes: string[] }
----@field builtin_marks boolean
 ---@field throttle integer
----@field cyclic_navigation boolean
 ---@field priority integer
----@field refresh_interval integer
 ---@field keywords QFBookKeywords
 
 ---@class QFBookNotes
@@ -65,18 +61,10 @@
 ---@field filetype string
 ---@field current_project { enabled: boolean, filename: string }
 
----@class PopupConfig
----@field winhighlight string
----@field higroup_title string
----@field quickfix boolean
----@field mark { anchor_win: string, hl: string, keymap: { up: string, down: string, move_up: string,move_down: string}}
-
 ---@class WindowConfig
 ---@field notify { enabled: boolean, mark: boolean, plugin: boolean }
----@field theme { qf : { enabled: boolean, maxheight: integer, limit: integer, highlight: boolean } }
----@field layout { enabled: boolean, copen: string, lopen: string }
----@field actions { auto_center: boolean, auto_unfold: boolean }
----@field popup PopupConfig
+---@field quickfix { enabled: boolean, copen: string, lopen: string, theme: {  enabled: boolean, maxheight: integer, limit: integer, highlight: boolean  }, actions: { auto_center: boolean, auto_unfold: boolean } }
+---@field mark { anchor: string, hl: string, keymap: { up: string, down: string, move_up: string,move_down: string}}
 ---@field note QFBookNotes
 
 ---@class QFBookKeymapQfSpec
@@ -183,15 +171,10 @@
 ---@field integrations QFBookKeymapIntegrations
 ---@field note QFBookKeymapNotes
 
----@class QFBookPersistence
----@field builtin_marks boolean
----@field force_write_shada boolean
-
 ---@class QFBookmarkConfig
 ---@field save_dir string
 ---@field picker "fzf-lua" | "default"
 ---@field extmarks QFBookExtermarks
----@field persistence QFBookPersistence
 ---@field window WindowConfig
 ---@field keymaps QFBookmarkKeymap
 ---@field ns? integer

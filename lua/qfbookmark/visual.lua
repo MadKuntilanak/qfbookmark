@@ -11,9 +11,7 @@ function M.insert_signs(id, mark_mode, bufnr, line, extmarkspec)
 
   if not M.sign_cache[sign_name] then
     M.sign_cache[sign_name] = true
-    if Config.extmarks.enabled then
-      vim.fn.sign_define(sign_name, { text = extmarkspec.icon, texthl = extmarkspec.hl_group })
-    end
+    vim.fn.sign_define(sign_name, { text = extmarkspec.icon, texthl = extmarkspec.hl_group })
   end
 
   local priority = 1

@@ -312,10 +312,6 @@ end
 
 ---@param mark_mode QFBookMarkMode
 local function add_sign(mark_mode)
-  if not Config.extmarks.enabled then
-    return
-  end
-
   local mark_tbl = M.buffers
   local bufnr = vim.api.nvim_get_current_buf()
 
@@ -601,8 +597,8 @@ local function add_item(list_type)
   end
 
   local is_location_target = list_type == "loclist"
-  local cmd_ = is_location_target and { "lclose", Config.window.layout.lopen, "loclist" }
-    or { "cclose", Config.window.layout.copen, "qflist" }
+  local cmd_ = is_location_target and { "lclose", Config.window.quickfix.lopen, "loclist" }
+    or { "cclose", Config.window.quickfix.copen, "qflist" }
 
   local title = QfbookmarkUtils.get_title_qf(QfbookmarkUtils.is_loclist())
   if title and title:match "setqflist" or #title == 0 then
@@ -634,7 +630,7 @@ local function add_item(list_type)
     QfbookmarkUtils.save_to_qf(list_items, false, "a")
   end
 
-  if Config.window.popup.quickfix then
+  if Config.window.quickfix.enabled then
     local is_open, _ = QfbookmarkUtils.is_vim_list_open(true)
     if not is_open then
       vim.cmd(cmd_[2])
@@ -653,8 +649,8 @@ end
 ---@param list_type QFBookListType
 local function rename_header(list_type)
   local is_location_target = list_type == "loclist"
-  local cmd = is_location_target and { Config.window.layout.lopen, "LocList" }
-    or { Config.window.layout.copen, "QuickFix" }
+  local cmd = is_location_target and { Config.window.quickfix.lopen, "LocList" }
+    or { Config.window.quickfix.copen, "QuickFix" }
 
   if QfbookmarkUtils.is_loclist() then
     QfbookmarkUtils.warn("Renaming the title is not supported in the " .. cmd[2] .. ",\nOnly in Quickfix")
@@ -685,8 +681,8 @@ local function toggle_list(list_type, force_close)
   force_close = force_close or false
 
   local is_location_target = list_type == "loclist"
-  local cmd_ = is_location_target and { "lclose", Config.window.layout.lopen }
-    or { "cclose", Config.window.layout.copen }
+  local cmd_ = is_location_target and { "lclose", Config.window.quickfix.lopen }
+    or { "cclose", Config.window.quickfix.copen }
   local is_open, qf_or_loclist = QfbookmarkUtils.is_vim_list_open(true)
 
   if (is_open and (list_type == qf_or_loclist)) or force_close then
@@ -723,8 +719,8 @@ end
 
 function M.open_item_qf()
   local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
-  local is_center = Config.window.actions.auto_center
-  local is_ispanded = Config.window.actions.auto_unfold
+  local is_center = Config.window.quickfix.actions.auto_center
+  local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_open("default", is_center, is_ispanded)
 
   if Config.keymaps.open_item.default.auto_close then
@@ -733,8 +729,8 @@ function M.open_item_qf()
 end
 function M.open_item_in_tab()
   local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
-  local is_center = Config.window.actions.auto_center
-  local is_ispanded = Config.window.actions.auto_unfold
+  local is_center = Config.window.quickfix.actions.auto_center
+  local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_open("tabnew", is_center, is_ispanded)
 
   if Config.keymaps.open_item.tab.auto_close then
@@ -743,8 +739,8 @@ function M.open_item_in_tab()
 end
 function M.open_item_in_split()
   local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
-  local is_center = Config.window.actions.auto_center
-  local is_ispanded = Config.window.actions.auto_unfold
+  local is_center = Config.window.quickfix.actions.auto_center
+  local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_open("split", is_center, is_ispanded)
 
   if Config.keymaps.open_item.split.auto_close then
@@ -753,8 +749,8 @@ function M.open_item_in_split()
 end
 function M.open_item_in_vsplit()
   local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
-  local is_center = Config.window.actions.auto_center
-  local is_ispanded = Config.window.actions.auto_unfold
+  local is_center = Config.window.quickfix.actions.auto_center
+  local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_open("vsplit", is_center, is_ispanded)
 
   if Config.keymaps.open_item.vsplit.auto_close then
@@ -763,13 +759,13 @@ function M.open_item_in_vsplit()
 end
 
 function M.next_item()
-  local is_center = Config.window.actions.auto_center
-  local is_ispanded = Config.window.actions.auto_unfold
+  local is_center = Config.window.quickfix.actions.auto_center
+  local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_nav(false, "open", is_center, is_ispanded, false)
 end
 function M.prev_item()
-  local is_center = Config.window.actions.auto_center
-  local is_ispanded = Config.window.actions.auto_unfold
+  local is_center = Config.window.quickfix.actions.auto_center
+  local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_nav(true, "open", is_center, is_ispanded, false)
 end
 function M.next_hist_qf()
@@ -804,7 +800,7 @@ function M.delete_item()
   data_lists = QfbookmarkUtils.get_list_qf(QfbookmarkUtils.is_loclist()).items
 
   local close_cmd = QfbookmarkUtils.is_loclist() and "lclose" or "cclose"
-  local open_cmd = QfbookmarkUtils.is_loclist() and Config.window.layout.lopen or Config.window.layout.copen
+  local open_cmd = QfbookmarkUtils.is_loclist() and Config.window.quickfix.lopen or Config.window.quickfix.copen
 
   local count = vim.v.count
   if count == 0 then
@@ -934,7 +930,7 @@ end
 -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 function M.move_layout_qf_up()
-  if not Config.window.layout.enabled then
+  if not Config.window.quickfix.enabled then
     return
   end
   QfbookmarkWindow.move_to("above", function(list_type)
@@ -942,7 +938,7 @@ function M.move_layout_qf_up()
   end)
 end
 function M.move_layout_qf_down()
-  if not Config.window.layout.enabled then
+  if not Config.window.quickfix.enabled then
     return
   end
   QfbookmarkWindow.move_to("bottom", function(list_type)

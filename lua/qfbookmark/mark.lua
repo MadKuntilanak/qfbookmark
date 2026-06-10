@@ -274,9 +274,7 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line
     }
   end
 
-  if Config.extmarks.enabled then
-    insert_sign(mark_lists, id, mark_mode, bufnr, line, extmarkspec)
-  end
+  insert_sign(mark_lists, id, mark_mode, bufnr, line, extmarkspec)
 
   return mark_lists
 end
@@ -419,10 +417,6 @@ end
 ---@return QFbookBufferMark|nil
 function M.add_mark(mark_lists, mark_mode, extmarkspec, toggle_delete)
   toggle_delete = toggle_delete or false
-
-  if not Config.extmarks.enabled then
-    return nil
-  end
 
   local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
 

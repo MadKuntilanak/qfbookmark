@@ -81,7 +81,6 @@ require("qfbookmark").setup {
 
   -- Extmark (inline sign) settings
   extmarks = {
-    enabled = true,
     priority = 20,
 
     -- Exclude certain buffer or file types from showing extmarks
@@ -90,9 +89,6 @@ require("qfbookmark").setup {
       filetypes = {},
     },
 
-    builtin_marks = false,
-    cyclic_navigation = true,
-    refresh_interval = 250, -- ms
     throttle = 200, -- ms
 
     -- Mark mode definitions: icon, highlight group, and sign text
@@ -104,29 +100,21 @@ require("qfbookmark").setup {
     },
   },
 
-  -- Persistence settings
-  persistence = {
-    builtin_marks = false,
-    force_write_shada = false,
-  },
-
   -- Window and UI settings
   window = {
     notify = {
       mark = true, -- notify when a mark is created/deleted
       plugin = true, -- notify plugin-level messages
     },
-    theme = {
-      enabled = true, -- enable custom quickfix formatter (qftf)
-    },
-    layout = {
+    quickfix = {
       enabled = true,
       copen = "belowright copen",
       lopen = "belowright lopen",
-    },
-    actions = {
-      auto_center = true, -- center buffer on jump
-      auto_unfold = true, -- unfold folds when jumping to a mark
+      theme = { enabled = true, limit = 50, highlight = true },
+      actions = {
+        auto_center = true, -- center buffer on jump
+        auto_unfold = true,
+      },
     },
     note = {
       -- Auto-save behavior:
@@ -163,17 +151,14 @@ require("qfbookmark").setup {
         filename = "TODO.org",
       },
     },
-    popup = {
-      quickfix = true,
-      mark = {
-        anchor_win = "SE",
-        hl = "Visual",
-        keymap = {
-          up = "",
-          down = "",
-          move_down = "<a-n>",
-          move_up = "<a-p>",
-        },
+    mark = {
+      anchor = "SE",
+      hl = "Visual",
+      keymap = {
+        up = "",
+        down = "",
+        move_down = "<a-n>",
+        move_up = "<a-p>",
       },
     },
   },

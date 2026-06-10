@@ -266,7 +266,7 @@ function M.mark_preview(main_wincfg, width, height)
 
   local _col = main_wincfg.col - width - QfbookmarkUIUtils.PADDING_PREVIEW - 12
   local _col_minus = main_wincfg.col + main_wincfg.width + QfbookmarkUIUtils.PADDING_PREVIEW
-  local col = Config.window.popup.mark.anchor_win == "NW" and _col_minus or _col
+  local col = Config.window.mark.anchor == "NW" and _col_minus or _col
   local row = main_wincfg.row
 
   ---@type WinCfg
