@@ -22,6 +22,8 @@
 - Note files per buffer or global (supports org, norg, markdown, text)
 - Integrations: trouble.nvim, grug-far.nvim, fzf-lua
 
+![qfbookmark](./assets/qfbookmark.png)
+
 ---
 
 ## Requirements
