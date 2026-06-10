@@ -11,92 +11,37 @@
 >
 > Please report issues if you find any problems. 
 
-`qfbookmark` combines:
-
-- File bookmarks
-- Quickfix management
-- Location list management
-- Notes attached to files
-- Extmark visualization
-- [**Trouble**](https://github.com/folke/trouble.nvim) and [**Grug Far**](https://github.com/MagicDuck/grug-far.nvim) integration
- 
-
-The goal is to provide a single workflow for navigating, annotating, organizing, and revisiting code locations.
-
----
 
 ## Features
 
-### Bookmark Categories
-
-Create categorized bookmarks:
-
-- MARK
-- FIX
-- DEBUG
-- NOTE
-
-Each category can be highlighted independently through extmarks.
-
-### Quickfix & Location List
-
-- Add entries to quickfix
-- Add entries to location list
-- Navigate entries quickly
-- Manage list history
-- Custom quickfix formatting (`qftf`)
-
-### Notes
-
-Attach notes to files.
-
-Supports:
-
-- Local notes
-- Global notes
-
-Configurable filetype and extension.
-
-### Extmarks
-
-Optional virtual indicators directly inside buffers.
-
-Supports:
-
-- Custom highlights
-- Cyclic navigation
-- Refresh throttling
-- Filetype exclusion
-- Buftype exclusion
-
-### Persistence
-
-Save and restore:
-
-- Bookmarks
-- Notes
-- Metadata
-
-### Integrations
-
-- Trouble.nvim
-- GrugFar
-- Copyline
+- Mark lines with modes: `MARK`, `FIX`, `DEBUG`, `NOTE`
+- Harpoon-style popup with preview, symbol context (function/class/struct/impl), and per-entry highlights
+- Treesitter-powered symbol resolution — shows enclosing function, class, struct, impl, or table context
+- Persistent marks saved to disk per project
+- QuickFix and LocList integration with custom formatter
+- Note files per buffer or global (supports org, norg, markdown, text)
+- Integrations: trouble.nvim, grug-far.nvim, fzf-lua
 
 ---
 
+## Requirements
+
+- Neovim >= 0.10
+- [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) (optional, for symbol context)
+
 ## Installation
 
-### lazy.nvim
+**lazy.nvim**
 
 ```lua
 {
-    "MadKuntilanak/qfbookmark",
-    opts = {},
+  "MadKuntilanak/qfbookmark",
+  event = "VeryLazy",
+  opts = {},
 }
 ```
 
-### packer.nvim
+**packer.nvim**
 
 ```lua
 use {
@@ -107,6 +52,15 @@ use {
 }
 ```
 
+## Setup
+
+```lua
+require("qfbookmark").setup {
+  -- all options shown with their defaults
+}
+```
+
+
 ---
 
 ## Configuration
@@ -116,60 +70,85 @@ use {
 
 ```lua
 require("qfbookmark").setup {
+  -- Directory where marks are persisted across sessions.
   save_dir = vim.fn.stdpath "data" .. "/qfbookmark",
 
+  -- Picker backend. "default" uses the built-in popup.
+  -- "fzf-lua" uses fzf-lua for fuzzy search.
   picker = "default",
 
+  -- Extmark (inline sign) settings
   extmarks = {
     enabled = true,
     priority = 20,
-    builtin_marks = false,
-    cyclic_navigation = true,
 
+    -- Exclude certain buffer or file types from showing extmarks
     excluded = {
       buftypes = {},
       filetypes = {},
     },
+
+    builtin_marks = false,
+    cyclic_navigation = true,
+    refresh_interval = 250, -- ms
+    throttle = 200, -- ms
+
+    -- Mark mode definitions: icon, highlight group, and sign text
+    keywords = {
+      MARK = { icon = "📌", hl_group = "QFBookMark", alt = " -> " },
+      FIX = { icon = "🔧", hl_group = "QFBookFix", alt = " -> " },
+      DEBUG = { icon = "🚧", hl_group = "QFBookDebug", alt = " -> " },
+      NOTE = { icon = "📝", hl_group = "QFBookNote", alt = " -> " },
+    },
   },
 
+  -- Persistence settings
   persistence = {
     builtin_marks = false,
     force_write_shada = false,
   },
 
+  -- Window and UI settings
   window = {
     notify = {
-      mark = true,
-      plugin = true,
+      mark = true, -- notify when a mark is created/deleted
+      plugin = true, -- notify plugin-level messages
     },
-
+    theme = {
+      enabled = true, -- enable custom quickfix formatter (qftf)
+    },
     layout = {
       enabled = true,
+      copen = "belowright copen",
+      lopen = "belowright lopen",
     },
-
     actions = {
-      auto_center = true,
-      auto_unfold = true,
+      auto_center = true, -- center buffer on jump
+      auto_unfold = true, -- unfold folds when jumping to a mark
     },
-
     note = {
       open_cmd = "botright vsplit",
-      filetype = "org",
-      file_ext = "org",
+      size_split = 12,
+      size_vsplit = 50,
+      filetype = "org", -- "orgmode" | "norg" | "markdown" | "text"
+      current_project = {
+        enabled = true,
+        filename = "TODO.org",
+      },
+    },
+    popup = {
+      winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder",
+      higroup_title = "Function",
+      quickfix = true,
+      icons = {
+        box_message = " ",
+      },
     },
   },
-}
-```
-</details>
 
-
-
-<details>
-<summary>Keymaps</summary>
-
-```lua
-
+  -- Keymaps
   keymaps = {
+    -- Set to true to disable all default keymaps and define your own
     disable_all = false,
 
     actions = {
@@ -183,11 +162,13 @@ require("qfbookmark").setup {
       mark_win_open = "gp",
       buffers = "gn",
 
+      -- Create marks
       mark = "<Leader>qq",
       fix = "<Leader>qf",
       debug = "<Leader>qd",
-      note = "<Leader>qn",
+      note = "<Leader>qN",
 
+      -- Jump directly to harpoon slot N
       harpoon = {
         mark_1 = "<a-1>",
         mark_2 = "<a-2>",
@@ -239,6 +220,7 @@ require("qfbookmark").setup {
       toggle_local_note = "<Leader>fn",
       toggle_global_note = "<Leader>fN",
     },
+
     integrations = {
       trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
       grugfar = { enabled = true, toggle = "<Localleader>gg" },
@@ -249,9 +231,23 @@ require("qfbookmark").setup {
       },
     },
   },
-
+}
 ```
 </details>
+
+## Mark Popup
+
+Open the mark popup with `gp` (default). Each entry shows:
+
+```
+ 1  MARK  ui/init.lua ●
+          :92  local path_width = calc…
+          ƒ mark_harpoon_popup
+
+ 2  FIX   system_dbs.rs
+          :12  DbType::Mysql => Se…
+           SystemDb > ƒ is_system_db
+```
 
 ---
 
@@ -311,40 +307,6 @@ require("qfbookmark").setup {
 
 ---
 
-## Integrations
-
-### Trouble.nvim
-
-```lua
-integrations = {
-  trouble = {
-    enabled = true,
-  },
-}
-```
-
-### GrugFar
-
-```lua
-integrations = {
-  grugfar = {
-    enabled = true,
-  },
-}
-```
-
-### Copyline
-
-```lua
-integrations = {
-  copyline = {
-    enabled = true,
-  },
-}
-```
-
----
-
 ## Disable All Default Keymaps
 
 ```lua
@@ -357,19 +319,36 @@ require("qfbookmark").setup {
 
 Then define only the mappings you want.
 
+
 ---
 
-## Why qfbookmark?
+## Integrations
 
-Many plugins solve only one problem:
+### [**Trouble**](https://github.com/folke/trouble.nvim)
 
-- bookmarks
-- quickfix
-- notes
-- marks
-- navigation
+```lua
+integrations = {
+  tbbuble = {
+    enabled = true,
+    toggle_qflist = "Q",
+    toggle_loclist = "L",
+  },
+}
+```
 
-`qfbookmark` combines them into a single workflow centered around Neovim's quickfix ecosystem.
+### [**Grug Far**](https://github.com/MagicDuck/grug-far.nvim)
+
+```lua
+integrations = {
+  grugfar = {
+    enabled = true,
+    toggle = "<Localleader>gg",
+  },
+}
+```
+### [fzf-lua](https://github.com/ibhagwan/fzf-lua) 
+
+Set `picker = "fzf-lua"` to use fzf-lua for fuzzy searching marks.
 
 ---
 

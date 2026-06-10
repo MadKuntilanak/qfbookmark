@@ -1,0 +1,346 @@
+*qfbookmark.txt*        Bookmark quickfix and loclist entries with mark navigation
+
+==============================================================================
+CONTENTS                                                    *qfbookmark-contents*
+
+  1. Introduction .................. |qfbookmark-intro|
+  2. Requirements .................. |qfbookmark-requirements|
+  3. Installation .................. |qfbookmark-installation|
+  4. Setup ......................... |qfbookmark-setup|
+  5. Configuration ................. |qfbookmark-config|
+     5.1 extmarks .................. |qfbookmark-config-extmarks|
+     5.2 persistence ............... |qfbookmark-config-persistence|
+     5.3 window .................... |qfbookmark-config-window|
+     5.4 keymaps ................... |qfbookmark-config-keymaps|
+  6. Mark Popup .................... |qfbookmark-popup|
+  7. Symbol Context ................ |qfbookmark-symbols|
+  8. Note Files .................... |qfbookmark-notes|
+  9. Integrations .................. |qfbookmark-integrations|
+ 10. License ....................... |qfbookmark-license|
+
+==============================================================================
+1. INTRODUCTION                                               *qfbookmark-intro*
+
+qfbookmark is a Neovim plugin for bookmarking quickfix and loclist entries,
+with harpoon-style mark navigation, persistent storage, and a rich popup UI
+with treesitter symbol context.
+
+Features:
+- Mark lines with modes: MARK, FIX, DEBUG, NOTE
+- Harpoon-style popup with preview and per-entry highlights
+- Treesitter-powered symbol resolution — shows enclosing function, class,
+  struct, impl, or table context
+- Persistent marks saved to disk per project
+- QuickFix and LocList integration with custom formatter
+- Note files per buffer or global (org, norg, markdown, text)
+- Integrations: trouble.nvim, grug-far.nvim, fzf-lua
+
+==============================================================================
+2. REQUIREMENTS                                        *qfbookmark-requirements*
+
+- Neovim >= 0.10
+- nvim-treesitter (optional, for symbol context)
+
+==============================================================================
+3. INSTALLATION                                        *qfbookmark-installation*
+
+With lazy.nvim: >lua
+  {
+    "MadKuntilanak/qfbookmark",
+    event = "VeryLazy",
+    opts = {},
+  }
+<
+
+With packer.nvim: >lua
+  use {
+    "MadKuntilanak/qfbookmark",
+    config = function()
+      require("qfbookmark").setup()
+    end,
+  }
+<
+
+==============================================================================
+4. SETUP                                                      *qfbookmark-setup*
+
+Call setup with an optional config table: >lua
+  require("qfbookmark").setup({
+    -- options here, all are optional
+  })
+<
+
+==============================================================================
+5. CONFIGURATION                                             *qfbookmark-config*
+
+All options and their defaults: >lua
+  require("qfbookmark").setup({
+    -- Directory where marks are persisted across sessions.
+    save_dir = vim.fn.stdpath("data") .. "/qfbookmark",
+
+    -- Picker backend.
+    -- "default" uses the built-in popup.
+    -- "fzf-lua" uses fzf-lua for fuzzy search.
+    picker = "default",
+
+    extmarks   = { ... },  -- see |qfbookmark-config-extmarks|
+    persistence = { ... }, -- see |qfbookmark-config-persistence|
+    window     = { ... },  -- see |qfbookmark-config-window|
+    keymaps    = { ... },  -- see |qfbookmark-config-keymaps|
+  })
+<
+
+------------------------------------------------------------------------------
+5.1 extmarks                                        *qfbookmark-config-extmarks*
+>lua
+  extmarks = {
+    enabled  = true,
+    priority = 20,
+
+    -- Exclude certain buffer or file types from showing extmarks
+    excluded = {
+      buftypes  = {},
+      filetypes = {},
+    },
+
+    builtin_marks     = false,
+    cyclic_navigation = true,
+    refresh_interval  = 250,  -- ms
+    throttle          = 200,  -- ms
+
+    -- Mark mode definitions: icon, highlight group, sign text
+    keywords = {
+      MARK  = { icon = "📌", hl_group = "QFBookMark",  alt = " -> " },
+      FIX   = { icon = "🔧", hl_group = "QFBookFix",   alt = " -> " },
+      DEBUG = { icon = "🚧", hl_group = "QFBookDebug", alt = " -> " },
+      NOTE  = { icon = "📝", hl_group = "QFBookNote",  alt = " -> " },
+    },
+  },
+<
+
+------------------------------------------------------------------------------
+5.2 persistence                                  *qfbookmark-config-persistence*
+>lua
+  persistence = {
+    builtin_marks     = false,
+    force_write_shada = false,
+  },
+<
+
+------------------------------------------------------------------------------
+5.3 window                                            *qfbookmark-config-window*
+>lua
+  window = {
+    notify = {
+      mark   = true,  -- notify when a mark is created/deleted
+      plugin = true,  -- notify plugin-level messages
+    },
+    theme = {
+      enabled = true, -- enable custom quickfix formatter (qftf)
+    },
+    layout = {
+      enabled = true,
+      copen   = "belowright copen",
+      lopen   = "belowright lopen",
+    },
+    actions = {
+      auto_center = true, -- center buffer on jump
+      auto_unfold = true, -- unfold folds when jumping to a mark
+    },
+    note = {
+      open_cmd    = "botright vsplit",
+      size_split  = 12,
+      size_vsplit = 50,
+      filetype    = "org", -- "orgmode"|"norg"|"markdown"|"text"
+      file_ext    = "org", -- "org"|"norg"|"md"|"txt"
+    },
+    popup = {
+      winhighlight  = "Normal:NormalFloat,FloatBorder:FloatBorder",
+      higroup_title = "Function",
+      quickfix      = true,
+      icons = {
+        box_message = " ",
+      },
+    },
+  },
+<
+
+------------------------------------------------------------------------------
+5.4 keymaps                                          *qfbookmark-config-keymaps*
+
+Set `disable_all = true` to clear all defaults and define only what you need.
+>lua
+  keymaps = {
+    disable_all = false, -- true = clear all defaults
+
+    actions = {
+      delete_mark        = "dm",
+      delete_mark_buffer = "dM",
+      delete_item        = "dd",
+      delete_item_all    = "<Localleader>qC",
+      rename_title       = "<Localleader>qR",
+
+      save_or_load  = "<Leader>qy",
+      mark_win_open = "gp",
+      buffers       = "gn",
+
+      mark  = "<Leader>qq",
+      fix   = "<Leader>qf",
+      debug = "<Leader>qd",
+      note  = "<Leader>qN",
+
+      -- Jump directly to harpoon slot N
+      harpoon = {
+        mark_1 = "<a-1>", mark_2 = "<a-2>", mark_3 = "<a-3>",
+        mark_4 = "<a-4>", mark_5 = "<a-5>", mark_6 = "<a-6>",
+        mark_7 = "<a-7>", mark_8 = "<a-8>", mark_9 = "<a-9>",
+      },
+    },
+
+    open_item = {
+      default = { keys = { "o", "<CR>" },    auto_close = true  },
+      split   = { keys = { "ss", "<C-s>" },  auto_close = false },
+      vsplit  = { keys = { "sv", "<C-v>" },  auto_close = false },
+      tab     = { keys = { "st", "tn" },     auto_close = true  },
+    },
+
+    navigation = {
+      quicklist = {
+        next      = "<a-n>",
+        prev      = "<a-p>",
+        next_hist = "gl",
+        prev_hist = "gh",
+      },
+      window = {
+        move_up            = "<c-k>",
+        move_down          = "<c-j>",
+        rotate_layout_note = "<a-=>",
+      },
+      mark = {
+        next = "gj",
+        prev = "gk",
+      },
+    },
+
+    quickfix = { toggle_open = "<Leader>qj", add_item = "tt" },
+    loclist  = { toggle_open = "<Leader>ql", add_item = "ty" },
+
+    note = {
+      toggle_local_note  = "<Leader>fn",
+      toggle_global_note = "<Leader>fN",
+    },
+
+    integrations = {
+      trouble  = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
+      grugfar  = { enabled = true, toggle = "<Localleader>gg" },
+      copyline = { enabled = true, toggle = "<Leader>qc" },
+      cmdline_strings = { enabled = false, commands = {} },
+    },
+  },
+<
+
+==============================================================================
+6. MARK POPUP                                                *qfbookmark-popup*
+
+Open the mark popup with `gp` (default `keymaps.actions.mark_win_open`).
+
+Each entry shows three lines: >
+
+  1  MARK  ui/init.lua ●
+           :92  local path_width = calc…
+           ƒ mark_harpoon_popup
+
+  2  FIX   system_dbs.rs
+           :12  DbType::Mysql => Se…
+            SystemDb > ƒ is_system_db
+<
+
+Line 1  Header — index, mode badge, filename, current-file indicator (●)
+Line 2  Detail — line number and preview text
+Line 3  Symbol — treesitter context (omitted when not resolvable)
+
+Popup keymaps ~
+
+  Key             Action ~
+  `<CR>` / `o`     Open in current window
+  `<C-v>` / `sv`   Open in vertical split
+  `<C-s>` / `ss`   Open in horizontal split
+  `<C-t>` / `tn`   Open in new tab
+  `<C-j>` / `<C-n>` Next entry
+  `<C-k>` / `<C-p>` Previous entry
+  `dd`             Delete entry
+  `<C-q>` / `<Esc>` Close popup
+
+==============================================================================
+7. SYMBOL CONTEXT                                          *qfbookmark-symbols*
+
+When nvim-treesitter is available, each mark entry shows its enclosing symbol.
+The innermost two levels are shown, separated by ` > `.
+
+  Pattern                         Display ~
+  Inside a function               `ƒ functionName`
+  Inside a method                 `ƒ methodName`
+  Inside a class method           ` ClassName > ƒ methodName`
+  Inside a struct (Go/Rust)       ` StructName`
+  Inside an impl method (Rust)    ` StructName > ƒ methodName`
+  Inside an interface (Go/TS)     `󰜰 InterfaceName`
+  Inside a table/object (Lua)     ` tableName`
+  Arrow/expression function (JS)  `ƒ constName`
+  Top-level / unresolvable        (hidden — line 3 omitted)
+
+Supported languages: Lua, Go, Rust, TypeScript, JavaScript, Python, C/C++,
+and any language with a treesitter parser installed.
+
+When a buffer is not loaded (status: gone), the symbol name cached at mark
+creation time is used as a fallback.
+
+==============================================================================
+8. NOTE FILES                                                *qfbookmark-notes*
+
+Notes are stored as files in your project. Configure the format: >lua
+  window = {
+    note = {
+      filetype = "markdown",
+      file_ext = "md",
+    },
+  }
+<
+
+Toggle a buffer-local note:  `<Leader>fn`  (default)
+Toggle a global note:        `<Leader>fN`  (default)
+
+==============================================================================
+9. INTEGRATIONS                                        *qfbookmark-integrations*
+
+trouble.nvim ~
+>lua
+  integrations = {
+    trouble = {
+      enabled        = true,
+      toggle_qflist  = "Q",
+      toggle_loclist = "L",
+    },
+  }
+<
+
+grug-far.nvim ~
+>lua
+  integrations = {
+    grugfar = {
+      enabled = true,
+      toggle  = "<Localleader>gg",
+    },
+  }
+<
+
+fzf-lua ~
+
+Set `picker = "fzf-lua"` at the top level to use fzf-lua for mark search.
+
+==============================================================================
+10. LICENSE                                                 *qfbookmark-license*
+
+MIT License. See LICENSE file in the plugin repository.
+
+==============================================================================
+vim:tw=78:ts=8:ft=help:norl:
