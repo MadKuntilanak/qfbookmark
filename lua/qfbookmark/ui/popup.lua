@@ -122,7 +122,13 @@ end
 ---@param win integer
 local function update_mark_preview(opts_popup, win, buf)
   local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
-  local harpoon_val = opts_popup.content_map[cur_line_nr]
+
+  local harpoon_val
+  for _, x in pairs(opts_popup.content_map) do
+    if x.start_line == cur_line_nr then
+      harpoon_val = x.hval
+    end
+  end
 
   if not harpoon_val then
     return
@@ -134,7 +140,14 @@ local function update_mark_preview(opts_popup, win, buf)
 
   local filename, col, line, bufnr
 
-  for _, m in pairs(opts_popup.contents) do
+  local entry = QfbookmarkUIUtils.get_entry_at_line(opts_popup.content_map, cur_line_nr)
+
+  if not entry then
+    return
+  end
+
+  for _, _entry in pairs(opts_popup.content_map) do
+    local m = _entry.mark
     if m.harpoon == harpoon_val then
       filename = m.filename
       col = m.col or 0
@@ -167,7 +180,8 @@ local function update_mark_preview(opts_popup, win, buf)
       end
 
       bufnr = new_bufnr
-      for _, m in pairs(opts_popup.contents) do
+      for _, _entry in pairs(opts_popup.content_map) do
+        local m = _entry.mark
         if m.filename == filename then
           m.bufnr = new_bufnr
         end

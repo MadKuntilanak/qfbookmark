@@ -7,6 +7,43 @@
 ---@alias QFbookBufferMarkGroup table<string, QFbookBufferMarkEntry>
 ---@alias QFbookBufferMark table<QFBookMarkMode, QFbookBufferMarkGroup>
 
+---@alias QfBookUiPreview { win?: integer, buf?: integer }
+---@alias QfBookUiPopup { win?: integer, buf?: integer, preview?: QfBookUiPreview }
+
+---@alias QfBookUiSaveCfg {
+--- title: string,
+--- target_path: string,
+--- is_loc: boolean,
+--- cb: function,
+--- for_what: "save"|"rename" }
+
+---@alias QfBookEntry {
+--- hval: string,
+--- id: integer,
+--- start_line: integer,
+--- line_count: integer,
+--- mark: QFbookBufferMarkEntry, }
+
+---@alias QfBookUiPopupCfg {
+--- contents: table,
+--- content_map: table<integer, QfBookEntry>,
+--- win_opts: WinCfg,
+--- display_lines: string[],
+--- popup?: QfBookUiPopup,
+--- is_harpoon?: boolean,
+--- is_buffers?: boolean,
+--- is_mark_note?: boolean,
+--- save?: QfBookUiSaveCfg }
+
+---@alias QfBookUiWinCfg {
+--- save: QFBookUiCfg,
+--- save_footer: QFBookUiCfg,
+--- mark_preview: QFBookUiCfg,
+--- mark: QFBookUiCfg,
+--- buffer: QFBookUiCfg,
+--- note: QFBookUiCfg,
+--- mark_note: QFBookUiCfg }
+
 ---@class QfBookContextQFlist
 ---@field name string
 ---@field bufnr? integer
@@ -47,6 +84,7 @@
 ---@field mark_mode string
 ---@field inserted_at integer
 ---@field fn_name string
+---@field note string[]
 ---@field id integer
 
 ---@class QFBookExtermarks

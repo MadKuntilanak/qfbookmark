@@ -4,8 +4,6 @@ local QfbookmarkUIPopup = require "qfbookmark.ui.popup"
 local QfbookmarkMarkVisual = require "qfbookmark.visual"
 
 ---@alias WinCfg { buf: integer, enter: boolean, wincfg: vim.api.keyset.win_config }
----@alias QfBookUiWinCfg {  save: QFBookUiCfg, save_footer: QFBookUiCfg, mark_preview: QFBookUiCfg, mark: QFBookUiCfg, buffer: QFBookUiCfg, note: QFBookUiCfg }
----@alias QfBookUiPopupCfg { contents: table, content_map:table<integer, string>, win_opts: WinCfg, display_lines: table, entry_start_line: table, popup?: {win?: integer, buf?:integer, preview?: {win?: integer, buf?:integer} }, is_harpoon?: boolean, is_buffers?: boolean, save: {title: string, target_path: string, is_loc:boolean, cb:function, for_what:"save"|"rename"} }
 
 local M = {}
 
@@ -40,6 +38,16 @@ M.window = {
   },
   note = {
     augroup = "WinMarkNote",
+    win = nil,
+    buf = nil,
+  },
+  mark_note = {
+    augroup = "WinMarkNoteMark",
+    win = nil,
+    buf = nil,
+  },
+  mark_note_preview = {
+    augroup = "WinMarkNoteMarkPreview",
     win = nil,
     buf = nil,
   },
@@ -91,71 +99,8 @@ local __popup_opts_for = {
 
     setup_option_main_popup(main_win, main_buf)
 
-    -- +-----------------------------------------------------------------------------+
-    -- | Rebuild both maps by scanning buffer header lines (" N  ").                 |
-    -- | called by move_item_to after every reorder.                                 |
-    -- +-----------------------------------------------------------------------------+
-    M.rebuild_mark_maps = function()
-      if not vim.api.nvim_buf_is_valid(main_buf) then
-        return
-      end
-      local raw_lines = vim.api.nvim_buf_get_lines(main_buf, 0, -1, false)
-      local new_entry_start = {}
-      local new_harpoon_map = {}
-      local entry_idx = 0
-
-      for ln, line in ipairs(raw_lines) do
-        local idx_str = line:match "^ (%d+) "
-        if idx_str then
-          -- this is a header line — start of a new entry
-          entry_idx = entry_idx + 1
-          new_entry_start[entry_idx] = ln
-          -- new_harpoon_map[ln] = opts_popup.content_map[M.mark_harpoon_map and ln or ln]
-          new_harpoon_map[ln] = opts_popup.content_map[opts_popup.content_map and ln or ln]
-          -- look up harpoon value by the original idx stored in the line
-          local orig_idx = tonumber(idx_str)
-          local orig_start = opts_popup.entry_start_line[orig_idx]
-          if orig_start then
-            local hval = opts_popup.content_map[orig_start]
-            -- map all consecutive lines until next header to this hval
-            new_harpoon_map[ln] = hval
-          end
-        else
-          -- detail or symbol line — same hval as the most recent header
-          if entry_idx > 0 and new_entry_start[entry_idx] then
-            local header_hval = new_harpoon_map[new_entry_start[entry_idx]]
-            if header_hval then
-              new_harpoon_map[ln] = header_hval
-            end
-          end
-        end
-      end
-
-      -- update both M state and the closure tables in-place
-      -- (in-place update so update_cursorline closure sees new values)
-      for k in pairs(opts_popup.content_map) do
-        opts_popup.content_map[k] = nil
-      end
-      for k, v in pairs(new_harpoon_map) do
-        opts_popup.content_map[k] = v
-      end
-
-      for k in pairs(opts_popup.entry_start_line) do
-        opts_popup.entry_start_line[k] = nil
-      end
-      for k, v in pairs(new_entry_start) do
-        opts_popup.entry_start_line[k] = v
-      end
-
-      -- opts_popup.entry_start_line = opts_popup. entry_start_line
-      -- opts_popup.content_map = harpoon_map
-
-      -- re-apply extmark highlights with updated positions
-      QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.contents, opts_popup.entry_start_line)
-    end
-
     -- Apply syntax highlights to all entries
-    QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.contents, opts_popup.entry_start_line)
+    QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.content_map)
 
     -- +-----------------------------------------------------------------------------+
     -- | Re-apply highlights after dd deletes lines                                  |
@@ -163,25 +108,7 @@ local __popup_opts_for = {
     vim.api.nvim_create_autocmd("TextChanged", {
       buffer = main_buf,
       callback = function()
-        -- rebuild active mark list from remaining header lines
-        local remaining = {}
-        local raw_lines = vim.api.nvim_buf_get_lines(main_buf, 0, -1, false)
-        for _, raw in ipairs(raw_lines) do
-          local idx_str = raw:match "^ (%d+) "
-          if idx_str then
-            local original_idx = tonumber(idx_str)
-            local hval = opts_popup.content_map[(original_idx - 1) * 2 + 1]
-            if hval then
-              for _, m in ipairs(opts_popup.contents) do
-                if m.harpoon == hval then
-                  remaining[#remaining + 1] = m
-                  break
-                end
-              end
-            end
-          end
-        end
-        QfbookmarkMarkVisual.apply_entry_highlights(main_buf, remaining, opts_popup.entry_start_line)
+        QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.content_map)
       end,
     })
 
@@ -189,29 +116,47 @@ local __popup_opts_for = {
     -- | Multi-line cursorline: highlight all lines of the current entry             |
     -- +-----------------------------------------------------------------------------+
     local cursorline_ns = vim.api.nvim_create_namespace "qfbookmark_cursorline"
+
     local function update_cursorline()
       if not main_buf or not vim.api.nvim_buf_is_valid(main_buf) then
         return
       end
 
       vim.api.nvim_buf_clear_namespace(main_buf, cursorline_ns, 0, -1)
+
       local cur = vim.api.nvim_win_get_cursor(0)[1]
-      local hval = opts_popup.content_map[cur]
-      if not hval then
+
+      local entries = opts_popup.content_map
+      if not entries then
         return
       end
-      -- find all lines that belong to the same entry
-      for ln, h in pairs(opts_popup.content_map) do
-        if h == hval then
-          pcall(vim.api.nvim_buf_set_extmark, main_buf, cursorline_ns, ln - 1, 0, {
-            end_col = 0,
-            end_row = ln,
-            hl_group = "QFBookmarkFloatCursorLine",
-            hl_eol = true,
-            priority = 50,
-          })
+
+      local active
+
+      -- find entry range
+      for _, e in pairs(entries) do
+        local start = e.start_line
+        local finish = start + (e.line_count or 1) - 1
+
+        if cur >= start and cur <= finish then
+          active = e
+          break
         end
       end
+
+      if not active then
+        return
+      end
+
+      local start = active.start_line
+      local finish = start + active.line_count - 1
+
+      vim.api.nvim_buf_set_extmark(main_buf, cursorline_ns, start - 1, 0, {
+        end_row = finish,
+        hl_group = "QFBookmarkFloatCursorLine",
+        hl_eol = true,
+        priority = 50,
+      })
     end
 
     vim.api.nvim_create_autocmd("CursorMoved", {
@@ -349,9 +294,47 @@ local __popup_opts_for = {
 
     QfbookmarkUIKeymaps.setup_keymap_note(opts_popup, buf)
   end,
+  ---@param opts_popup QfBookUiPopupCfg
+  ---@param cb function
+  ["mark_note"] = function(opts_popup, cb)
+    local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
+    if not win or not vim.api.nvim_win_is_valid(win) then
+      return
+    end
+    if not buf or not vim.api.nvim_buf_is_valid(buf) then
+      return
+    end
+
+    M.window.mark_note.win = win
+    M.window.mark_note.buf = buf
+
+    if not opts_popup.popup then
+      opts_popup.popup = {}
+      opts_popup.popup.win = M.window.mark_note.win
+      opts_popup.popup.buf = M.window.mark_note.buf
+    end
+
+    local main_win_cfg = vim.api.nvim_win_get_config(win)
+
+    local buf_preview, win_preview = QfbookmarkUIPopup.mark_note_preview(main_win_cfg, opts_popup.win_opts.wincfg.width)
+    if not win_preview or not buf_preview then
+      return
+    end
+
+    M.window.mark_preview.buf = buf_preview
+    M.window.mark_preview.win = win_preview
+
+    if not opts_popup.popup.preview then
+      opts_popup.popup.preview = {}
+      opts_popup.popup.preview.buf = M.window.mark_preview.buf
+      opts_popup.popup.preview.win = M.window.mark_preview.win
+    end
+
+    QfbookmarkUIKeymaps.setup_keymap_mark_note(opts_popup, buf, cb)
+  end,
 }
 
----@param for_what "mark" | "buffer" | "save"| "note"
+---@param for_what "mark" | "buffer" | "save"| "note" | "mark_note"
 ---@param opts_popup QfBookUiPopupCfg
 ---@param is_editable? boolean
 ---@param cb? function | nil
@@ -366,13 +349,9 @@ function M.build_popup(for_what, opts_popup, cb, is_editable)
   end
 
   -- Call popup open window
-  if for_what == "buffer" or for_what == "note" then
+  if vim.tbl_contains({ "buffer", "note" }, for_what) then
     __popup_opts_for[for_what](opts_popup)
-  elseif for_what == "save" then
-    if cb then
-      __popup_opts_for[for_what](opts_popup, cb)
-    end
-  else -- Mark
+  elseif vim.tbl_contains({ "mark", "mark_note", "save" }, for_what) then
     if cb then
       __popup_opts_for[for_what](opts_popup, cb)
     end

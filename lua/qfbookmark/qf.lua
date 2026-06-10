@@ -276,6 +276,7 @@ function M.setup_autocmds()
           mark_mode = m.mark_mode,
           fn_name = m.fn_name,
           id = m.id,
+          note = (m.note and #m.note > 0) and m.note or {},
           inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0, -- preserve from saved file; reject stale hrtime values (> 1e13 = nanoseconds, not Unix seconds)
         }
 
@@ -509,29 +510,30 @@ function M.open_mark_harpoon_window()
         end
       end
 
-      for _, m in pairs(mark_entry_lists) do
-        for _, x in pairs(harp_need_delete) do
-          if m.harpoon ~= x then
-            goto continue
-          end
+      for _, m in ipairs(mark_entry_lists) do
+        for _, x in ipairs(harp_need_delete) do
+          if m.harpoon == x then
+            local mark_lists = M.buffers
 
-          local mark_lists = M.buffers
-          local _, is_has_mark = QfbookmarkBookmark.has_mark_data(mark_lists, m.mark_mode, m.id, m.bufnr)
-          if not is_has_mark then
-            return
-          end
+            local _, is_has_mark = QfbookmarkBookmark.has_mark_data(mark_lists, m.mark_mode, m.id, m.bufnr)
 
-          if not m.bufnr or not vim.api.nvim_buf_is_valid(m.bufnr) then
-            QfbookmarkBookmark.delete_mark(mark_lists, m.mark_mode, m.id, m.bufnr)
-            goto continue
-          end
+            if not is_has_mark then
+              goto continue
+            end
 
-          local is_delete = QfbookmarkBookmark.delete_mark(mark_lists, m.mark_mode, m.id, m.bufnr)
-          if not is_delete then
-            QfbookmarkUtils.warn "Something went wrong"
-          end
+            if not m.bufnr or not vim.api.nvim_buf_is_valid(m.bufnr) then
+              QfbookmarkBookmark.delete_mark(mark_lists, m.mark_mode, m.id, m.bufnr)
+              goto continue
+            end
 
-          ::continue::
+            local ok = QfbookmarkBookmark.delete_mark(mark_lists, m.mark_mode, m.id, m.bufnr)
+
+            if not ok then
+              QfbookmarkUtils.warn "Something went wrong"
+            end
+
+            ::continue::
+          end
         end
       end
 
@@ -553,18 +555,24 @@ end
 
 ---@param idx integer
 function M.goto_mark_index(idx)
-  if not M.mark_lists_harpoon[idx] then
+  local status_mark = M.status_mark()
+  if not status_mark then
+    QfbookmarkUtils.warn("No registered signmark exists for index `" .. tostring(idx) .. "`")
+    return
+  end
+
+  local mark_entry_lists = get_lists_marks()
+
+  local mark_harpoon_idx = M.mark_lists_harpoon[idx]
+
+  if not mark_harpoon_idx then
     if Config.window.notify.mark then
       QfbookmarkUtils.warn("No registered signmark exists for index `" .. tostring(idx) .. "`")
     end
     return
   end
 
-  local harpoon_idx = QfbookmarkUtils.remove_idx_m_harpoon(M.mark_lists_harpoon[idx])
-
-  local is_set_cursor = false
-
-  local mark_entry_lists = get_lists_marks()
+  local harpoon_idx = QfbookmarkUtils.remove_idx_m_harpoon(mark_harpoon_idx)
 
   for _, m in pairs(mark_entry_lists) do
     if m.harpoon == harpoon_idx then
@@ -574,12 +582,6 @@ function M.goto_mark_index(idx)
         line = m.line,
       }
     end
-  end
-
-  if is_set_cursor then
-    vim.schedule(function()
-      vim.cmd "normal! zz"
-    end)
   end
 end
 

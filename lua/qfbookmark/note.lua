@@ -66,7 +66,6 @@ local function open_in_float(note_path, cfg_note, is_global)
   local __opts = {
     contents = {},
     win_opts = wincfg,
-    entry_start_line = {},
   }
 
   QfbookmarkUIView.build_popup("note", __opts)

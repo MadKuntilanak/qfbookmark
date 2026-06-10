@@ -6,7 +6,7 @@ local Config = require("qfbookmark.config").defaults
 ---@param line number
 ---@param mark_mode QFBookMarkMode
 ---@param extmarkspec QFBookSpec
-function M.insert_signs(id, mark_mode, bufnr, line, extmarkspec)
+function M.insert_sign(id, mark_mode, bufnr, line, extmarkspec)
   local sign_name = "Qfbookmark" .. mark_mode
 
   if not M.sign_cache[sign_name] then
@@ -29,6 +29,26 @@ function M.remove_sign(id, bufnr)
   vim.fn.sign_unplace(Config.sign_group, { buffer = bufnr, id = id })
 end
 
+local nse = vim.api.nvim_create_namespace "qfbookmark_noteexmark"
+---@param id number
+---@param bufnr? number
+function M.remove_extmark(id, bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  vim.api.nvim_buf_del_extmark(bufnr, nse, id)
+end
+
+function M.insert_extmark(buf, id, line, text_lines)
+  nse = vim.api.nvim_create_namespace "qfbookmark_noteexmark"
+  -- vim.api.nvim_buf_clear_namespace(buf, nse, 0, -1)
+
+  pcall(vim.api.nvim_buf_set_extmark, buf, nse, line - 1, 0, {
+    id = id,
+    virt_text = { { text_lines, "Error" } },
+    virt_text_pos = "eol",
+    -- hl_group = "ErrorMsg",
+  })
+end
+
 --- Map mark_mode string → highlight group name for its badge.
 ---@param mark_mode string
 ---@return string
@@ -43,51 +63,47 @@ local function badge_hl(mark_mode)
 end
 
 --- Apply extmark highlights to every entry in the popup buffer.
----@param buf integer must popup buffer
----@param mark_lists QFbookBufferMarkEntry[]
----@param entry_start_line table<integer, integer>  entry idx → 1-based header line_nr
-function M.apply_entry_highlights(buf, mark_lists, entry_start_line)
+---@param buf integer
+---@param entries table[]  -- source of truth
+function M.apply_entry_highlights(buf, entries)
   local ns = vim.api.nvim_create_namespace "qfbookmark_popup_hl"
   vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
 
-  for idx, mark in ipairs(mark_lists) do
-    local ln_header = (entry_start_line[idx] or (idx * 3 - 2)) - 1 -- 0-based
-    local ln_detail = ln_header + 1
-    local ln_symbol = ln_header + 2 -- may or may not exist
+  for idx, entry in ipairs(entries) do
+    local ln_header = (entry.start_line or 1) - 1
 
     local header = vim.api.nvim_buf_get_lines(buf, ln_header, ln_header + 1, false)[1] or ""
-    local detail = vim.api.nvim_buf_get_lines(buf, ln_detail, ln_detail + 1, false)[1] or ""
-    local symbol_line = vim.api.nvim_buf_get_lines(buf, ln_symbol, ln_symbol + 1, false)[1] or ""
+    local detail = vim.api.nvim_buf_get_lines(buf, ln_header + 1, ln_header + 2, false)[1] or ""
+    local symbol_line = vim.api.nvim_buf_get_lines(buf, ln_header + 2, ln_header + 3, false)[1] or ""
 
-    -- ── Header line: " N  BADGE  path ●" ────────────────────────────────
+    -- ── Header ────────────────────────────────
 
     local idx_str = tostring(idx)
     local idx_s = 0
-    local idx_e = 1 + #idx_str + 2 -- " " + digits + "  "
+    local idx_e = 1 + #idx_str + 2
 
-    -- index number
     pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header, idx_s, {
       end_col = math.min(idx_e, #header),
       hl_group = "QFBookmarkEntryIdx",
     })
 
-    -- badge (always 4 chars: "MARK", "FIX ", "NOTE", "DBG ")
     local badge_s = idx_e
     local badge_e = badge_s + 4
+
     pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header, badge_s, {
       end_col = math.min(badge_e, #header),
-      hl_group = badge_hl(mark.mark_mode),
+      hl_group = badge_hl(entry.hval.mark_mode),
     })
 
-    -- Path (after "  " separator following badge)
     local path_s = badge_e + 2
-    local cur_pos = header:find(" ●", path_s, true) -- byte position of " ●"
+    local cur_pos = header:find(" ●", path_s, true)
+
     if cur_pos then
       pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header, path_s, {
         end_col = cur_pos - 1,
         hl_group = "QFBookmarkEntryPath",
       })
-      -- "●" is 3 bytes; highlight from the space before it to end of line
+
       pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header, cur_pos, {
         end_col = #header,
         hl_group = "QFBookmarkEntryCurrentFile",
@@ -99,53 +115,52 @@ function M.apply_entry_highlights(buf, mark_lists, entry_start_line)
       })
     end
 
-    -- ── Detail line: "         :lnum  preview text" ──────────────────────
+    -- ── Detail line ───────────────────────────
 
     local lnum_s, lnum_e_byte = detail:match "():%d+()"
     if lnum_s then
-      pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_detail, lnum_s - 1, {
+      pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header + 1, lnum_s - 1, {
         end_col = lnum_e_byte - 1,
         hl_group = "QFBookmarkEntryLnum",
       })
+
       local preview_s = lnum_e_byte + 1
       if preview_s <= #detail then
-        pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_detail, preview_s, {
+        pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header + 1, preview_s, {
           end_col = #detail,
           hl_group = "QFBookmarkEntryDetail",
         })
       end
     end
 
-    -- ── Symbol line: "         icon name > icon name" ─────────────────────
-    -- only present when chain != "" — detect by checking it starts with spaces
-    -- and is not a header (no " N  " pattern) and not a detail (no ":lnum")
+    -- ── Symbol line ───────────────────────────
+
     if symbol_line ~= "" and not symbol_line:match "^ %d+ " and not symbol_line:match "^%s+:%d+" then
-      local sym_s = symbol_line:find "%S" -- first non-space byte (1-based)
+      local sym_s = symbol_line:find "%S"
       if sym_s then
-        sym_s = sym_s - 1 -- 0-based
-        -- check if first icon is fn/method (ƒ = 0xC6 0x92) or type icon
+        sym_s = sym_s - 1
+
         local is_fn = symbol_line:sub(sym_s + 1, sym_s + 2) == "\xC6\x92"
+
         if is_fn then
-          pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_symbol, sym_s, {
+          pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header + 2, sym_s, {
             end_col = #symbol_line,
             hl_group = "QFBookmarkEntryFnName",
           })
         else
-          -- chain may have multiple segments: "TypeIcon Name > fnIcon name"
-          -- highlight type part as EntrySymbolType and fn part as EntryFnName
           local sep = symbol_line:find(" > ", sym_s + 1, true)
           if sep then
-            pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_symbol, sym_s, {
+            pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header + 2, sym_s, {
               end_col = sep - 1,
               hl_group = "QFBookmarkEntrySymbolType",
             })
-            local fn_s = sep + 3 -- after " > "
-            pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_symbol, fn_s - 1, {
+
+            pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header + 2, sep + 2, {
               end_col = #symbol_line,
               hl_group = "QFBookmarkEntryFnName",
             })
           else
-            pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_symbol, sym_s, {
+            pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header + 2, sym_s, {
               end_col = #symbol_line,
               hl_group = "QFBookmarkEntrySymbolType",
             })

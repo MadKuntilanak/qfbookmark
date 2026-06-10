@@ -9,6 +9,16 @@ local M = {}
 
 local Mapping = {}
 
+local get_hval = function(harpoon_map, cur_line_nr)
+  local hval
+  for _, x in pairs(harpoon_map) do
+    if x.start_line == cur_line_nr then
+      hval = x.hval
+    end
+  end
+  return hval
+end
+
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
 -- ║                                   GENERAL                                   ║
 -- ╙─────────────────────────────────────────────────────────────────────────────╜
@@ -37,31 +47,23 @@ function Mapping.exit_close()
     QfbookmarkUIUtils.close_win { Mapping.popup.win }
     QfbookmarkUIUtils.clean_up(Mapping.popup)
   elseif Mapping.is_harpoon then
-    local lines_raw = vim.api.nvim_buf_get_lines(Mapping.buf, 0, -1, false)
-
     QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
 
     vim.schedule(function()
       vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
 
-      -- detail lines (even, leading indent) are skipped
       local out_lines = {}
-      for _, raw in ipairs(lines_raw) do
-        local idx_str = raw:match "^ (%d+) "
-        if idx_str then
-          local original_idx = tonumber(idx_str)
-          local ln = Mapping.entry_start_line and Mapping.entry_start_line[original_idx]
-          local hval = Mapping.harpoon_map[ln]
-          if hval then
-            out_lines[#out_lines + 1] = hval
-          end
+
+      for _, e in ipairs(Mapping.harpoon_map or {}) do
+        if e.hval then
+          out_lines[#out_lines + 1] = e.hval
         end
       end
-      if not (#lines_raw == 0 and #lines_raw[1] == 0) then
-        if Mapping.cb then
-          Mapping.cb(out_lines)
-        end
+
+      if Mapping.cb then
+        Mapping.cb(out_lines)
       end
+
       QfbookmarkUIUtils.clean_up(Mapping.popup)
     end)
   else
@@ -82,25 +84,24 @@ function Mapping.setup_open_key(open_mode)
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
 
     if Mapping.is_harpoon then
-      local hval = Mapping.harpoon_map[cur_line_nr]
-      if hval then
-        for _, m in pairs(Mapping.contents) do
-          if m.harpoon == hval then
-            QfbookmarkNav.jump_to {
-              filename = m.filename,
-              col = m.col,
-              line = m.line,
-              mode_open = open_mode,
-            }
-            break
-          end
-        end
+      local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.harpoon_map, cur_line_nr)
+
+      if entry and entry.mark then
+        local mark = entry.mark
+
+        QfbookmarkNav.jump_to {
+          filename = mark.filename,
+          col = mark.col,
+          line = mark.line,
+          mode_open = open_mode,
+        }
       end
     end
 
     if Mapping.is_buffers then
       ---@type QFBufferItem
-      local hval = Mapping.harpoon_map[cur_line_nr]
+      local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.harpoon_map, cur_line_nr)
+      local hval = entry and entry["hval"]
       if hval then
         QfbookmarkNav.jump_to {
           filename = hval.info.name,
@@ -108,6 +109,13 @@ function Mapping.setup_open_key(open_mode)
           line = hval.info.lnum,
           mode_open = open_mode,
         }
+      end
+    end
+
+    if Mapping.is_mark_note then
+      local raw_lines = vim.api.nvim_buf_get_lines(Mapping.buf, 0, -1, false)
+      if Mapping.cb then
+        Mapping.cb(raw_lines)
       end
     end
 
@@ -161,39 +169,33 @@ function Mapping.mark.scroll_preview_window(direction, amount)
   end)
 end
 
--- Navigate by entry using entry_start_line lookup
 function Mapping.mark.nav_entry(direction)
   local cur = vim.api.nvim_win_get_cursor(0)[1]
-  local total = vim.api.nvim_buf_line_count(0)
 
-  if not Mapping.entry_start_line or vim.tbl_isempty(Mapping.entry_start_line) then
+  local entries = Mapping.harpoon_map
+  if not entries or #entries == 0 then
     return
   end
 
-  local entry_starts = {}
-  for _, ln in pairs(Mapping.entry_start_line) do
-    entry_starts[#entry_starts + 1] = ln
-  end
-  table.sort(entry_starts)
-
-  if #entry_starts == 0 then
-    return
-  end
-
-  local cur_entry_pos = 1
-  for i, ln in ipairs(entry_starts) do
-    if ln <= cur then
-      cur_entry_pos = i
+  local cur_idx = 1
+  for i, e in ipairs(entries) do
+    if e.start_line and e.start_line <= cur then
+      cur_idx = i
     end
   end
 
-  local next_pos = math.max(1, math.min(cur_entry_pos + direction, #entry_starts))
-  local target = entry_starts[next_pos]
-  if not target or target < 1 or target > total then
+  local next_idx = math.max(1, math.min(cur_idx + direction, #entries))
+  local target = entries[next_idx]
+
+  if not target or not target.start_line then
     return
   end
 
-  vim.api.nvim_win_set_cursor(0, { target, 0 })
+  -- safety clamp
+  local line_count = vim.api.nvim_buf_line_count(0)
+  local target_line = math.max(1, math.min(target.start_line, line_count))
+
+  vim.api.nvim_win_set_cursor(0, { target_line, 0 })
 end
 
 local renew_preview = true
@@ -225,6 +227,13 @@ end
 ---@param is_prev? boolean
 function Mapping.mark.move_item_to(is_prev)
   is_prev = is_prev or false
+  local buf = Mapping.buf
+  local row = vim.api.nvim_win_get_cursor(0)[1]
+
+  local entries = Mapping.harpoon_map
+  if not entries or #entries == 0 then
+    return
+  end
 
   local is_let = false
 
@@ -241,79 +250,65 @@ function Mapping.mark.move_item_to(is_prev)
     end
   end
 
-  local row = vim.api.nvim_win_get_cursor(0)[1]
-  local line_count = vim.api.nvim_buf_line_count(Mapping.buf)
-  local winnr = vim.api.nvim_get_current_win()
-
-  local entry_starts = {}
-  for _, ln in pairs(Mapping.entry_start_line) do
-    entry_starts[#entry_starts + 1] = ln
-  end
-  table.sort(entry_starts)
-
-  if #entry_starts == 0 then
-    restore_readonly()
-    return
-  end
-
-  local cur_pos = 1
-  for i, ln in ipairs(entry_starts) do
-    if ln <= row then
-      cur_pos = i
+  -- find current index
+  local cur_idx = 1
+  for i, e in ipairs(entries) do
+    if e.start_line and e.start_line <= row then
+      cur_idx = i
     end
   end
 
-  local can_move_up = cur_pos > 1
-  local can_move_down = cur_pos < #entry_starts
-
-  if is_prev and not can_move_up then
-    restore_readonly()
-    return
-  end
-  if not is_prev and not can_move_down then
-    restore_readonly()
+  local target_idx = is_prev and (cur_idx - 1) or (cur_idx + 1)
+  if not entries[target_idx] then
     return
   end
 
-  local cur_start = entry_starts[cur_pos]
-  local cur_finish = (entry_starts[cur_pos + 1] or (line_count + 1)) - 1
+  local target = Mapping.harpoon_map[target_idx]
 
-  local tgt_pos = is_prev and (cur_pos - 1) or (cur_pos + 1)
-  local tgt_start = entry_starts[tgt_pos]
-  local tgt_finish = (entry_starts[tgt_pos + 1] or (line_count + 1)) - 1
+  local winnr = vim.api.nvim_get_current_win()
 
-  -- flash-highlight target entry
+  local tgt_start = target.start_line
+  local tgt_finish = tgt_start + target.line_count - 1
   local hl_group = Config.window.mark and Config.window.mark.hl or "Visual"
+
   local hl_lines = {}
   for ln = tgt_start, tgt_finish do
-    hl_lines[#hl_lines + 1] = { ln }
-  end
-  local matchid = vim.fn.matchaddpos(hl_group, hl_lines, 10, -1, { window = winnr })
-
-  if not is_prev then
-    vim.cmd(string.format("%d,%dmove %d", cur_start, cur_finish, tgt_finish))
-  else
-    vim.cmd(string.format("%d,%dmove %d", cur_start, cur_finish, tgt_start - 1))
+    table.insert(hl_lines, { ln })
   end
 
-  -- rebuild both harpoon_map and entry_start_line from actual buffer content
-  local QfbookmarkUI = require "qfbookmark.ui.view"
-  if QfbookmarkUI.rebuild_mark_maps then
-    QfbookmarkUI.rebuild_mark_maps()
+  local matchid = vim.fn.matchaddpos(hl_group, hl_lines, 10, -1, { window = vim.api.nvim_get_current_win() })
+
+  -- swap
+  entries[cur_idx], entries[target_idx] = entries[target_idx], entries[cur_idx]
+
+  -- rebuild buffer (FROM DATA ONLY)
+  local lines = {}
+
+  for i, e in ipairs(entries) do
+    local m = e.mark
+    local symbol = QfbookmarkUIUtils.resolve_fn_name(m)
+
+    local l1, l2, l3 = QfbookmarkUIUtils.build_entry_lines(i, m, Mapping.wincfg.width, symbol)
+
+    table.insert(lines, l1)
+    table.insert(lines, l2)
+    if l3 then
+      table.insert(lines, l3)
+    end
+
+    -- update start_line mapping
+    e.start_line = #lines - (l3 and 2 or 1)
   end
 
-  -- move cursor to the header of the entry we just moved
-  local new_entry_starts = {}
-  for _, ln in pairs(Mapping.entry_start_line) do
-    new_entry_starts[#new_entry_starts + 1] = ln
-  end
-  table.sort(new_entry_starts)
-  local new_pos = is_prev and (cur_pos - 1) or (cur_pos + 1)
-  local new_header = new_entry_starts[new_pos]
-  if new_header then
-    vim.api.nvim_win_set_cursor(0, { new_header, 0 })
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+  -- Move cursor to new position
+  local new_entry = entries[target_idx]
+  if new_entry and new_entry.start_line then
+    vim.api.nvim_win_set_cursor(0, { new_entry.start_line, 0 })
   end
 
+  -- update cursorline manually once
   vim.defer_fn(function()
     restore_readonly()
     pcall(vim.fn.matchdelete, matchid, winnr)
@@ -330,7 +325,7 @@ Mapping.buffer = {}
 function Mapping.buffer.item_del()
   local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
   ---@type QFBufferItem
-  local hval = Mapping.harpoon_map[cur_line_nr]
+  local hval = get_hval(Mapping.harpoon_map, cur_line_nr)
   if hval then
     local target_buf = hval.bufnr
     if vim.api.nvim_buf_is_valid(target_buf) then
@@ -359,6 +354,24 @@ end
 ---@param opts_popup QfBookUiPopupCfg
 ---@param buf integer
 ---@param cb? function
+local setup_mapping_opts = function(opts_popup, buf, cb)
+  cb = cb or nil
+  Mapping.opts_popup = opts_popup
+  Mapping.popup = opts_popup.popup
+  Mapping.popup.preview = opts_popup.popup.preview and opts_popup.popup.preview or nil
+  Mapping.wincfg = opts_popup.win_opts.wincfg
+  Mapping.harpoon_map = opts_popup.content_map
+  Mapping.is_harpoon = opts_popup.is_harpoon and opts_popup.is_harpoon or false
+  Mapping.is_buffers = opts_popup.is_buffers and opts_popup.is_buffers or false
+  Mapping.is_mark_note = opts_popup.is_mark_note and opts_popup.is_mark_note or false
+  Mapping.buf = buf
+
+  Mapping.cb = cb
+end
+
+---@param opts_popup QfBookUiPopupCfg
+---@param buf integer
+---@param cb? function
 function M.build_keymaps(opts_popup, buf, cb)
   cb = cb or nil
 
@@ -367,17 +380,7 @@ function M.build_keymaps(opts_popup, buf, cb)
     return
   end
 
-  Mapping.opts_popup = opts_popup
-  Mapping.popup = opts_popup.popup
-  Mapping.popup.preview = opts_popup.popup.preview and opts_popup.popup.preview or nil
-  Mapping.contents = opts_popup.contents
-  Mapping.wincfg = opts_popup.win_opts.wincfg
-  Mapping.entry_start_line = opts_popup.entry_start_line and opts_popup.entry_start_line or {}
-  Mapping.harpoon_map = opts_popup.content_map
-  Mapping.is_harpoon = opts_popup.is_harpoon and opts_popup.is_harpoon or false
-  Mapping.is_buffers = opts_popup.is_buffers and opts_popup.is_buffers or false
-  Mapping.cb = cb
-  Mapping.buf = buf
+  setup_mapping_opts(opts_popup, buf, cb)
 
   local _keys = {
     ["<CR>"] = {
@@ -530,32 +533,73 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
         vim.api.nvim_set_option_value("readonly", false, { buf = Mapping.buf })
         is_let = true
       end
-      local cur = vim.api.nvim_win_get_cursor(0)[1]
-      local total = vim.api.nvim_buf_line_count(Mapping.buf)
 
-      -- find the header line of the current entry
-      local entry_starts = {}
-      for _, ln in pairs(Mapping.entry_start_line) do
-        entry_starts[#entry_starts + 1] = ln
-      end
-      table.sort(entry_starts)
-
-      local header_ln = entry_starts[1] or 1
-      local next_ln = total + 1
-      for i, ln in ipairs(entry_starts) do
-        if ln <= cur then
-          header_ln = ln
-          next_ln = entry_starts[i + 1] or (total + 1)
+      local function restore_readonly()
+        if is_let then
+          vim.api.nvim_set_option_value("modifiable", false, { buf = Mapping.buf })
+          vim.api.nvim_set_option_value("readonly", true, { buf = Mapping.buf })
         end
       end
 
-      -- delete from header_ln to next entry's header - 1 (0-based end is exclusive)
-      vim.api.nvim_buf_set_lines(buf, header_ln - 1, next_ln - 1, false, {})
+      local cur = vim.api.nvim_win_get_cursor(0)[1]
 
-      if is_let then
-        vim.api.nvim_set_option_value("modifiable", false, { buf = Mapping.buf })
-        vim.api.nvim_set_option_value("readonly", true, { buf = Mapping.buf })
+      local entries = Mapping.harpoon_map
+      if not entries or #entries == 0 then
+        return
       end
+
+      -- find current entry index
+      local cur_idx = 1
+      for i, e in ipairs(entries) do
+        if e.start_line <= cur then
+          cur_idx = i
+        end
+      end
+
+      local target = entries[cur_idx]
+      if not target then
+        return
+      end
+
+      table.remove(entries, cur_idx)
+
+      Mapping.harpoon_map = entries
+
+      -- rebuild again from data
+      local lines = {}
+      local line_nr = 1
+
+      for i, entry in ipairs(entries) do
+        local mark = entry.mark
+
+        local symbol = QfbookmarkUIUtils.resolve_fn_name(mark)
+        local l1, l2, l3 = QfbookmarkUIUtils.build_entry_lines(i, mark, Mapping.wincfg.width, symbol)
+
+        entry.start_line = line_nr
+
+        table.insert(lines, l1)
+        table.insert(lines, l2)
+
+        line_nr = line_nr + 2
+
+        if l3 then
+          table.insert(lines, l3)
+          entry.line_count = 3
+          line_nr = line_nr + 1
+        else
+          entry.line_count = 2
+        end
+      end
+
+      vim.api.nvim_buf_set_lines(Mapping.buf, 0, -1, false, lines)
+
+      local QfbookmarkMarkVisual = require "qfbookmark.visual"
+      QfbookmarkMarkVisual.apply_entry_highlights(Mapping.buf, entries)
+
+      vim.defer_fn(function()
+        restore_readonly()
+        vim.cmd "redraw"
+      end, 400)
     end,
   }
 
@@ -643,6 +687,40 @@ function M.setup_keymap_note(opts_popup, buf)
   _keys["<c-d>"] = nil
   _keys["<c-u>"] = nil
 
+  set_vim_keymaps(_keys)
+end
+
+---@param opts_popup QfBookUiPopupCfg
+---@param buf integer
+---@param cb function
+function M.setup_keymap_mark_note(opts_popup, buf, cb)
+  opts_popup.is_buffers = false
+  opts_popup.is_harpoon = false
+  opts_popup.is_mark_note = true
+
+  setup_mapping_opts(opts_popup, buf, cb)
+
+  local _keys = {
+    ["<CR>"] = {
+      mode = { "n", "i" },
+      fun = function()
+        Mapping.setup_open_key "default"
+        Mapping.exit_close()
+      end,
+    },
+    ["<Esc>"] = {
+      mode = "n",
+      fun = Mapping.exit_close,
+    },
+    ["<C-c>"] = {
+      mode = "n",
+      fun = Mapping.exit_close,
+    },
+    ["<C-q>"] = {
+      mode = "n",
+      fun = Mapping.exit_close,
+    },
+  }
   set_vim_keymaps(_keys)
 end
 

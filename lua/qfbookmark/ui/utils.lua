@@ -1,5 +1,6 @@
 local Config = require("qfbookmark.config").defaults
 
+local QfbookmarkTreesitter = require "qfbookmark.treesitter"
 local QfbookmarkUtils = require "qfbookmark.utils"
 
 local M = {}
@@ -59,6 +60,15 @@ function M.get_win_width(is_input, lines)
   return { row = row, col = col, width = win_width, height = win_height }
 end
 
+---@param height_editor integer
+---@param width_editor integer
+function M.get_center_col_row(height_editor, width_editor)
+  local editor = M.get_editor_size()
+  local row = math.ceil((editor.height - height_editor) / 2) - 5
+  local col = math.ceil((editor.width - width_editor) / 2)
+  return col, row
+end
+
 --- Compute the general row and the row that will be implemented for marks,
 --- buffers, and input popups.
 ---@param width_editor integer
@@ -69,9 +79,7 @@ function M.get_col_row(height_editor, width_editor, width_main_popup, is_center)
   is_center = is_center or false
 
   if is_center then
-    local editor = M.get_editor_size()
-    local row = math.ceil((editor.height - height_editor) / 2) - 5
-    local col = math.ceil((editor.width - width_editor) / 2)
+    local col, row = M.get_center_col_row(height_editor, width_editor)
     return col, row
   end
 
@@ -272,6 +280,71 @@ function M.get_buffer_status(bufnr)
 
   -- buffer still valid, but hidden (bdelete, bwipeout)
   return "hidden"
+end
+
+--- Build display lines per entry — 2 lines when no symbol, 3 lines when symbol exists:
+---   Line 1 (header): " N  BADGE  path/file.lua ●"
+---   Line 2 (detail): "         :lnum  preview text"
+---   Line 3 (symbol): "         icon name > icon name"  ← only when chain != ""
+---@param idx integer 1-based display index
+---@param mark QFbookBufferMarkEntry mark entry to render
+---@param path_width integer column width for path alignment
+---@param symbol QFBookSymbol resolved symbol (kind + name)
+---@return string line1 header line
+---@return string line2 detail line
+---@return string|nil line3 symbol line, nil when no symbol context
+---@return string harpoon harpoon value for lookup
+function M.build_entry_lines(idx, mark, path_width, symbol)
+  local badge = M.get_mode_badge(mark.mark_mode)
+  local path = M.shorten_path(mark.filename, path_width)
+  local cur_marker = M.is_current_file(mark.filename) and " ●" or ""
+  local lnum = string.format(":%d", mark.line)
+  local preview = M.shorten_text(mark.text or "", path_width)
+
+  -- header: " N  BADGE  plugins/qf.lua ●"
+  local line1 = string.format(" %d  %s  %s%s", idx, badge, path, cur_marker)
+
+  -- detail: indent + lnum + preview (full width, no truncation for symbol)
+  local indent = string.rep(" ", 9)
+  local line2 = string.format("%s%s  %s", indent, lnum, preview)
+
+  -- symbol line: only emit when there is context
+  local sym_part = symbol.chain or ""
+  local line3 = sym_part ~= "" and (indent .. sym_part) or nil
+
+  return line1, line2, line3, mark.harpoon
+end
+
+--- Resolve symbol for a mark entry.
+--- Live when buffer loaded; falls back to cached fn_name when gone.
+---@param mark QFbookBufferMarkEntry
+---@return QFBookSymbol
+function M.resolve_fn_name(mark)
+  local status = M.get_buffer_status(mark.bufnr)
+
+  if (status == "alive" or status == "hidden") and vim.api.nvim_buf_is_valid(mark.bufnr) then
+    local result = QfbookmarkTreesitter.resolve_symbol(mark.bufnr, mark.line, mark.col or 0)
+    return result
+  end
+
+  -- buffer gone: render cached fn_name as a plain fn symbol
+  local cached = mark.fn_name or ""
+  if cached == "" or cached == "[--]" then
+    return { kind = "unknown", chain = "" }
+  end
+  return { kind = "fn", chain = cached.chain }
+end
+
+---@param entries table<integer, QfBookEntry>,
+---@param lnum integer
+function M.get_entry_at_line(entries, lnum)
+  for _, entry in ipairs(entries) do
+    local last = entry.start_line + entry.line_count - 1
+
+    if lnum >= entry.start_line and lnum <= last then
+      return entry
+    end
+  end
 end
 
 return M

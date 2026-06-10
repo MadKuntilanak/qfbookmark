@@ -34,26 +34,44 @@ end
 
 ---@param opts {filename: string, line: integer, col: integer, text?: string, mode_open?: OpenMode, is_force_jump: boolean}
 function M.jump_to(opts)
-  local bufnr = vim.api.nvim_get_current_buf()
-  local filename = vim.api.nvim_buf_get_name(bufnr)
+  local buf = vim.api.nvim_get_current_buf()
+  local current_file = vim.api.nvim_buf_get_name(buf)
+
+  local filename = opts.filename
+  if not filename then
+    return
+  end
+
+  -- normalize path
+  filename = vim.fn.fnamemodify(filename, ":p")
 
   local mode = opts.mode_open
-  if mode then
+
+  -- safe open file
+  if mode and mode ~= "" then
     if mode == "default" then
-      mode = "buffer"
+      mode = "edit"
     end
-    vim.cmd(("%s %s"):format(tostring(mode), opts.filename))
+
+    local ok, err = pcall(function()
+      vim.cmd(string.format("%s %s", mode, vim.fn.fnameescape(filename)))
+    end)
+
+    if not ok then
+      vim.cmd("edit " .. vim.fn.fnameescape(filename))
+    end
+  elseif filename ~= current_file then
+    vim.cmd("edit " .. vim.fn.fnameescape(filename))
   end
 
-  if opts.filename ~= filename and not mode then
-    vim.cmd("e " .. opts.filename)
-  end
-
-  -- Try jump to given position
+  -- jump position
   if opts.line and opts.line > 0 then
-    safe_set_cursor(0, opts.line, opts.col or 0)
+    local line_count = vim.api.nvim_buf_line_count(0)
+    local l = math.max(1, math.min(opts.line, line_count))
+    local c = opts.col or 0
+
+    pcall(vim.api.nvim_win_set_cursor, 0, { l, c })
   else
-    -- Fallback: go to last known cursor position (mark ")
     local mark = vim.api.nvim_buf_get_mark(0, '"')
     local line_count = vim.api.nvim_buf_line_count(0)
 
@@ -62,10 +80,12 @@ function M.jump_to(opts)
     end
   end
 
-  -- Open fold if needed
-  local fold_start = vim.fn.foldclosed(opts.line)
-  if fold_start ~= -1 then
-    vim.cmd "silent! foldopen!"
+  -- fold safe open
+  if opts.line and opts.line > 0 then
+    local ok, fold_start = pcall(vim.fn.foldclosed, opts.line)
+    if ok and fold_start ~= -1 then
+      vim.cmd "silent! foldopen!"
+    end
   end
 
   vim.schedule(function()
