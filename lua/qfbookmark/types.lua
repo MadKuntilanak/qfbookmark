@@ -32,7 +32,8 @@
 --- popup?: QfBookUiPopup,
 --- is_harpoon?: boolean,
 --- is_buffers?: boolean,
---- is_mark_note?: boolean,
+--- is_mark_annotation?: boolean,
+--- is_note?: boolean,
 --- save?: QfBookUiSaveCfg }
 
 ---@alias QfBookUiWinCfg {
@@ -42,7 +43,8 @@
 --- mark: QFBookUiCfg,
 --- buffer: QFBookUiCfg,
 --- note: QFBookUiCfg,
---- mark_note: QFBookUiCfg }
+--- mark_annotation: QFBookUiCfg,
+--- mark_annotation_preview: QFBookUiCfg }
 
 ---@class QfBookContextQFlist
 ---@field name string
@@ -69,7 +71,7 @@
 ---@field DEBUG QFBookSpec
 ---@field NOTE QFBookSpec
 
----@class QFBufferItem
+---@class QFBookBufferItem
 ---@field info vim.fn.getbufinfo.ret.item & { col?: integer }
 ---@field bufnr integer
 ---@field flag string
@@ -230,18 +232,12 @@
 ---@field buf integer?
 ---@field augroup string?
 
----@class QfBookUIWin
----@field save_win QFBookUiCfg
----@field mark_win QFBookUiCfg
----@field footer_win QFBookUiCfg
----@field save_footer QFBookUiCfg
-
----@class ColCfg
+---@class QFBookHighlightCfg
 ---@field higroup? { fromTo: string, attr: "fg"|"bg"}
 ---@field darken? { amount: integer, fromTo: string, attr: "fg"|"bg"}
 ---@field tint? { amount: integer, fromTo: string, attr: "fg"|"bg"}
 
 ---@class QFBookHighlight
----@field fg? ColCfg
----@field bg? ColCfg
+---@field fg? QFBookHighlightCfg
+---@field bg? QFBookHighlightCfg
 ---@field bold? boolean

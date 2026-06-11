@@ -1,4 +1,5 @@
 local Config = require("qfbookmark.config").defaults
+
 local QfbookmarkWindow = require "qfbookmark.window"
 local QfbookmarkNav = require "qfbookmark.nav"
 local QfbookmarkUtils = require "qfbookmark.utils"
@@ -276,7 +277,7 @@ function M.setup_autocmds()
           mark_mode = m.mark_mode,
           fn_name = m.fn_name,
           id = m.id,
-          note = (m.note and #m.note > 0) and m.note or {},
+          note = m.note,
           inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0, -- preserve from saved file; reject stale hrtime values (> 1e13 = nanoseconds, not Unix seconds)
         }
 
@@ -311,26 +312,72 @@ function M.status_mark()
   return _cache_mark
 end
 
+--- plan: toggle a mark sign on the current line.
+--- - Empty line: add the given mark mode
+--- - Update note annnotation, open the note window (no delete)
+--- - Same mode already present (non-NOTE): delete (toggle off)
+--- - Different non-NOTE mode present (e.g. FIX → press MARK): delete existing
+--- - NOTE present: block adding MARK/FIX/DEBUG on the same line
+
 ---@param mark_mode QFBookMarkMode
 local function add_sign(mark_mode)
   local mark_tbl = M.buffers
   local bufnr = vim.api.nvim_get_current_buf()
 
   if not exclude_buf(bufnr) then
-    QfbookmarkUtils.warn "Can’t perform this action. This buffer is excluded."
+    QfbookmarkUtils.warn "Can't perform this action. This buffer is excluded."
     return
   end
 
   local extmarkspec = Config.extmarks.keywords[mark_mode]
+
+  local _, has_note = QfbookmarkBookmark.has_mark_data(mark_tbl, "NOTE")
+  local _, has_same_mode = QfbookmarkBookmark.has_mark_data(mark_tbl, mark_mode)
+
+  local has_other_mark = false
   for _, mode in pairs(MARK_MODE) do
-    local _, is_mark_found = QfbookmarkBookmark.has_mark_data(mark_tbl, mode)
-    if is_mark_found then
-      M.delete_mark()
-      return
+    if mode ~= "NOTE" and mode ~= mark_mode then
+      local _, has = QfbookmarkBookmark.has_mark_data(mark_tbl, mode)
+      if has then
+        has_other_mark = true
+        break
+      end
     end
   end
 
-  QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec)
+  -- Open the note window instead of toggling,
+  -- to update note data_annotation
+  if has_same_mode and mark_mode == "NOTE" then
+    QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec, true)
+    sync_marks_harpoon()
+    M.invalidate_mark_cache()
+    vim.schedule(function()
+      local mark_lists = get_lists_marks()
+      QfbookmarkBookmark.save_marks(mark_lists)
+    end)
+    return
+  end
+
+  -- Toggle delete: same mode already exists (non-NOTE)
+  if has_same_mode then
+    M.delete_mark()
+    return
+  end
+
+  -- Delete existing: a different mark mode exists (e.g. FIX present, pressing MARK)
+  if has_other_mark then
+    M.delete_mark()
+    return
+  end
+
+  -- NOTE exists: cannot add MARK/FIX/DEBUG on the same line
+  if has_note and mark_mode ~= "NOTE" then
+    QfbookmarkUtils.warn("Can't add `" .. mark_mode .. "`: sign NOTE already exists on this line.")
+    return
+  end
+
+  -- fresh line: add the mark
+  QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec, false)
   sync_marks_harpoon()
   M.invalidate_mark_cache()
 
@@ -474,11 +521,19 @@ end
 -- ╏                                   HARPOON                                   ╏
 -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
--- WARN: Delete this!
+-- Delete this func!
 function M.debug_qf()
   QfbookmarkUtils.info(vim.inspect(M.buffers))
   QfbookmarkUtils.info(vim.inspect(M.mark_lists))
   QfbookmarkUtils.info(vim.inspect(M.mark_lists_harpoon))
+end
+
+function M.get_buffers()
+  local status_mark = M.status_mark()
+  if not status_mark then
+    return {}
+  end
+  return M.buffers
 end
 
 function M.open_mark_harpoon_window()

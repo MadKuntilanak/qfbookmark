@@ -6,31 +6,31 @@ local M = {}
 ---@alias NavUpAndDown "k" | "j"
 ---@alias QFmode "open"| "only"| "cnext"| "cprev"| "lnext"| "lprev"
 ---@alias QfNextAndPrev "cprevious" | "cnext"
----@alias OpenMode "vsplit" | "split" | "tabnew" | "default" | "buffer"
+---@alias OpenMode "vsplit" | "split" | "tabnew" | "default" | "buffer" | "edit"
 
-local function safe_set_cursor(win, line, col)
-  local bufnr = vim.api.nvim_win_get_buf(win)
-  local line_count = vim.api.nvim_buf_line_count(bufnr)
-
-  -- Clamp line
-  if line < 1 then
-    line = 1
-  end
-  if line > line_count then
-    line = line_count
-  end
-
-  -- Clamp col
-  local text = vim.api.nvim_buf_get_lines(bufnr, line - 1, line, false)[1] or ""
-  if col < 0 then
-    col = 0
-  end
-  if col > #text then
-    col = #text
-  end
-
-  vim.api.nvim_win_set_cursor(win, { line, col })
-end
+-- local function safe_set_cursor(win, line, col)
+--   local bufnr = vim.api.nvim_win_get_buf(win)
+--   local line_count = vim.api.nvim_buf_line_count(bufnr)
+--
+--   -- Clamp line
+--   if line < 1 then
+--     line = 1
+--   end
+--   if line > line_count then
+--     line = line_count
+--   end
+--
+--   -- Clamp col
+--   local text = vim.api.nvim_buf_get_lines(bufnr, line - 1, line, false)[1] or ""
+--   if col < 0 then
+--     col = 0
+--   end
+--   if col > #text then
+--     col = #text
+--   end
+--
+--   vim.api.nvim_win_set_cursor(win, { line, col })
+-- end
 
 ---@param opts {filename: string, line: integer, col: integer, text?: string, mode_open?: OpenMode, is_force_jump: boolean}
 function M.jump_to(opts)
@@ -53,7 +53,7 @@ function M.jump_to(opts)
       mode = "edit"
     end
 
-    local ok, err = pcall(function()
+    local ok, _ = pcall(function()
       vim.cmd(string.format("%s %s", mode, vim.fn.fnameescape(filename)))
     end)
 

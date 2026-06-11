@@ -14,85 +14,43 @@ local M = {
 M.timer = assert(vim.uv.new_timer())
 
 ---@param bufnr integer
----@param line integer
+---@param lnum integer
 ---@return boolean
-local function is_not_valid_line(bufnr, line)
+local function is_not_valid_line(bufnr, lnum)
   local line_count = vim.api.nvim_buf_line_count(bufnr)
-  return line >= 0 and line < line_count
+  return lnum >= 0 and lnum < line_count
 end
 
 ---@param bufnr integer
----@param line integer
+---@param lnum integer
 ---@param col integer
 ---@return boolean
-local function is_not_valid_line_and_col(bufnr, line, col)
-  if is_not_valid_line(bufnr, line) then
+local function is_not_valid_line_and_col(bufnr, lnum, col)
+  if is_not_valid_line(bufnr, lnum) then
     return false
   end
 
-  local text = vim.api.nvim_buf_get_lines(bufnr, line, line + 1, false)[1] or ""
+  local text = vim.api.nvim_buf_get_lines(bufnr, lnum, lnum + 1, false)[1] or ""
   local line_len = #text
   return col >= 0 and col <= line_len
 end
 
----@param bufnr integer
----@return table <integer>
-local function get_all_signs_buffer(bufnr)
-  local placed = vim.fn.sign_getplaced(bufnr, { group = "*" }) -- Ambil semua sign yang terpasang
-  local all_signs = placed[1] and placed[1].signs or {}
-  return all_signs
-end
-
----@param bufnr integer
----@param existing_ids table
----@return table <integer>
-local function get_unused_sign_ids(bufnr, existing_ids)
-  local all_signs = get_all_signs_buffer(bufnr)
-  local unused_ids = {}
-
-  for _, sign in ipairs(all_signs) do
-    if existing_ids[sign.id] then
-      -- table.insert(unused_ids, sign.id)
-      table.insert(unused_ids, sign)
-      existing_ids[sign.id] = true -- Tandai ID sudah digunakan
-    end
-  end
-
-  return unused_ids
-end
-
----@param bufnr integer
----@param line integer
----@return table
-local function get_signs_at_line(bufnr, line)
-  local all_signs = get_all_signs_buffer(bufnr)
-
-  for _, x in pairs(all_signs) do
-    if x.lnum == line then
-      return x
-    end
-  end
-
-  return {}
-end
-
-local function resolve_mark_sign(bufnr)
-  pcall(vim.api.nvim_buf_clear_namespace, bufnr, Config.ns, 0, -1)
-
-  -- clear all signs
-  local ok_signs, signinfo = pcall(vim.fn.sign_getplaced, bufnr, { group = Config.sign_group })
-  if ok_signs and signinfo and signinfo[1] and signinfo[1].signs then
-    for _, sign in pairs(signinfo[1].signs) do
-      pcall(vim.fn.sign_unplace, Config.sign_group, { buffer = bufnr, id = sign.id })
-    end
-  end
-end
-
-local function insert_sign(mark_lists, id, mark_mode, bufnr, line, extmarkspec)
-  -- resolve_mark_sign(bufnr)
+local function insert_sign_and_extmark(mark_lists, id, mark_mode, bufnr, lnum, extmarkspec, note)
   local _, is_has_mark = M.has_mark_data(mark_lists, mark_mode, id, bufnr)
   if is_has_mark then
-    QfbookmarkMarkVisual.insert_signs(id, mark_mode, bufnr, line, extmarkspec)
+    if mark_mode == "NOTE" then
+      if note and #note > 0 then
+        local note_annotation
+        if type(note) == "table" then
+          note_annotation = table.concat(note, " ")
+        elseif type(note) == "string" then
+          note_annotation = note
+        end
+        QfbookmarkMarkVisual.insert_extmark(id, mark_mode, bufnr, lnum, note_annotation)
+      end
+    else
+      QfbookmarkMarkVisual.insert_sign(id, mark_mode, bufnr, lnum, extmarkspec)
+    end
   end
 end
 
@@ -107,13 +65,16 @@ function M.is_current_line_got_mark(mark_lists, s_opts)
     return
   end
 
-  local sign
+  local extmark, sign, has_extmark, has_valid_sign
+
   if no_id then
     local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
-    sign = get_signs_at_line(bufnr, line_opts.line)
-    if sign.group ~= Config.sign_group then
-      return
-    end
+
+    sign = QfbookmarkMarkVisual.get_sign_at_line(bufnr, line_opts.line)
+    extmark = QfbookmarkMarkVisual.get_extmark_at_line(bufnr, line_opts.line)[1]
+
+    has_valid_sign = sign and sign.group == Config.sign_group
+    has_extmark = extmark ~= nil
   end
 
   for mark_mode, _ in pairs(mark_lists) do
@@ -121,8 +82,18 @@ function M.is_current_line_got_mark(mark_lists, s_opts)
     for _, x in pairs(mode_marks) do
       local opts
       local extmarkspec = Config.extmarks.keywords[mark_mode]
-      if no_id and sign then
+      if has_valid_sign then
         if tonumber(x.line) == tonumber(sign.lnum) and sign.group == Config.sign_group then
+          opts = {
+            id = x.id,
+            mark_mode = mark_mode,
+            extmarkspec = extmarkspec,
+            bufnr = mark_lists[mark_mode][x.id].bufnr,
+          }
+          return opts
+        end
+      elseif has_extmark then
+        if tonumber(x.line) == tonumber(extmark.lnum) then
           opts = {
             id = x.id,
             mark_mode = mark_mode,
@@ -236,18 +207,22 @@ end
 ---@param extmarkspec QFBookSpec
 ---@param id integer
 ---@param bufnr? integer
----@param line integer
+---@param lnum integer
 ---@param col integer
 ---@param text string
+---@param note? string[]
 ---@param inserted_at? integer
 ---@return QFbookBufferMark | nil
-local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line, col, text, inserted_at)
+local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum, col, text, inserted_at, note)
+  note = note or {}
+
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   inserted_at = inserted_at or os.time()
+
   local filename = vim.api.nvim_buf_get_name(bufnr)
 
   -- Validate line before registering
-  if is_not_valid_line_and_col(bufnr, line, col) then
+  if is_not_valid_line_and_col(bufnr, lnum, col) then
     return nil
   end
 
@@ -255,27 +230,41 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line
     mark_lists[mark_mode] = {}
   end
 
-  local cwd = vim.uv.cwd()
-  local filename_trim = filename:gsub(cwd .. "/", "")
-  local harpoon = string.format("%s:%s:%s:%s", filename_trim, line, col, mark_mode)
+  -- local text_concat = ""
+  --
+  -- --- Handle note if its type is table or string before saving
+  -- if mark_mode == "NOTE" then
+  --   if type(note) == "table" then
+  --     text_concat = table.concat(note, " ")
+  --   elseif type(note) == "string" then
+  --     text_concat = note
+  --   end
+  --   if #text_concat == 0 then
+  --     return
+  --   end
+  -- end
 
   if not mark_lists[mark_mode][id] then
+    local cwd = vim.uv.cwd()
+    local filename_trim = filename:gsub(cwd .. "/", "")
+    local harpoon = string.format("%s:%s:%s:%s", filename_trim, lnum, col, mark_mode)
+
     mark_lists[mark_mode][id] = {
       bufnr = bufnr,
       filename = filename,
-      line = line,
+      line = lnum,
       col = col,
       text = QfbookmarkUtils.strip_whitespace(text),
       harpoon = harpoon,
       mark_mode = mark_mode,
-      fn_name = QfbookmarkTreesitter.resolve_symbol(bufnr, line, col or 0),
+      fn_name = QfbookmarkTreesitter.resolve_symbol(bufnr, lnum, col or 0),
       inserted_at = inserted_at, -- Unix timestamp (seconds); consistent across sessions
       id = id,
+      note = note,
     }
   end
 
-  insert_sign(mark_lists, id, mark_mode, bufnr, line, extmarkspec)
-
+  insert_sign_and_extmark(mark_lists, id, mark_mode, bufnr, lnum, extmarkspec, note)
   return mark_lists
 end
 
@@ -284,12 +273,29 @@ end
 ---@param extmarkspec QFBookSpec
 ---@param id integer
 ---@param bufnr? integer
----@param line integer
+---@param lnum integer
 ---@param col integer
 ---@param text string
+---@param is_open_window boolean
 ---@return QFbookBufferMark | nil
-function M.place_next_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line, col, text)
-  return register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line, col, text)
+function M.place_next_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum, col, text, is_open_window)
+  if mark_mode == "NOTE" then
+    local target_mark = mark_lists[mark_mode] and mark_lists[mark_mode][id] or {}
+
+    local QfbookmarkUI = require "qfbookmark.ui"
+    QfbookmarkUI.place_mark_annotation(mark_lists, function(raw_lines)
+      local note = raw_lines
+      local inserted_at = os.time()
+      if is_open_window then
+        if mark_lists[mark_mode][id] then
+          mark_lists[mark_mode][id].note = note
+        end
+      end
+      register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum, col, text, inserted_at, note)
+    end, { load_chunk = is_open_window, chunk = target_mark })
+    return
+  end
+  return register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum, col, text)
 end
 
 ---@param mark_lists QFbookBufferMark
@@ -303,7 +309,7 @@ function M.update_mark_sign(mark_lists, bufnr)
     return
   end
 
-  resolve_mark_sign(bufnr)
+  QfbookmarkMarkVisual.resolve_mark_sign(bufnr)
 
   local filename = vim.api.nvim_buf_get_name(bufnr)
 
@@ -322,7 +328,7 @@ function M.update_mark_sign(mark_lists, bufnr)
     end
   end
 
-  local sign_mark_placed = get_unused_sign_ids(bufnr, existing_ids)
+  local sign_mark_placed = QfbookmarkMarkVisual.get_sign_unused_ids(bufnr, existing_ids)
 
   local id_lookup = {}
   for _, sign in pairs(sign_mark_placed) do
@@ -357,7 +363,8 @@ function M.update_mark_sign(mark_lists, bufnr)
             mark_data.line,
             mark_data.col,
             mark_data.text,
-            mark_data.inserted_at
+            mark_data.inserted_at,
+            mark_data.note
           )
         end
 
@@ -403,7 +410,8 @@ function M.delete_mark(mark_lists, mark_mode, id, bufnr)
   end
 
   mark_lists[mark_mode][id] = nil
-  QfbookmarkMarkVisual.remove_sign(id, bufnr)
+  QfbookmarkMarkVisual.delete_sign(id, bufnr)
+  QfbookmarkMarkVisual.delete_extmark(id, bufnr)
   return true
 end
 
@@ -413,10 +421,10 @@ end
 ---@param mark_lists QFbookBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param extmarkspec QFBookSpec
----@param toggle_delete boolean?
+---@param is_open_window? boolean
 ---@return QFbookBufferMark|nil
-function M.add_mark(mark_lists, mark_mode, extmarkspec, toggle_delete)
-  toggle_delete = toggle_delete or false
+function M.add_mark(mark_lists, mark_mode, extmarkspec, is_open_window)
+  is_open_window = is_open_window or false
 
   local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
 
@@ -427,7 +435,17 @@ function M.add_mark(mark_lists, mark_mode, extmarkspec, toggle_delete)
     return nil
   end
 
-  return M.place_next_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line_opts.line, line_opts.col, line_opts.text)
+  return M.place_next_mark(
+    mark_lists,
+    mark_mode,
+    extmarkspec,
+    id,
+    bufnr,
+    line_opts.line,
+    line_opts.col,
+    line_opts.text,
+    is_open_window
+  )
 end
 
 return M

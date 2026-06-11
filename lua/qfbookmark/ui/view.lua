@@ -41,12 +41,12 @@ M.window = {
     win = nil,
     buf = nil,
   },
-  mark_note = {
+  mark_annotation = {
     augroup = "WinMarkNoteMark",
     win = nil,
     buf = nil,
   },
-  mark_note_preview = {
+  mark_annotation_preview = {
     augroup = "WinMarkNoteMarkPreview",
     win = nil,
     buf = nil,
@@ -275,66 +275,91 @@ local __popup_opts_for = {
     QfbookmarkUIKeymaps.setup_keymap_save_input(opts_popup, buf, cb)
   end,
   ["note"] = function(opts_popup)
-    local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
-    if not win or not vim.api.nvim_win_is_valid(win) then
+    local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
+    if not main_win or not vim.api.nvim_win_is_valid(main_win) then
       return
     end
-    if not buf or not vim.api.nvim_buf_is_valid(buf) then
+    if not main_buf or not vim.api.nvim_buf_is_valid(main_buf) then
       return
     end
 
-    M.window.note.win = win
-    M.window.note.buf = buf
+    M.window.note.buf = main_buf
+    M.window.note.win = main_win
 
     if not opts_popup.popup then
       opts_popup.popup = {}
-      opts_popup.popup.win = M.window.note.win
       opts_popup.popup.buf = M.window.note.buf
+      opts_popup.popup.win = M.window.note.win
     end
 
-    QfbookmarkUIKeymaps.setup_keymap_note(opts_popup, buf)
+    local Config = require("qfbookmark.config").defaults
+    local filetype = Config.window.note and Config.window.note.filetype or ""
+    if #filetype > 0 then
+      vim.api.nvim_set_option_value("filetype", filetype, { buf = main_buf })
+    end
+
+    QfbookmarkUIKeymaps.setup_keymap_note(opts_popup, main_buf)
   end,
   ---@param opts_popup QfBookUiPopupCfg
   ---@param cb function
-  ["mark_note"] = function(opts_popup, cb)
-    local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
-    if not win or not vim.api.nvim_win_is_valid(win) then
+  ["mark_annotation"] = function(opts_popup, cb)
+    local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
+    if not main_win or not vim.api.nvim_win_is_valid(main_win) then
       return
     end
-    if not buf or not vim.api.nvim_buf_is_valid(buf) then
+    if not main_buf or not vim.api.nvim_buf_is_valid(main_buf) then
       return
     end
 
-    M.window.mark_note.win = win
-    M.window.mark_note.buf = buf
+    M.window.mark_annotation.win = main_win
+    M.window.mark_annotation.buf = main_buf
 
     if not opts_popup.popup then
       opts_popup.popup = {}
-      opts_popup.popup.win = M.window.mark_note.win
-      opts_popup.popup.buf = M.window.mark_note.buf
+      opts_popup.popup.win = M.window.mark_annotation.win
+      opts_popup.popup.buf = M.window.mark_annotation.buf
     end
 
-    local main_win_cfg = vim.api.nvim_win_get_config(win)
+    local main_win_cfg = vim.api.nvim_win_get_config(main_win)
 
     local buf_preview, win_preview = QfbookmarkUIPopup.mark_note_preview(main_win_cfg, opts_popup.win_opts.wincfg.width)
     if not win_preview or not buf_preview then
       return
     end
 
-    M.window.mark_preview.buf = buf_preview
-    M.window.mark_preview.win = win_preview
+    M.window.mark_annotation_preview.buf = buf_preview
+    M.window.mark_annotation_preview.win = win_preview
 
     if not opts_popup.popup.preview then
       opts_popup.popup.preview = {}
-      opts_popup.popup.preview.buf = M.window.mark_preview.buf
-      opts_popup.popup.preview.win = M.window.mark_preview.win
+      opts_popup.popup.preview.buf = M.window.mark_annotation_preview.buf
+      opts_popup.popup.preview.win = M.window.mark_annotation_preview.win
     end
 
-    QfbookmarkUIKeymaps.setup_keymap_mark_note(opts_popup, buf, cb)
+    -- Wire up CursorMoved preview with the new harpoon_map
+    QfbookmarkUIPopup.setup_mark_preview_contents(opts_popup, main_buf, win_preview, buf_preview, true)
+
+    QfbookmarkUIKeymaps.setup_keymap_mark_annotation(opts_popup, main_buf, cb)
+
+    vim.api.nvim_buf_call(main_buf, function()
+      vim.cmd.startinsert()
+
+      if opts_popup.data_annotation and opts_popup.data_annotation.load_chunk then
+        local mark_data = opts_popup.data_annotation.chunk
+        local data_lines = mark_data.note or {}
+        local lines
+        if type(data_lines) == "string" then
+          lines = { data_lines }
+        else
+          lines = data_lines
+        end
+        vim.api.nvim_buf_set_lines(0, 0, -1, false, lines)
+      end
+    end)
   end,
 }
 
----@param for_what "mark" | "buffer" | "save"| "note" | "mark_note"
+---@param for_what "mark" | "buffer" | "save"| "note" | "mark_annotation"
 ---@param opts_popup QfBookUiPopupCfg
 ---@param is_editable? boolean
 ---@param cb? function | nil
@@ -351,7 +376,7 @@ function M.build_popup(for_what, opts_popup, cb, is_editable)
   -- Call popup open window
   if vim.tbl_contains({ "buffer", "note" }, for_what) then
     __popup_opts_for[for_what](opts_popup)
-  elseif vim.tbl_contains({ "mark", "mark_note", "save" }, for_what) then
+  elseif vim.tbl_contains({ "mark", "mark_annotation", "save" }, for_what) then
     if cb then
       __popup_opts_for[for_what](opts_popup, cb)
     end

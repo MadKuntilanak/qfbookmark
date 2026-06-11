@@ -127,10 +127,7 @@ M.defaults = {
       trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
       grugfar = { enabled = true, toggle = "<Localleader>gg" },
       copyline = { enabled = true, toggle = "<Leader>qc" },
-      cmdline_strings = {
-        enabled = false,
-        commands = {},
-      },
+      cmdline_strings = { enabled = false, commands = {} },
     },
   },
 }

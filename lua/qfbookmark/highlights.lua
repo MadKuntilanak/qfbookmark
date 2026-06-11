@@ -1,8 +1,9 @@
 ---@type QFBookHighlight[]
 local colors = {
   -- +-----------------------------------------------------------------------------+
-  -- |                                  PREVIWER                                   |
+  -- |                                  PREVIEWER                                  |
   -- +-----------------------------------------------------------------------------+
+
   PreviewFloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
   PreviewCursorline = { bg = { higroup = { fromTo = "type", attr = "fg" }, tint = { amount = -0.8 } } },
   PreviewFloatCursorLineNr = {
@@ -58,7 +59,7 @@ local colors = {
   -- current-file indicator "●"
   EntryCurrentFile = { fg = { higroup = { fromTo = "String", attr = "fg" } }, bold = true },
   -- lnum portion ":92" on the detail line
-  EntryLnum = { fg = { higroup = { fromTo = "type", attr = "fg" }, tint = { amount = -0.4 } } },
+  EntryLnum = { fg = { higroup = { fromTo = "NonText", attr = "fg" }, tint = { amount = -0.2 } } },
   -- directory value in save footer (cyan-ish)
   EntryDirectory = { fg = { higroup = { fromTo = "Special", attr = "fg" } } },
 
@@ -88,26 +89,56 @@ local colors = {
   },
 
   -- Preview text on the detail line
-  EntryDetail = {
+  EntryDetail = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = 0.7 } } },
+
+  EntryNote = { fg = { higroup = { fromTo = "String", attr = "fg" }, tint = { amount = 0.3 } } },
+
+  -- function name context "ƒ fn_name" on the detail line (purple)
+  EntryFnName = { fg = { higroup = { fromTo = "Function", attr = "fg" }, tint = { amount = -0.2 } } },
+
+  -- class/struct/impl symbol kind (orange-ish, from type highlight)
+  EntrySymbolType = { fg = { higroup = { fromTo = "Type", attr = "fg" }, tint = { amount = -0.1 } }, italic = true },
+
+  -- +-----------------------------------------------------------------------------+
+  -- |                                 NOTEEXTMARK                                 |
+  -- +-----------------------------------------------------------------------------+
+
+  NoteExtmarkMark = {
     fg = {
-      higroup = { fromTo = "String", attr = "fg" },
-      tint = { amount = -0.4 },
+      higroup = { fromTo = "Function", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.4 },
     },
   },
-  -- function name context "ƒ fn_name" on the detail line (purple)
-  EntryFnName = {
-    fg = { higroup = { fromTo = "Function", attr = "fg" }, tint = { amount = -0.5 } },
-    italic = true,
+  NoteExtmarkFix = {
+    fg = {
+      higroup = { fromTo = "DiagnosticError", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.4 },
+    },
   },
-  -- class/struct/impl symbol kind (orange-ish, from type highlight)
-  EntrySymbolType = {
-    fg = { higroup = { fromTo = "Type", attr = "fg" }, tint = { amount = -0.1 } },
-    italic = true,
+  NoteExtmarkDebug = {
+    fg = {
+      higroup = { fromTo = "DiagnosticWarn", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.4 },
+    },
+  },
+  NoteExtmarkNoteEx = {
+    fg = { higroup = { fromTo = "String", attr = "fg" }, tint = { amount = 0.1 } },
+  },
+  NoteExtmarkNote = {
+    fg = {
+      higroup = { fromTo = "DiagnosticOk", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.4 },
+    },
+    bg = {
+      higroup = { fromTo = "Normal", attr = "bg" },
+      tint = { amount = 0.25 },
+    },
   },
 
   -- +-----------------------------------------------------------------------------+
   -- |                                   BUFFER                                    |
   -- +-----------------------------------------------------------------------------+
+
   EntryFlag = {
     fg = {
       higroup = { fromTo = "type", attr = "fg" },
@@ -132,16 +163,17 @@ local hex_to_rgb = function(hex_str)
   return { tonumber(red, 16), tonumber(green, 16), tonumber(blue, 16) }
 end
 
----@param opts vim.api.keyset.get_highlight
----@return vim.api.keyset.get_hl_info
+---@param opts vim.api.keyset.get_highlight?
+---@return { fg:string?, bg:string?, sp:string? }
 local function get_hl_as_hex(opts, ns)
   ns, opts = ns or 0, opts or {}
   opts.link = opts.link ~= nil and opts.link or false
   local hl = vim.api.nvim_get_hl(ns, opts)
-  hl.fg = hl.fg and ("#%06x"):format(hl.fg)
-  hl.bg = hl.bg and ("#%06x"):format(hl.bg)
-  hl.sp = hl.sp and ("#%06x"):format(hl.sp)
-  return hl
+  return {
+    fg = hl.fg and ("#%06x"):format(hl.fg) or nil,
+    bg = hl.bg and ("#%06x"):format(hl.bg) or nil,
+    sp = hl.sp and ("#%06x"):format(hl.sp) or nil,
+  }
 end
 
 local function clamp(val)
@@ -208,7 +240,7 @@ local function h(name)
   return get_hl_as_hex { name = name }
 end
 
----@param opts ColCfg
+---@param opts QFBookHighlightCfg
 ---@return string
 local function get_col(opts)
   local color, color_edit, color_base

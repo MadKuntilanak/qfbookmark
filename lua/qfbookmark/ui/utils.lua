@@ -60,6 +60,21 @@ function M.get_win_width(is_input, lines)
   return { row = row, col = col, width = win_width, height = win_height }
 end
 
+function M.get_position(anchor, width, height)
+  local lines = vim.o.lines
+  local cols = vim.o.columns
+
+  if anchor == "NW" then
+    return 0, 0
+  elseif anchor == "NE" then
+    return 0, cols - width
+  elseif anchor == "SW" then
+    return lines - height - 2, 0
+  elseif anchor == "SE" then
+    return lines - height - 2, cols - width
+  end
+end
+
 ---@param height_editor integer
 ---@param width_editor integer
 function M.get_center_col_row(height_editor, width_editor)
@@ -118,7 +133,7 @@ end
 ---@param text string
 ---@param max_len integer
 ---@return string
-function M.shorten_text(text, max_len)
+local function shorten_text(text, max_len)
   -- strip leading whitespace
   text = text:match "^%s*(.-)%s*$" or text
   if vim.fn.strdisplaywidth(text) <= max_len then
@@ -150,7 +165,7 @@ function M.shorten_text(text, max_len)
 end
 
 --- Badge label per mark_mode
----@param mark_mode string
+---@param mark_mode QFBookMarkMode
 ---@return string
 function M.get_mode_badge(mark_mode)
   local badges = {}
@@ -299,7 +314,17 @@ function M.build_entry_lines(idx, mark, path_width, symbol)
   local path = M.shorten_path(mark.filename, path_width)
   local cur_marker = M.is_current_file(mark.filename) and " ●" or ""
   local lnum = string.format(":%d", mark.line)
-  local preview = M.shorten_text(mark.text or "", path_width)
+
+  local note_annotation
+
+  if type(mark.note) == "table" then
+    note_annotation = table.concat(mark.note, " ")
+  elseif type(mark.note) == "string" then
+    note_annotation = mark.note
+  end
+
+  local preview = mark.mark_mode == "NOTE" and ("⮞ " .. note_annotation or mark.text or "") or (mark.text or "")
+  preview = shorten_text(preview, path_width)
 
   -- header: " N  BADGE  plugins/qf.lua ●"
   local line1 = string.format(" %d  %s  %s%s", idx, badge, path, cur_marker)

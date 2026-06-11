@@ -705,10 +705,15 @@ function M.nvim_buf_get_name(bufnr, bufinfo)
   return bufname
 end
 
+---@class BufInfoEx : vim.fn.getbufinfo.ret.item
+---@field col? integer
+
 ---@param bufnr? integer
 ---@return vim.fn.getbufinfo.ret.item & { col?: integer }
 function M.getbufinfo(bufnr)
   local info = vim.fn.getbufinfo(bufnr)[1] or {}
+
+  ---@cast info BufInfoEx
 
   if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
     return info

@@ -115,15 +115,13 @@ local function load_content(filename, bufnr)
   return vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 end
 
---- Update the preview window based on the current cursor line.
---- Resolves the harpoon value from harpoon_map instead of parsing raw lines.
 ---@param opts_popup QfBookUiPopupCfg
----@param buf integer
----@param win integer
-local function update_mark_preview(opts_popup, win, buf)
-  local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
-
+---@param cur_line_nr integer
+local function get_data_from_opts_popup(opts_popup, cur_line_nr)
   local harpoon_val
+
+  cur_line_nr = cur_line_nr or vim.api.nvim_win_get_cursor(0)[1]
+
   for _, x in pairs(opts_popup.content_map) do
     if x.start_line == cur_line_nr then
       harpoon_val = x.hval
@@ -134,17 +132,12 @@ local function update_mark_preview(opts_popup, win, buf)
     return
   end
 
-  if not vim.api.nvim_win_is_valid(win) then
+  local entry = QfbookmarkUIUtils.get_entry_at_line(opts_popup.content_map, cur_line_nr)
+  if not entry then
     return
   end
 
   local filename, col, line, bufnr
-
-  local entry = QfbookmarkUIUtils.get_entry_at_line(opts_popup.content_map, cur_line_nr)
-
-  if not entry then
-    return
-  end
 
   for _, _entry in pairs(opts_popup.content_map) do
     local m = _entry.mark
@@ -155,6 +148,38 @@ local function update_mark_preview(opts_popup, win, buf)
       bufnr = m.bufnr
       break
     end
+  end
+  return { filename = filename, col = col, line = line, bufnr = bufnr }
+end
+
+--- Update the preview window based on the current cursor line.
+--- Resolves the harpoon value from harpoon_map instead of parsing raw lines.
+---@param opts_popup QfBookUiPopupCfg
+---@param buf integer
+---@param win integer
+---@param is_note_mark boolean
+local function update_mark_preview(opts_popup, win, buf, is_note_mark)
+  if not vim.api.nvim_win_is_valid(win) then
+    return
+  end
+
+  local filename, col, line, bufnr
+
+  local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
+  if not is_note_mark then
+    local opts = get_data_from_opts_popup(opts_popup, cur_line_nr)
+    if not opts then
+      return
+    end
+    filename = opts.filename
+    col = opts.col
+    line = opts.line
+    bufnr = opts.bufnr
+  else
+    bufnr = opts_popup.content_map[1].mark.bufnr
+    line = opts_popup.content_map[1].mark.line
+    col = opts_popup.content_map[1].mark.col
+    filename = opts_popup.content_map[1].mark.filename
   end
 
   if not filename or not bufnr then
@@ -252,18 +277,21 @@ end
 ---@param opts_popup QfBookUiPopupCfg
 ---@param win_preview integer
 ---@param buf_preview integer
-function M.setup_mark_preview_contents(opts_popup, main_buf, win_preview, buf_preview)
+---@param is_note_mark? boolean
+function M.setup_mark_preview_contents(opts_popup, main_buf, win_preview, buf_preview, is_note_mark)
+  is_note_mark = is_note_mark or false
+
   -- But immediately show preview for the first entry when the popup opens
   vim.schedule(function()
     if vim.api.nvim_win_is_valid(win_preview) then
-      update_mark_preview(opts_popup, win_preview, buf_preview)
+      update_mark_preview(opts_popup, win_preview, buf_preview, is_note_mark)
     end
   end)
 
   vim.api.nvim_create_autocmd("CursorMoved", {
     buffer = main_buf,
     callback = function()
-      update_mark_preview(opts_popup, win_preview, buf_preview)
+      update_mark_preview(opts_popup, win_preview, buf_preview, is_note_mark)
     end,
   })
 end
@@ -278,10 +306,52 @@ function M.mark_preview(main_wincfg, width, height)
   height = height or math.max(1, math.floor(editor.height * 2 / 3.5))
   width = math.max(editor.width - math.floor(width * 2) + QfbookmarkUIUtils.PADDING_PREVIEW + 10, 50)
 
-  local _col = main_wincfg.col - width - QfbookmarkUIUtils.PADDING_PREVIEW - 12
+  local _col = main_wincfg.col - width - QfbookmarkUIUtils.PADDING_PREVIEW
   local _col_minus = main_wincfg.col + main_wincfg.width + QfbookmarkUIUtils.PADDING_PREVIEW
   local col = Config.window.mark.anchor == "NW" and _col_minus or _col
   local row = main_wincfg.row
+
+  ---@type WinCfg
+  local wincfg = {
+    buf = vim.api.nvim_create_buf(false, true),
+    enter = false,
+    wincfg = {
+      relative = "editor",
+      width = width,
+      height = height,
+      row = row,
+      col = col,
+      style = "minimal",
+      border = "rounded",
+      title = QfbookmarkUIUtils.format_title "Preview",
+      title_pos = "center",
+      focusable = false,
+      noautocmd = true,
+    },
+  }
+
+  local buf_preview, win_preview = M.new_open(wincfg, { "" })
+
+  vim.api.nvim_set_option_value("winblend", 0, { win = win_preview })
+  vim.api.nvim_set_option_value(
+    "winhighlight",
+    "NormalFloat:QFBookmarkNormalFloat,FloatBorder:QFBookmarkFloatBorder,",
+    { win = win_preview }
+  )
+
+  return buf_preview, win_preview
+end
+
+---@param main_wincfg vim.api.keyset.win_config
+---@param width integer
+---@param height? integer
+---@return integer | nil, integer | nil
+function M.mark_note_preview(main_wincfg, width, height)
+  height = math.min(10, math.floor(main_wincfg.height * 2)) + QfbookmarkUIUtils.PADDING_PREVIEW
+  width = main_wincfg.width
+
+  local col = main_wincfg.col
+  local row = main_wincfg.row - height - QfbookmarkUIUtils.PADDING_PREVIEW
 
   ---@type WinCfg
   local wincfg = {

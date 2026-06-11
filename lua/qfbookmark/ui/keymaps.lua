@@ -99,7 +99,7 @@ function Mapping.setup_open_key(open_mode)
     end
 
     if Mapping.is_buffers then
-      ---@type QFBufferItem
+      ---@type QFBookBufferItem
       local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.harpoon_map, cur_line_nr)
       local hval = entry and entry["hval"]
       if hval then
@@ -112,7 +112,7 @@ function Mapping.setup_open_key(open_mode)
       end
     end
 
-    if Mapping.is_mark_note then
+    if Mapping.is_mark_annotation then
       local raw_lines = vim.api.nvim_buf_get_lines(Mapping.buf, 0, -1, false)
       if Mapping.cb then
         Mapping.cb(raw_lines)
@@ -281,7 +281,7 @@ function Mapping.mark.move_item_to(is_prev)
   -- swap
   entries[cur_idx], entries[target_idx] = entries[target_idx], entries[cur_idx]
 
-  -- rebuild buffer (FROM DATA ONLY)
+  -- rebuild buffer (from data ONLY!)
   local lines = {}
 
   for i, e in ipairs(entries) do
@@ -324,7 +324,7 @@ Mapping.buffer = {}
 
 function Mapping.buffer.item_del()
   local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
-  ---@type QFBufferItem
+  ---@type QFBookBufferItem
   local hval = get_hval(Mapping.harpoon_map, cur_line_nr)
   if hval then
     local target_buf = hval.bufnr
@@ -356,6 +356,8 @@ end
 ---@param cb? function
 local setup_mapping_opts = function(opts_popup, buf, cb)
   cb = cb or nil
+
+  Mapping.buf = buf
   Mapping.opts_popup = opts_popup
   Mapping.popup = opts_popup.popup
   Mapping.popup.preview = opts_popup.popup.preview and opts_popup.popup.preview or nil
@@ -363,10 +365,21 @@ local setup_mapping_opts = function(opts_popup, buf, cb)
   Mapping.harpoon_map = opts_popup.content_map
   Mapping.is_harpoon = opts_popup.is_harpoon and opts_popup.is_harpoon or false
   Mapping.is_buffers = opts_popup.is_buffers and opts_popup.is_buffers or false
-  Mapping.is_mark_note = opts_popup.is_mark_note and opts_popup.is_mark_note or false
-  Mapping.buf = buf
+  Mapping.is_mark_annotation = opts_popup.is_mark_annotation and opts_popup.is_mark_annotation or false
+  Mapping.is_note = opts_popup.is_note and opts_popup.is_note or false
 
   Mapping.cb = cb
+
+  --- Clean up
+  vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave" }, {
+    buffer = Mapping.buf,
+    callback = function()
+      vim.schedule(function()
+        QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
+        QfbookmarkUIUtils.clean_up(Mapping.popup)
+      end)
+    end,
+  })
 end
 
 ---@param opts_popup QfBookUiPopupCfg
@@ -401,7 +414,7 @@ function M.build_keymaps(opts_popup, buf, cb)
       end,
     },
     ["q"] = {
-      mode = "n",
+      mode = { "n", "i" },
       fun = Mapping.exit_close,
     },
     ["<Esc>"] = {
@@ -409,19 +422,11 @@ function M.build_keymaps(opts_popup, buf, cb)
       fun = Mapping.exit_close,
     },
     ["<C-c>"] = {
-      mode = "n",
+      mode = { "n", "i" },
       fun = Mapping.exit_close,
     },
     ["<C-q>"] = {
-      mode = "n",
-      fun = Mapping.exit_close,
-    },
-    ["<C-i>"] = {
-      mode = "n",
-      fun = Mapping.exit_close,
-    },
-    ["<C-o>"] = {
-      mode = "n",
+      mode = { "n", "i" },
       fun = Mapping.exit_close,
     },
   }
@@ -493,6 +498,8 @@ end
 ---@param buf integer
 function M.setup_keymap_mark(opts_popup, buf, cb)
   opts_popup.is_buffers = false
+  opts_popup.is_note = false
+  opts_popup.is_mark_annotation = false
   opts_popup.is_harpoon = true
 
   local _keys = M.build_keymaps(opts_popup, buf, cb)
@@ -637,6 +644,7 @@ end
 function M.setup_keymap_buffers(opts_popup, buf)
   opts_popup.is_buffers = true
   opts_popup.is_harpoon = false
+  opts_popup.is_mark_annotation = false
   local _keys = M.build_keymaps(opts_popup, buf)
 
   _keys["gp"] = {
@@ -669,6 +677,8 @@ end
 function M.setup_keymap_save_input(opts_popup, buf, cb)
   opts_popup.is_buffers = false
   opts_popup.is_harpoon = false
+  opts_popup.is_mark_annotation = false
+  opts_popup.is_note = false
   local _keys = M.build_keymaps(opts_popup, buf, cb)
 
   _keys["<c-d>"] = nil
@@ -682,6 +692,9 @@ end
 function M.setup_keymap_note(opts_popup, buf)
   opts_popup.is_buffers = false
   opts_popup.is_harpoon = false
+  opts_popup.is_mark_annotation = false
+  opts_popup.is_note = true
+
   local _keys = M.build_keymaps(opts_popup, buf)
 
   _keys["<c-d>"] = nil
@@ -693,10 +706,11 @@ end
 ---@param opts_popup QfBookUiPopupCfg
 ---@param buf integer
 ---@param cb function
-function M.setup_keymap_mark_note(opts_popup, buf, cb)
+function M.setup_keymap_mark_annotation(opts_popup, buf, cb)
   opts_popup.is_buffers = false
   opts_popup.is_harpoon = false
-  opts_popup.is_mark_note = true
+  opts_popup.is_note = false
+  opts_popup.is_mark_annotation = true
 
   setup_mapping_opts(opts_popup, buf, cb)
 
@@ -709,14 +723,18 @@ function M.setup_keymap_mark_note(opts_popup, buf, cb)
       end,
     },
     ["<Esc>"] = {
-      mode = "n",
+      mode = { "n", "i" },
       fun = Mapping.exit_close,
     },
     ["<C-c>"] = {
-      mode = "n",
+      mode = { "n", "i" },
       fun = Mapping.exit_close,
     },
     ["<C-q>"] = {
+      mode = { "n", "i" },
+      fun = Mapping.exit_close,
+    },
+    ["q"] = {
       mode = "n",
       fun = Mapping.exit_close,
     },

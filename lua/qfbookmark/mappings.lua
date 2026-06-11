@@ -104,20 +104,28 @@ local function set_user_mappings(tbl_cmdline_strings)
 
     if type(val.cmd) == "function" then
       keymap_func = function()
-        local results
+        local qf_result, marks
+
         if QfbookmarkUtils.is_loclist() then
           local data = QfbookmarkUtils.get_data_qf(true)
-          results = data.location
+          qf_result = data.location
         else
           local data = QfbookmarkUtils.get_data_qf()
-          results = data.quickfix
+          qf_result = data.quickfix
         end
 
-        if not vim.tbl_isempty(results.items) then
+        if not vim.tbl_isempty(qf_result.items) then
           local qflist_stack_idx = QfbookmarkUtils.get_current_qf_idx()
           ---@diagnostic disable-next-line: inject-field
-          results.stack_idx = qflist_stack_idx
+          qf_result.stack_idx = qflist_stack_idx
         end
+
+        marks = qf.get_buffers()
+
+        local results = {
+          signs = marks or {},
+          qf = qf_result or {},
+        }
 
         val.cmd(results)
       end

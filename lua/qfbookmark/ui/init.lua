@@ -1,14 +1,13 @@
 local QfbookmarkUtils = require "qfbookmark.utils"
--- local QfbookmarkTreesitter = require "qfbookmark.treesitter"
 local QfbookmarkUIUtils = require "qfbookmark.ui.utils"
 local QfbookmarkUIView = require "qfbookmark.ui.view"
 
 ---@alias WinSizeCfg { row: integer, col: integer, height: integer, width: integer, title: string, title_pos: string, buf?: integer}
 
----@param buffer_opts QFBufferItem
+---@param buffer_opts QFBookBufferItem
 ---@param path_width integer
 ---@return string line
----@return QFBufferItem buffer_opts
+---@return QFBookBufferItem buffer_opts
 local function build_entry_line_buffers(buffer_opts, path_width)
   local badge = buffer_opts.flag
   local path = QfbookmarkUIUtils.shorten_path(buffer_opts.info.name, path_width)
@@ -19,7 +18,7 @@ local function build_entry_line_buffers(buffer_opts, path_width)
 end
 
 --- Compute optimal path column width across all mark entries
----@param mark_lists QFbookBufferMarkEntry[] | QFBufferItem[]
+---@param mark_lists QFbookBufferMarkEntry[] | QFBookBufferItem[]
 ---@param max_path? integer
 ---@param is_buffers boolean
 ---@return integer
@@ -126,8 +125,8 @@ local function mark_harpoon_popup(mark_lists, cb)
   local editor = QfbookmarkUIUtils.get_editor_size()
 
   local height = math.max(2, math.floor(editor.height / 2))
-  local width = calc_popup_width(mark_lists)
-  width = math.max(width + 20, 20)
+  local original_width = calc_popup_width(mark_lists)
+  local width = math.max(original_width + 20, 20)
 
   local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
 
@@ -141,7 +140,7 @@ local function mark_harpoon_popup(mark_lists, cb)
 
   for idx, mark in ipairs(mark_lists) do
     local symbol = QfbookmarkUIUtils.resolve_fn_name(mark)
-    local line1, line2, line3, hval = QfbookmarkUIUtils.build_entry_lines(idx, mark, width, symbol)
+    local line1, line2, line3, hval = QfbookmarkUIUtils.build_entry_lines(idx, mark, original_width, symbol)
 
     local start_line = #display_lines + 1
 
@@ -200,6 +199,68 @@ local function mark_harpoon_popup(mark_lists, cb)
   }
 
   QfbookmarkUIView.build_popup("mark", __opts, cb)
+end
+
+---@param mark_lists QFbookBufferMark
+---@param cb function
+---@param load_chunk? {load_chunk: boolean, chunk: QFbookBufferMarkEntry}
+local function place_mark_annotation(mark_lists, cb, load_chunk)
+  load_chunk = load_chunk or {}
+
+  local editor = QfbookmarkUIUtils.get_editor_size()
+
+  local height = math.floor(editor.height / 5)
+  local width = math.floor(editor.width / 2)
+
+  local col, row = QfbookmarkUIUtils.get_center_col_row(height, width)
+
+  row = row + 10
+
+  local title_str = "📝 " .. "Mark Annotation"
+
+  local win_buf = vim.api.nvim_create_buf(false, true)
+  local wincfg = {
+    buf = win_buf,
+    enter = true,
+    wincfg = {
+      relative = "editor",
+      width = width,
+      height = height,
+      row = row,
+      col = col,
+      style = "minimal",
+      border = "rounded",
+      title = QfbookmarkUIUtils.format_title(title_str),
+      title_pos = "center",
+      footer = "",
+      footer_pos = "center",
+    },
+  }
+
+  local buf = vim.api.nvim_get_current_buf()
+  local curline = vim.api.nvim_win_get_cursor(0)[1]
+
+  local __opts = {
+    contents = mark_lists,
+    content_map = {
+      [1] = {
+        hval = "mark_note",
+        mark = {
+          bufnr = vim.api.nvim_get_current_buf(),
+          line = curline,
+          col = vim.api.nvim_win_get_cursor(0)[2],
+          filename = vim.api.nvim_buf_get_name(buf),
+        },
+      },
+    },
+    win_opts = wincfg,
+    harpoon = "mark_note",
+    is_mark_annotation = true,
+    data_annotation = load_chunk,
+    cb = cb,
+  }
+
+  QfbookmarkUIView.build_popup("mark_annotation", __opts, cb)
 end
 
 ---@param buffer_lists table
@@ -271,8 +332,59 @@ local function buffers_popup(buffer_lists)
   QfbookmarkUIView.build_popup("buffer", __opts)
 end
 
+---@param note_path string
+---@param cfg_note QFBookNotes
+---@param is_global? boolean
+local function open_note_in_float(note_path, cfg_note, is_global)
+  is_global = is_global or false
+
+  local editor = QfbookmarkUIUtils.get_editor_size()
+
+  local resnum = tonumber(cfg_note.size:match "%d+") or 60
+  local width = math.floor(editor.width * resnum / 100)
+  local height = editor.height
+
+  local row, col = QfbookmarkUIUtils.get_position(cfg_note.open_cmd.anchor, width, height)
+
+  local shorten_path = QfbookmarkUIUtils.shorten_path(note_path, 40)
+  local title_str = "📝 " .. (is_global and "Global " or "") .. "Note: " .. shorten_path
+
+  local win_buf = vim.api.nvim_create_buf(false, true)
+
+  ---@type WinCfg
+  local wincfg = {
+    buf = win_buf,
+    enter = true,
+    wincfg = {
+      relative = "editor",
+      width = width,
+      height = height,
+      row = row,
+      col = col,
+      style = "minimal",
+      border = "rounded",
+      title = QfbookmarkUIUtils.format_title(title_str),
+      title_pos = "center",
+      footer = " Auto-save enabled ",
+      footer_pos = "center",
+    },
+  }
+
+  local __opts = {
+    contents = {},
+    win_opts = wincfg,
+    is_note = true,
+  }
+
+  QfbookmarkUIView.build_popup("note", __opts)
+
+  vim.cmd("edit " .. vim.fn.fnameescape(note_path))
+end
+
 return {
   mark_harpoon_popup = mark_harpoon_popup,
   saveqf_popup = saveqf_popup,
   buffers_popup = buffers_popup,
+  place_mark_annotation = place_mark_annotation,
+  open_note_in_float = open_note_in_float,
 }
