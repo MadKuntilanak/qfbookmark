@@ -357,4 +357,48 @@ function M.apply_save_highlights(buf, fn_opts, type_label, dir_display)
   })
 end
 
+---@param buf              integer
+---@param mark_lists       QfBookEntry[]
+---@param selected         table<string, boolean>
+function M.apply_selection_highlights(buf, mark_lists, selected)
+  local ns = vim.api.nvim_create_namespace "qfbookmark_selection_hl"
+  vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+
+  for _, entry in pairs(mark_lists) do
+    local is_sel = selected[entry.hval] == true
+    local ln_header = entry.start_line - 1 -- 0-based
+    local chk_text = is_sel and "✓" or "○"
+    local chk_hl = is_sel and "QFBookmarkEntrySelectedCheck" or "QFBookmarkEntryUnselectedCheck"
+
+    pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header, 0, {
+      virt_text = { { chk_text, chk_hl } },
+      virt_text_pos = "right_align",
+      priority = 20,
+    })
+
+    -- if is_sel then
+    --   local line_count = entry.line_count or 2
+    --   for ln = ln_header, ln_header + line_count - 1 do
+    --     pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln, 0, {
+    --       end_row = ln + 1,
+    --       end_col = 0,
+    --       hl_group = "QFBookmarkEntrySelected",
+    --       hl_eol = true,
+    --       priority = 40,
+    --     })
+    --   end
+    --
+    --   local header = vim.api.nvim_buf_get_lines(buf, ln_header, ln_header + 1, false)[1] or ""
+    --   local path_s = header:find("  ", 8, true)
+    --   if path_s then
+    --     pcall(vim.api.nvim_buf_set_extmark, buf, ns, ln_header, path_s + 1, {
+    --       end_col = #header,
+    --       hl_group = "QFBookmarkEntrySelectedPath",
+    --       priority = 50,
+    --     })
+    --   end
+    -- end
+  end
+end
+
 return M

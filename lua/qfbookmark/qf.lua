@@ -552,6 +552,14 @@ function M.open_mark_harpoon_window()
       return
     end
 
+    if harpoon_vals.selected then
+      local selected_marks = harpoon_vals.data
+      if Config.window.mark.on_send then
+        Config.window.mark.on_send(selected_marks)
+      end
+      return
+    end
+
     if #old_harpoon ~= #harpoon_vals then
       local idx_lookup = {}
       for _, x in pairs(harpoon_vals) do

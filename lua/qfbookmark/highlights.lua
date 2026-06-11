@@ -49,7 +49,7 @@ local colors = {
   },
 
   -- +-----------------------------------------------------------------------------+
-  -- |                   Entry highlight groups for mark harpoon                   |
+  -- |                   ENTRY HIGHLIGHT GROUPS FOR MARK HARPOON                   |
   -- +-----------------------------------------------------------------------------+
 
   -- index number " N "
@@ -98,6 +98,28 @@ local colors = {
 
   -- class/struct/impl symbol kind (orange-ish, from type highlight)
   EntrySymbolType = { fg = { higroup = { fromTo = "Type", attr = "fg" }, tint = { amount = -0.1 } }, italic = true },
+
+  -- +-----------------------------------------------------------------------------+
+  -- |                        SELECTED ENTRY IN MARK POPUP                         |
+  -- +-----------------------------------------------------------------------------+
+
+  EntrySelected = {
+    bg = {
+      higroup = { fromTo = "DiagnosticOk", attr = "fg" },
+      darken = { fromTo = "Normal", attr = "bg", amount = 0.85 },
+    },
+  },
+  EntrySelectedPath = {
+    fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
+    bold = true,
+  },
+  EntrySelectedCheck = {
+    fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
+    bold = true,
+  },
+  EntryUnselectedCheck = {
+    fg = { higroup = { fromTo = "Comment", attr = "fg" } },
+  },
 
   -- +-----------------------------------------------------------------------------+
   -- |                                 NOTEEXTMARK                                 |

@@ -51,6 +51,7 @@ M.defaults = {
         move_down = "<a-n>",
         move_up = "<a-p>",
       },
+      on_send = nil,
     },
   },
   keymaps = {
