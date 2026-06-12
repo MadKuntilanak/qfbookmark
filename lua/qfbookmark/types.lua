@@ -34,7 +34,9 @@
 --- is_buffers?: boolean,
 --- is_mark_annotation?: boolean,
 --- is_note?: boolean,
+--- active: string,
 --- save?: QfBookUiSaveCfg,
+--- selected: table<string, boolean>,
 --- data_annotation?: { chunk: QFbookBufferMarkEntry, load_chunk: boolean } }
 
 ---@alias QfBookUiWinCfg {
@@ -105,7 +107,7 @@
 ---@class WindowConfig
 ---@field notify { enabled: boolean, mark: boolean, plugin: boolean }
 ---@field quickfix { enabled: boolean, copen: string, lopen: string, theme: {  enabled: boolean, maxheight: integer, limit: integer, highlight: boolean  }, actions: { auto_center: boolean, auto_unfold: boolean } }
----@field mark { anchor: string, hl: string, keymap: { up: string, down: string, move_up: string,move_down: string}, on_send: function | nil }
+---@field mark { anchor: string, keymap: { up: string, down: string, move_up: string,move_down: string}, on_send: function | nil }
 ---@field note QFBookNotes
 
 ---@class QFBookKeymapQfSpec

@@ -19,12 +19,10 @@
 - Treesitter-powered symbol resolution — shows enclosing function, class, struct, impl, or table context
 - Persistent marks saved to disk per project
 - QuickFix and LocList integration with custom formatter
-- Note files per local project or globally (supports org, md, txt, etc.)
+- Notes per project or globally (using external filetype definitions like org, norg, md, txt, etc.)
 - Quickfix integrations: works with trouble.nvim, grug-far.nvim, and fzf-lua
 
 ![qfbookmark](./assets/qfbookmark.png)
-
----
 
 ## Requirements
 
@@ -153,7 +151,7 @@ require("qfbookmark").setup {
     },
     mark = {
       anchor = "SE",
-      hl = "Visual",
+      on_send = nil,
       keymap = {
         up = "",
         down = "",
@@ -242,10 +240,7 @@ require("qfbookmark").setup {
       trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
       grugfar = { enabled = true, toggle = "<Localleader>gg" },
       copyline = { enabled = true, toggle = "<Leader>qc" },
-      cmdline_strings = {
-        enabled = false,
-        commands = {},
-      },
+      cmdline_strings = { enabled = false, commands = {} },
     },
   },
 }
@@ -337,7 +332,6 @@ require("qfbookmark").setup {
 Then define only the mappings you want.
 
 
----
 
 ## Integrations
 
@@ -367,7 +361,51 @@ integrations = {
 
 Set `picker = "fzf-lua"` to use fzf-lua for fuzzy searching marks.
 
+
+## Why uses 4 mark types?
+
+
+[**qfbookmark**](https://github.com/MadKuntilanak/qfbookmark) uses a unified mark system with four visual types: MARK, FIX, DEBUG, and NOTE.
+
+These types do not change how marks work internally.  
+They exist to improve readability when many marks are present in the same buffer or mark list.
+
+When working with multiple marks, it can become difficult to quickly understand their purpose.  
+This design helps introduce visual intent so each mark is easier to recognize at a glance.
+
 ---
+
+### 📌 MARK
+A general bookmark for navigation.
+
+Used as a simple reference point in code.
+
+---
+
+### 🔧 FIX
+A visually emphasized mark for important or actionable points.
+
+Helps quickly identify areas that likely need attention or follow-up.
+
+---
+
+### 🚧 DEBUG
+A temporary mark used during debugging sessions.
+
+Useful for tracking investigation points while working on runtime issues.  
+Typically removed after debugging is complete.
+
+---
+
+### 📝 NOTE
+A contextual annotation for a line.
+
+Used to add explanations or additional context directly in code.
+
+Can also be useful alongside AI-assisted plugins, where notes provide extra context for understanding or generating suggestions.
+
+</details>
+
 
 ## License
 

@@ -372,4 +372,27 @@ function M.get_entry_at_line(entries, lnum)
   end
 end
 
+---@param win integer
+---@param total integer
+---@param selected table<string, boolean>,
+function M.update_title_mark_harpoon_popup(win, total, selected)
+  -- total = total or #Mapping.harpoon_map
+  -- local sel_count = vim.tbl_count(selected)
+  -- local cfg = vim.api.nvim_win_get_config(Mapping.popup.win)
+  --
+  -- local count_str = sel_count > 0 and string.format("QFMarks (%d) · %d selected", total, sel_count)
+  --   or string.format("QFMarks (%d)", total)
+  -- cfg.title = QfbookmarkUIUtils.format_title("🔗 " .. count_str)
+  -- vim.api.nvim_win_set_config(Mapping.popup.win, cfg)
+
+  total = total
+  local sel_count = vim.tbl_count(selected)
+  local cfg = vim.api.nvim_win_get_config(win)
+
+  local count_str = sel_count > 0 and string.format("QFMarks (%d) · %d selected", total, sel_count)
+    or string.format("QFMarks (%d)", total)
+  cfg.title = M.format_title("🔗 " .. count_str)
+  vim.api.nvim_win_set_config(win, cfg)
+end
+
 return M

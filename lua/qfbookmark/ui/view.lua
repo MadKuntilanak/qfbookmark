@@ -99,8 +99,16 @@ local __popup_opts_for = {
 
     setup_option_main_popup(main_win, main_buf)
 
-    -- Apply syntax highlights to all entries
-    QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.content_map)
+    QfbookmarkMarkVisual.apply_entry_highlights(
+      main_buf,
+      opts_popup.content_map,
+      opts_popup.selected,
+      opts_popup.active
+    )
+
+    -- Update title if there are selected marks
+    local total_selected = #opts_popup.content_map
+    QfbookmarkUIUtils.update_title_mark_harpoon_popup(main_win, total_selected, opts_popup.selected)
 
     -- +-----------------------------------------------------------------------------+
     -- | Re-apply highlights after dd deletes lines                                  |
@@ -108,36 +116,37 @@ local __popup_opts_for = {
     vim.api.nvim_create_autocmd("TextChanged", {
       buffer = main_buf,
       callback = function()
-        QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.content_map)
+        QfbookmarkMarkVisual.apply_entry_highlights(
+          main_buf,
+          opts_popup.content_map,
+          opts_popup.selected,
+          opts_popup.active
+        )
       end,
     })
 
     -- +-----------------------------------------------------------------------------+
     -- | Multi-line cursorline: highlight all lines of the current entry             |
     -- +-----------------------------------------------------------------------------+
-    local cursorline_ns = vim.api.nvim_create_namespace "qfbookmark_cursorline"
 
     local function update_cursorline()
+      local cursorline_ns = vim.api.nvim_create_namespace "qfbookmark_cursorline"
+      vim.api.nvim_buf_clear_namespace(main_buf, cursorline_ns, 0, -1)
+
       if not main_buf or not vim.api.nvim_buf_is_valid(main_buf) then
         return
       end
 
-      vim.api.nvim_buf_clear_namespace(main_buf, cursorline_ns, 0, -1)
-
-      local cur = vim.api.nvim_win_get_cursor(0)[1]
-
+      local cur = vim.api.nvim_win_get_cursor(main_win)[1]
       local entries = opts_popup.content_map
       if not entries then
         return
       end
 
-      local active
-
-      -- find entry range
-      for _, e in pairs(entries) do
+      local active = nil
+      for _, e in ipairs(entries) do
         local start = e.start_line
         local finish = start + (e.line_count or 1) - 1
-
         if cur >= start and cur <= finish then
           active = e
           break
@@ -157,6 +166,10 @@ local __popup_opts_for = {
         hl_eol = true,
         priority = 50,
       })
+
+      -- Rebuild all checkboxes with the correct cursor_hval
+      opts_popup.active = active.hval
+      QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.content_map, opts_popup.selected, active.hval)
     end
 
     vim.api.nvim_create_autocmd("CursorMoved", {

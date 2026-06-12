@@ -59,32 +59,30 @@ local colors = {
   -- current-file indicator "●"
   EntryCurrentFile = { fg = { higroup = { fromTo = "String", attr = "fg" } }, bold = true },
   -- lnum portion ":92" on the detail line
-  EntryLnum = { fg = { higroup = { fromTo = "NonText", attr = "fg" }, tint = { amount = -0.2 } } },
+  EntryLnum = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = 0.05 } } },
   -- directory value in save footer (cyan-ish)
   EntryDirectory = { fg = { higroup = { fromTo = "Special", attr = "fg" } } },
+
+  EntrySelectTo = { bg = { higroup = { fromTo = "Include", attr = "fg" }, tint = { amount = -0.6 } } },
 
   -- badge: MARK
   BadgeMark = {
     fg = { higroup = { fromTo = "Function", attr = "fg" } },
-    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bold = true,
   },
   -- badge: FIX
   BadgeFix = {
     fg = { higroup = { fromTo = "DiagnosticError", attr = "fg" } },
-    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bold = true,
   },
   -- badge: NOTE
   BadgeNote = {
     fg = { higroup = { fromTo = "String", attr = "fg" }, tint = { amount = 0.5 } },
-    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bold = true,
   },
   -- badge: DEBUG
   BadgeDebug = {
     fg = { higroup = { fromTo = "DiagnosticWarn", attr = "fg" } },
-    bg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bold = true,
   },
 
@@ -103,22 +101,37 @@ local colors = {
   -- |                        SELECTED ENTRY IN MARK POPUP                         |
   -- +-----------------------------------------------------------------------------+
 
-  EntrySelected = {
-    bg = {
-      higroup = { fromTo = "DiagnosticOk", attr = "fg" },
-      darken = { fromTo = "Normal", attr = "bg", amount = 0.85 },
-    },
-  },
-  EntrySelectedPath = {
-    fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
-    bold = true,
-  },
+  EntrySelected = { bg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" }, tint = { amount = -0.8 } } },
+  -- EntrySelectedPath = {
+  --   fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
+  --   bold = true,
+  -- },
   EntrySelectedCheck = {
     fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
+    bg = {
+      higroup = { fromTo = "DiagnosticOk", attr = "fg" },
+      tint = { amount = -0.8 },
+    },
     bold = true,
   },
-  EntryUnselectedCheck = {
-    fg = { higroup = { fromTo = "Comment", attr = "fg" } },
+
+  EntryUnselectedCheck = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = -0.05 } } },
+
+  -- Checkbox when the cursor is on the entry (background follows cursorline)
+  EntrySelectedCheckCursor = {
+    fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
+    bg = {
+      higroup = { fromTo = "FloatBorder", attr = "fg" },
+      tint = { amount = -0.1 },
+    },
+    bold = true,
+  },
+  EntryUnselectedCheckCursor = {
+    fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = -0.1 } },
+    bg = {
+      higroup = { fromTo = "FloatBorder", attr = "fg" },
+      tint = { amount = -0.1 },
+    },
   },
 
   -- +-----------------------------------------------------------------------------+

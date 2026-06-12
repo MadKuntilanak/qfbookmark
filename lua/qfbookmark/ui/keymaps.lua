@@ -9,9 +9,9 @@ local M = {}
 
 local Mapping = {}
 
-local get_hval = function(harpoon_map, cur_line_nr)
+local get_hval = function(content_map, cur_line_nr)
   local hval
-  for _, x in pairs(harpoon_map) do
+  for _, x in pairs(content_map) do
     if x.start_line == cur_line_nr then
       hval = x.hval
     end
@@ -20,7 +20,7 @@ local get_hval = function(harpoon_map, cur_line_nr)
 end
 
 local update_title_main_win = function(total, selected)
-  total = total or #Mapping.harpoon_map
+  total = total or #Mapping.content_map
   local sel_count = vim.tbl_count(selected)
   local cfg = vim.api.nvim_win_get_config(Mapping.popup.win)
 
@@ -65,7 +65,7 @@ function Mapping.exit_close()
 
       local out_lines = {}
 
-      for _, e in ipairs(Mapping.harpoon_map or {}) do
+      for _, e in ipairs(Mapping.content_map or {}) do
         if e.hval then
           out_lines[#out_lines + 1] = e.hval
         end
@@ -95,7 +95,7 @@ function Mapping.setup_open_key(open_mode)
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
 
     if Mapping.is_harpoon then
-      local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.harpoon_map, cur_line_nr)
+      local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.content_map, cur_line_nr)
 
       if entry and entry.mark then
         local mark = entry.mark
@@ -111,7 +111,7 @@ function Mapping.setup_open_key(open_mode)
 
     if Mapping.is_buffers then
       ---@type QFBookBufferItem
-      local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.harpoon_map, cur_line_nr)
+      local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.content_map, cur_line_nr)
       local hval = entry and entry["hval"]
       if hval then
         QfbookmarkNav.jump_to {
@@ -183,7 +183,7 @@ end
 function Mapping.mark.nav_entry(direction)
   local cur = vim.api.nvim_win_get_cursor(0)[1]
 
-  local entries = Mapping.harpoon_map
+  local entries = Mapping.content_map
   if not entries or #entries == 0 then
     return
   end
@@ -241,7 +241,7 @@ function Mapping.mark.move_item_to(is_prev)
   local buf = Mapping.buf
   local row = vim.api.nvim_win_get_cursor(0)[1]
 
-  local entries = Mapping.harpoon_map
+  local entries = Mapping.content_map
   if not entries or #entries == 0 then
     return
   end
@@ -274,13 +274,13 @@ function Mapping.mark.move_item_to(is_prev)
     return
   end
 
-  local target = Mapping.harpoon_map[target_idx]
+  local target = Mapping.content_map[target_idx]
 
   local winnr = vim.api.nvim_get_current_win()
 
   local tgt_start = target.start_line
   local tgt_finish = tgt_start + target.line_count - 1
-  local hl_group = Config.window.mark and Config.window.mark.hl or "Visual"
+  local hl_group = "QFBookmarkEntrySelectTo"
 
   local hl_lines = {}
   for ln = tgt_start, tgt_finish do
@@ -327,17 +327,14 @@ function Mapping.mark.move_item_to(is_prev)
   end, 400)
 end
 
--- Selection state
-local selected = {}
-
 function Mapping.mark.toggle_selection()
   local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
-  local entries = QfbookmarkUIUtils.get_entry_at_line(Mapping.harpoon_map, cur_line_nr)
+  local entries = QfbookmarkUIUtils.get_entry_at_line(Mapping.content_map, cur_line_nr)
 
   -- If the cursor is not on an entry, search upward for the nearest header.
   if not entries then
     for ln = cur_line_nr, 1, -1 do
-      entries = get_hval(Mapping.harpoon_map, ln)
+      entries = get_hval(Mapping.content_map, ln)
       if entries then
         break
       end
@@ -348,26 +345,32 @@ function Mapping.mark.toggle_selection()
     return
   end
 
-  if selected[entries.hval] then
-    selected[entries.hval] = nil
+  if Mapping.selected[entries.hval] then
+    Mapping.selected[entries.hval] = nil
   else
-    selected[entries.hval] = true
+    Mapping.selected[entries.hval] = true
   end
 
   -- Rebuild checkbox extmarks + line hl
   local QfbookmarkMarkVisual = require "qfbookmark.visual"
-  QfbookmarkMarkVisual.apply_selection_highlights(Mapping.buf, Mapping.harpoon_map, selected)
+  Mapping.opts_popup.active = entries.hval
+  QfbookmarkMarkVisual.apply_entry_highlights(
+    Mapping.buf,
+    Mapping.opts_popup.content_map,
+    Mapping.selected,
+    Mapping.opts_popup.active
+  )
 
   -- Update title count
-  local total = #Mapping.harpoon_map
-  update_title_main_win(total, selected)
+  local total = #Mapping.content_map
+  update_title_main_win(total, Mapping.selected)
 end
 
 --- Get list of selected mark entries (ordered by entry_start_line)
 function Mapping.mark.get_selected_marks()
   local sel = {}
-  for _, entry in pairs(Mapping.harpoon_map) do
-    if selected[entry.hval] then
+  for _, entry in pairs(Mapping.content_map) do
+    if Mapping.selected[entry.hval] then
       sel[#sel + 1] = { start_line = entry.start_line, mark = entry.mark }
     end
   end
@@ -382,6 +385,19 @@ function Mapping.mark.get_selected_marks()
   return result
 end
 
+function Mapping.mark.deselect_all_marks()
+  local sel_marks = Mapping.mark.get_selected_marks()
+  if #sel_marks == 0 then
+    return
+  end
+
+  for _, entry in ipairs(Mapping.content_map) do
+    if Mapping.selected[entry.hval] then
+      Mapping.selected[entry.hval] = nil
+    end
+  end
+end
+
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
 -- ║                                   BUFFER                                    ║
 -- ╙─────────────────────────────────────────────────────────────────────────────╜
@@ -391,7 +407,7 @@ Mapping.buffer = {}
 function Mapping.buffer.item_del()
   local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
   ---@type QFBookBufferItem
-  local hval = get_hval(Mapping.harpoon_map, cur_line_nr)
+  local hval = get_hval(Mapping.content_map, cur_line_nr)
   if hval then
     local target_buf = hval.bufnr
     if vim.api.nvim_buf_is_valid(target_buf) then
@@ -428,7 +444,8 @@ local setup_mapping_opts = function(opts_popup, buf, cb)
   Mapping.popup = opts_popup.popup
   Mapping.popup.preview = opts_popup.popup.preview and opts_popup.popup.preview or nil
   Mapping.wincfg = opts_popup.win_opts.wincfg
-  Mapping.harpoon_map = opts_popup.content_map
+  Mapping.selected = opts_popup.selected
+  Mapping.content_map = opts_popup.content_map
   Mapping.is_harpoon = opts_popup.is_harpoon and opts_popup.is_harpoon or false
   Mapping.is_buffers = opts_popup.is_buffers and opts_popup.is_buffers or false
   Mapping.is_mark_annotation = opts_popup.is_mark_annotation and opts_popup.is_mark_annotation or false
@@ -630,6 +647,11 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
     end,
   }
 
+  _keys["D"] = {
+    mode = "n",
+    fun = Mapping.mark.deselect_all_marks,
+  }
+
   _keys["dd"] = {
     mode = "n",
     fun = function()
@@ -650,7 +672,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
 
       local cur = vim.api.nvim_win_get_cursor(0)[1]
 
-      local entries = Mapping.harpoon_map
+      local entries = Mapping.content_map
       if not entries or #entries == 0 then
         return
       end
@@ -670,7 +692,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
 
       table.remove(entries, cur_idx)
 
-      Mapping.harpoon_map = entries
+      Mapping.content_map = entries
 
       -- rebuild again from data
       local lines = {}
@@ -701,11 +723,11 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       vim.api.nvim_buf_set_lines(Mapping.buf, 0, -1, false, lines)
 
       local QfbookmarkMarkVisual = require "qfbookmark.visual"
-      QfbookmarkMarkVisual.apply_entry_highlights(Mapping.buf, entries)
+      QfbookmarkMarkVisual.apply_entry_highlights(Mapping.buf, entries, Mapping.selected, Mapping.opts_popup.active)
 
       -- Update title count
       local total = #entries
-      update_title_main_win(total, selected)
+      update_title_main_win(total, Mapping.selected)
 
       vim.defer_fn(function()
         restore_readonly()

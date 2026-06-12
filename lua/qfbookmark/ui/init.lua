@@ -114,6 +114,10 @@ local function saveqf_popup(title, target_path, for_what, is_loc, cb)
   QfbookmarkUIView.build_popup("save", __opts, cb)
 end
 
+-- Selection state
+local selected = {}
+local active_cursor_selection = ""
+
 ---@param mark_lists QFbookBufferMarkEntry[]
 ---@param cb function
 local function mark_harpoon_popup(mark_lists, cb)
@@ -196,6 +200,8 @@ local function mark_harpoon_popup(mark_lists, cb)
     content_map = entries,
     display_lines = display_lines,
     win_opts = wincfg,
+    selected = selected,
+    active = active_cursor_selection,
   }
 
   QfbookmarkUIView.build_popup("mark", __opts, cb)

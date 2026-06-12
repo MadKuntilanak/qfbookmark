@@ -6,10 +6,14 @@
 - [x] test width popup window
 - [X] enhanced note window resizing by percentage
 - [X] support float note window
+- [X] expose public APIs for mark-sign management to support third-party integrations
+- [X] support note extmarks [3/3]
+  - [X] create popup and preview
+  - [X] add highlight
+  - [X] minimal design
+- [X] add toggle window for note annotation
+- [X] add toggle multi selection
 - [ ] more test for node treesitter [0/3]
   - [ ] for Go
   - [ ] for Rust
   - [ ] for TypeScript
-
-- [ ] support note extmarks
-- [ ] expose public APIs for mark-sign management to support third-party integrations

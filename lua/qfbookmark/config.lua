@@ -44,7 +44,6 @@ M.defaults = {
     },
     mark = {
       anchor = "SE",
-      hl = "Visual",
       keymap = {
         up = "",
         down = "",
