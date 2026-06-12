@@ -1,5 +1,9 @@
 # QFbookmark
 
+<p align="center">
+  <img src="./assets/tqfbookmark.svg" alt="qfbookmark" />
+</p>
+
 [**qfbookmark**](https://github.com/MadKuntilanak/qfbookmark) was built around my own coding workflow. I often found myself placing marks in different files and later forgetting the context around them especially which function, method, or code section the mark referred to. This plugin extends the idea of traditional marks by combining them with quickfix lists, notes, and contextual navigation, making it easier to revisit and organize important locations across a project.
 
 
@@ -22,12 +26,15 @@
 - Notes per project or globally (using external filetype definitions like org, norg, md, txt, etc.)
 - Quickfix integrations: works with trouble.nvim, grug-far.nvim, and fzf-lua
 
+## Showcasse
+
 ![qfbookmark](./assets/qfbookmark.png)
 
 ## Requirements
 
 - Neovim >= 0.10
 - [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) (optional, for symbol context)
+- [fzf-lua](https://github.com/ibhagwan/fzf-lua) (optional)
 
 ## Installation
 
@@ -362,49 +369,19 @@ integrations = {
 Set `picker = "fzf-lua"` to use fzf-lua for fuzzy searching marks.
 
 
-## Why uses 4 mark types?
+## FAQ
 
+**Why 4 mark types instead of one?**
 
-[**qfbookmark**](https://github.com/MadKuntilanak/qfbookmark) uses a unified mark system with four visual types: MARK, FIX, DEBUG, and NOTE.
+The four types (MARK, FIX, DEBUG, NOTE) don't change how marks work internally — they exist purely for visual clarity. When you have many marks across multiple files, being able to tell at a glance "this is a debugging point" vs "this needs fixing" vs "this is just a reference" makes navigation significantly faster. Think of them as colored sticky notes.
 
-These types do not change how marks work internally.  
-They exist to improve readability when many marks are present in the same buffer or mark list.
+**Can I use only one type and ignore the rest?**
 
-When working with multiple marks, it can become difficult to quickly understand their purpose.  
-This design helps introduce visual intent so each mark is easier to recognize at a glance.
+Yes. All four types behave identically under the hood. You can map only `MARK` and never touch the others.
 
----
+**What's NOTE different from the others?**
 
-### 📌 MARK
-A general bookmark for navigation.
-
-Used as a simple reference point in code.
-
----
-
-### 🔧 FIX
-A visually emphasized mark for important or actionable points.
-
-Helps quickly identify areas that likely need attention or follow-up.
-
----
-
-### 🚧 DEBUG
-A temporary mark used during debugging sessions.
-
-Useful for tracking investigation points while working on runtime issues.  
-Typically removed after debugging is complete.
-
----
-
-### 📝 NOTE
-A contextual annotation for a line.
-
-Used to add explanations or additional context directly in code.
-
-Can also be useful alongside AI-assisted plugins, where notes provide extra context for understanding or generating suggestions.
-
-</details>
+NOTE is the only type that supports inline annotations,  you can attach text to it, which is also exposed to the mark popup and can be sent to AI plugins for context.
 
 
 ## License
