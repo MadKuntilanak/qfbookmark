@@ -321,7 +321,7 @@ end
 
 ---@param mark_mode QFBookMarkMode
 local function add_sign(mark_mode)
-  local mark_tbl = M.buffers
+  local mark_lists = M.buffers
   local bufnr = vim.api.nvim_get_current_buf()
 
   if not exclude_buf(bufnr) then
@@ -331,13 +331,19 @@ local function add_sign(mark_mode)
 
   local extmarkspec = Config.extmarks.keywords[mark_mode]
 
-  local _, has_note = QfbookmarkBookmark.has_mark_data(mark_tbl, "NOTE")
-  local _, has_same_mode = QfbookmarkBookmark.has_mark_data(mark_tbl, mark_mode)
+  local __mark = QfbookmarkBookmark.get_mark_id(mark_lists)
+  local id
+  if __mark then
+    id = __mark.id
+  end
+
+  local _, has_note = QfbookmarkBookmark.has_mark_data(mark_lists, "NOTE", id)
+  local _, has_same_mode = QfbookmarkBookmark.has_mark_data(mark_lists, mark_mode, id)
 
   local has_other_mark = false
   for _, mode in pairs(MARK_MODE) do
     if mode ~= "NOTE" and mode ~= mark_mode then
-      local _, has = QfbookmarkBookmark.has_mark_data(mark_tbl, mode)
+      local _, has = QfbookmarkBookmark.has_mark_data(mark_lists, mode, id)
       if has then
         has_other_mark = true
         break
@@ -348,11 +354,11 @@ local function add_sign(mark_mode)
   -- Open the note window instead of toggling,
   -- to update note data_annotation
   if has_same_mode and mark_mode == "NOTE" then
-    QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec, true)
+    QfbookmarkBookmark.update_mark_annotation(mark_lists, mark_mode, extmarkspec, id)
     sync_marks_harpoon()
     M.invalidate_mark_cache()
     vim.schedule(function()
-      local mark_lists = get_lists_marks()
+      mark_lists = get_lists_marks()
       QfbookmarkBookmark.save_marks(mark_lists)
     end)
     return
@@ -377,12 +383,12 @@ local function add_sign(mark_mode)
   end
 
   -- fresh line: add the mark
-  QfbookmarkBookmark.add_mark(mark_tbl, mark_mode, extmarkspec, false)
+  QfbookmarkBookmark.add_mark(mark_lists, mark_mode, extmarkspec, false)
   sync_marks_harpoon()
   M.invalidate_mark_cache()
 
   vim.schedule(function()
-    local mark_lists = get_lists_marks()
+    mark_lists = get_lists_marks()
     QfbookmarkBookmark.save_marks(mark_lists)
   end)
 end
@@ -421,14 +427,14 @@ end
 function M.delete_mark()
   delete_mark_builtin()
 
-  local bufnr = vim.api.nvim_get_current_buf()
-  local pos = vim.api.nvim_win_get_cursor(0)
+  -- local bufnr = vim.api.nvim_get_current_buf()
+  -- local pos = vim.api.nvim_win_get_cursor(0)
 
-  local line = pos[1]
-  local id = tonumber(line .. bufnr)
-  if not id then
-    return
-  end
+  -- local line = pos[1]
+  -- local id = tonumber(line .. bufnr)
+  -- if not id then
+  --   return
+  -- end
 
   local mark_lists = M.buffers
 

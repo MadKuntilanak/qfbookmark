@@ -309,69 +309,60 @@ function M.update_mark_sign(mark_lists, bufnr)
     return
   end
 
-  QfbookmarkMarkVisual.resolve_mark_sign(bufnr)
-
   local filename = vim.api.nvim_buf_get_name(bufnr)
 
-  local existing_ids = {}
-  local mark_list_active_ids = {}
-
-  for mode, _ in pairs(mark_lists) do
-    for m_id, _ in pairs(mark_lists[mode]) do
-      if not existing_ids[m_id] then
-        existing_ids[m_id] = true
-        mark_list_active_ids[#mark_list_active_ids + 1] = {
-          id = m_id,
-          mode = mode,
-        }
+  for mode, mode_list in pairs(mark_lists) do
+    for id, mark in pairs(mode_list) do
+      -- Resolve warn type hint from id
+      local _id = tonumber(id)
+      if not _id then
+        return
       end
-    end
-  end
 
-  local sign_mark_placed = QfbookmarkMarkVisual.get_sign_unused_ids(bufnr, existing_ids)
-
-  local id_lookup = {}
-  for _, sign in pairs(sign_mark_placed) do
-    if not id_lookup[sign.id] then
-      id_lookup[sign.id] = true
-    end
-  end
-
-  for _, mark in pairs(mark_list_active_ids) do
-    if not id_lookup[mark.id] then
-      for mark_id, mark_data in pairs(mark_lists[mark.mode]) do
-        if mark.id ~= mark_id then
-          goto continue
-        end
-
-        local mark_filename = mark_lists[mark.mode][tonumber(mark_id)].filename
-        if mark_filename ~= filename then
-          goto continue
-        end
-
-        local extmarkspec = Config.extmarks.keywords[mark.mode]
-
-        if is_not_valid_line_and_col(bufnr, mark_data.line, mark_data.col) then
-          M.delete_mark(mark_lists, mark.mode, mark_data.id, bufnr)
+      if mark.filename == filename then
+        if is_not_valid_line_and_col(bufnr, mark.line, mark.col) then
+          M.delete_mark(mark_lists, mode, _id, bufnr)
         else
           register_mark(
             mark_lists,
-            mark.mode,
-            extmarkspec,
-            mark_data.id,
+            mode,
+            Config.extmarks.keywords[mode],
+            _id,
             bufnr,
-            mark_data.line,
-            mark_data.col,
-            mark_data.text,
-            mark_data.inserted_at,
-            mark_data.note
+            mark.line,
+            mark.col,
+            mark.text,
+            mark.inserted_at,
+            mark.note
           )
         end
-
-        ::continue::
       end
     end
   end
+end
+
+---@param mark_lists QFbookBufferMark
+---@return  { id: integer, mark_mode: QFBookMarkMode, extmarkspec: QFBookSpec, bufnr?: integer} | nil
+function M.get_mark_id(mark_lists)
+  -- bufnr = bufnr or vim.api.nvim_get_current_buf()
+  -- local filename = vim.api.nvim_buf_get_name(bufnr)
+  -- local line = vim.api.nvim_win_get_cursor(0)[1]
+  --
+  -- local list = mark_lists[mark_mode]
+  -- if not list then
+  --   return nil
+  -- end
+  --
+  -- for _, mark in pairs(list) do
+  --   -- RUtils.info(mark.id)
+  --   if mark.filename == filename and mark.line == line then
+  --     return tonumber(mark.id)
+  --   end
+  -- end
+  -- return nil
+  --
+  --- { id: integer, mark_mode: QFBookMarkMode, extmarkspec: QFBookSpec, bufnr?: integer} | nil
+  return M.is_current_line_got_mark(mark_lists, { no_id = true })
 end
 
 --- Check whether mark data exists in the bookmark storage.
@@ -384,10 +375,6 @@ end
 ---@return integer|nil, boolean
 function M.has_mark_data(mark_lists, mark_mode, id, bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-
-  local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
-  id = id or tonumber(line_opts.line .. bufnr)
-
   if not mark_lists[mark_mode] or not mark_lists[mark_mode][id] then
     return nil, false
   end
@@ -413,6 +400,36 @@ function M.delete_mark(mark_lists, mark_mode, id, bufnr)
   QfbookmarkMarkVisual.delete_sign(id, bufnr)
   QfbookmarkMarkVisual.delete_extmark(id, bufnr)
   return true
+end
+
+--- Update an existing mark annotation using mark id
+---
+---@param mark_lists QFbookBufferMark
+---@param mark_mode QFBookMarkMode
+---@param extmarkspec QFBookSpec
+---@param id integer
+---@return QFbookBufferMark|nil
+function M.update_mark_annotation(mark_lists, mark_mode, extmarkspec, id)
+  local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
+
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  if not id then
+    QfbookmarkUtils.warn "Mark ID is required"
+    return nil
+  end
+
+  return M.place_next_mark(
+    mark_lists,
+    mark_mode,
+    extmarkspec,
+    id,
+    bufnr,
+    line_opts.line,
+    line_opts.col,
+    line_opts.text,
+    true
+  )
 end
 
 --- Add a new mark at the current cursor position.
