@@ -841,18 +841,15 @@ function M.setup_keymap_mark_annotation(opts_popup, buf, cb)
   setup_mapping_opts(opts_popup, buf, cb)
 
   local _keys = {
-    ["<CR>"] = {
+    ["<C-c>"] = {
       mode = { "n", "i" },
       fun = function()
         Mapping.setup_open_key "default"
         Mapping.exit_close()
       end,
     },
+
     ["<Esc>"] = {
-      mode = { "n", "i" },
-      fun = Mapping.exit_close,
-    },
-    ["<C-c>"] = {
       mode = { "n", "i" },
       fun = Mapping.exit_close,
     },
