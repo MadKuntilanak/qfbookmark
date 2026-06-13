@@ -213,7 +213,12 @@ local mark_preview_fullscreen = false
 local mark_preview_wincfg_orig = nil
 
 local function save_cfg_win_mark_preview(wincfg)
-  return { main_wincfg = wincfg, height = wincfg.height, width = wincfg.width }
+  return {
+    main_wincfg = wincfg,
+    height = wincfg.height,
+    width = wincfg.width,
+    col = wincfg.col,
+  }
 end
 
 function Mapping.mark.full_screen_preview()
@@ -232,6 +237,9 @@ function Mapping.mark.full_screen_preview()
 
     Mapping.wincfg.height = height - QfbookmarkUIUtils.PADDING_PREVIEW
     Mapping.wincfg.width = math.ceil(editor.width / 4)
+
+    local __col = Mapping.opts_popup.popup.preview.wincfg.col - Mapping.wincfg.width - 2
+    Mapping.wincfg.col = Config.window.mark.anchor == "NW" and __col or Mapping.wincfg.col
   else
     mark_preview_fullscreen = false
 
@@ -239,6 +247,7 @@ function Mapping.mark.full_screen_preview()
       Mapping.wincfg = mark_preview_wincfg_orig.main_wincfg
       Mapping.wincfg.height = mark_preview_wincfg_orig.height
       Mapping.wincfg.width = mark_preview_wincfg_orig.width
+      Mapping.wincfg.col = mark_preview_wincfg_orig.col
 
       height = Mapping.opts_popup.popup.preview.wincfg.height
 

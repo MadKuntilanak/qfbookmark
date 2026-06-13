@@ -43,7 +43,8 @@ M.defaults = {
       },
     },
     mark = {
-      anchor = "SE",
+      anchor = "SE", -- NW/SW --- SE/NE
+      on_send = nil,
       keymap = {
         up = "",
         down = "",
@@ -60,8 +61,6 @@ M.defaults = {
         scroll_preview_up_fast = "<C-b>",
         scroll_preview_down_fast = "<C-f>",
       },
-
-      on_send = nil,
     },
   },
   keymaps = {
