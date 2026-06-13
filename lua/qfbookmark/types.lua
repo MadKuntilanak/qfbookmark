@@ -28,6 +28,7 @@
 --- contents: table,
 --- content_map: table<integer, QfBookEntry>,
 --- win_opts: WinCfg,
+--- original_popup_mark_width: integer,
 --- display_lines: string[],
 --- popup?: QfBookUiPopup,
 --- is_harpoon?: boolean,

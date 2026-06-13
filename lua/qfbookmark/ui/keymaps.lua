@@ -554,6 +554,7 @@ local setup_mapping_opts = function(opts_popup, buf, cb)
   Mapping.buf = buf
   Mapping.opts_popup = opts_popup
   Mapping.popup = opts_popup.popup
+  Mapping.mark_original_width = opts_popup.original_popup_mark_width and opts_popup.original_popup_mark_width or nil
   Mapping.popup.preview = opts_popup.popup.preview and opts_popup.popup.preview or nil
   Mapping.wincfg = opts_popup.win_opts.wincfg
   Mapping.selected = opts_popup.selected
@@ -820,7 +821,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
         local mark = entry.mark
 
         local symbol = QfbookmarkUIUtils.resolve_fn_name(mark)
-        local l1, l2, l3 = QfbookmarkUIUtils.build_entry_lines(i, mark, Mapping.wincfg.width, symbol)
+        local l1, l2, l3 = QfbookmarkUIUtils.build_entry_lines(i, mark, Mapping.mark_original_width, symbol)
 
         entry.start_line = line_nr
 

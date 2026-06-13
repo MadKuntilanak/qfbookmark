@@ -199,6 +199,7 @@ local function mark_harpoon_popup(mark_lists, cb)
     contents = mark_lists,
     content_map = entries,
     display_lines = display_lines,
+    original_popup_mark_width = original_width,
     win_opts = wincfg,
     selected = selected,
     active = active_cursor_selection,
