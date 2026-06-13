@@ -7,7 +7,7 @@
 ---@alias QFbookBufferMarkGroup table<string, QFbookBufferMarkEntry>
 ---@alias QFbookBufferMark table<QFBookMarkMode, QFbookBufferMarkGroup>
 
----@alias QfBookUiPreview { win?: integer, buf?: integer }
+---@alias QfBookUiPreview { win?: integer, buf?: integer, wincfg?: table }
 ---@alias QfBookUiPopup { win?: integer, buf?: integer, preview?: QfBookUiPreview }
 
 ---@alias QfBookUiSaveCfg {
@@ -104,10 +104,19 @@
 ---@field filetype string
 ---@field current_project { enabled: boolean, filename: string }
 
+---@class QFbookMarkKeymaps
+---@field up string,
+---@field down string,
+---@field move_up string,
+---@field move_down string
+---@field load_all string
+---@field select string
+---@field zoom string
+
 ---@class WindowConfig
 ---@field notify { enabled: boolean, mark: boolean, plugin: boolean }
 ---@field quickfix { enabled: boolean, copen: string, lopen: string, theme: {  enabled: boolean, maxheight: integer, limit: integer, highlight: boolean  }, actions: { auto_center: boolean, auto_unfold: boolean } }
----@field mark { anchor: string, keymap: { up: string, down: string, move_up: string,move_down: string}, on_send: function | nil }
+---@field mark { anchor: string, keymap: QFbookMarkKeymaps, on_send: function | nil }
 ---@field note QFBookNotes
 
 ---@class QFBookKeymapQfSpec

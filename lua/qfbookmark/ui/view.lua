@@ -206,6 +206,9 @@ local __popup_opts_for = {
       opts_popup.popup.preview = {}
       opts_popup.popup.preview.buf = M.window.mark_preview.buf
       opts_popup.popup.preview.win = M.window.mark_preview.win
+
+      local preview_win_cfg = vim.api.nvim_win_get_config(win_preview)
+      opts_popup.popup.preview.wincfg = preview_win_cfg
     end
 
     -- Callback wrapper: convert Harpoon values (plain) into the format expected by qf.lua,

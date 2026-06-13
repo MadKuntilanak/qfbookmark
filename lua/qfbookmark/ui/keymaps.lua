@@ -209,20 +209,44 @@ function Mapping.mark.nav_entry(direction)
   vim.api.nvim_win_set_cursor(0, { target_line, 0 })
 end
 
-local renew_preview = true
+local mark_preview_fullscreen = false
+local mark_preview_wincfg_orig = nil
 
-function Mapping.mark.renew_preview()
-  if renew_preview then
-    return
+local function save_cfg_win_mark_preview(wincfg)
+  return { main_wincfg = wincfg, height = wincfg.height, width = wincfg.width }
+end
+
+function Mapping.mark.full_screen_preview()
+  local is_full_screen = mark_preview_fullscreen
+
+  local height
+  if not is_full_screen then
+    mark_preview_fullscreen = true
+
+    if not mark_preview_wincfg_orig then
+      mark_preview_wincfg_orig = save_cfg_win_mark_preview(Mapping.wincfg)
+    end
+
+    local editor = QfbookmarkUIUtils.get_editor_size()
+    height = editor.height
+
+    Mapping.wincfg.height = height - QfbookmarkUIUtils.PADDING_PREVIEW
+    Mapping.wincfg.width = math.ceil(editor.width / 4)
+  else
+    mark_preview_fullscreen = false
+
+    if mark_preview_wincfg_orig then
+      Mapping.wincfg = mark_preview_wincfg_orig.main_wincfg
+      Mapping.wincfg.height = mark_preview_wincfg_orig.height
+      Mapping.wincfg.width = mark_preview_wincfg_orig.width
+
+      height = Mapping.opts_popup.popup.preview.wincfg.height
+
+      mark_preview_wincfg_orig = nil
+    end
   end
-  renew_preview = true
 
   QfbookmarkUIUtils.close_win { Mapping.popup.preview.win }
-
-  local editor = QfbookmarkUIUtils.get_editor_size()
-  local height = editor.height
-  Mapping.wincfg.height = height - QfbookmarkUIUtils.PADDING_PREVIEW
-  Mapping.wincfg.width = math.ceil(editor.width / 4)
 
   local buf_preview, win_preview = QfbookmarkUIPopup.mark_preview(Mapping.wincfg, Mapping.wincfg.width, height)
   if not win_preview or not buf_preview then
@@ -588,8 +612,8 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
   local _keys = M.build_keymaps(opts_popup, buf, cb)
 
   -- stylua: ignore start
-  renew_preview = false -- to toggle renew preview
-  _keys["<c-r>"] = { mode = "n", fun = function()  Mapping.mark.renew_preview() end }
+  mark_preview_fullscreen = false -- toggle resize preview win
+  _keys[Config.window.mark and Config.window.mark.keymap.zoom or "<C-r>"] = { mode = "n", fun = function()  Mapping.mark.full_screen_preview() end }
 
   _keys["<c-n>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(1) end }
   _keys["<c-p>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(-1) end }
