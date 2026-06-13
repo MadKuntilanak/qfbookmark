@@ -107,11 +107,15 @@
 ---@class QFbookMarkKeymaps
 ---@field up string,
 ---@field down string,
----@field move_up string,
----@field move_down string
+---@field move_item_up string,
+---@field move_item_down string
 ---@field load_all string
 ---@field select string
 ---@field zoom string
+---@field scroll_preview_up string
+---@field scroll_preview_down string
+---@field scroll_preview_up_fast string
+---@field scroll_preview_down_fast string
 
 ---@class WindowConfig
 ---@field notify { enabled: boolean, mark: boolean, plugin: boolean }

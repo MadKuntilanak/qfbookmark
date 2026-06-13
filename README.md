@@ -162,8 +162,18 @@ require("qfbookmark").setup {
       keymap = {
         up = "",
         down = "",
-        move_down = "<a-n>",
-        move_up = "<a-p>",
+        move_item_down = "<a-n>",
+        move_item_up = "<a-p>",
+
+        select = "<Tab>",
+        zoom = "<C-z>",
+
+        load_all = "<F4>",
+
+        scroll_preview_up = "<C-u>",
+        scroll_preview_down = "<C-d>",
+        scroll_preview_up_fast = "<C-b>",
+        scroll_preview_down_fast = "<C-f>",
       },
     },
   },

@@ -624,25 +624,31 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
   _keys["<c-j>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(1) end }
   -- stylua: ignore end
 
-  _keys[Config.window.mark and Config.window.mark.keymap.move_down or "<a-n>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymap.move_item_down or "<a-n>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.move_item_to()
     end,
   }
-  _keys[Config.window.mark and Config.window.mark.keymap.move_up or "<a-p>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymap.move_item_up or "<a-p>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.move_item_to(true)
     end,
   }
 
-  _keys["<Tab>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymap.load_all or "<F4>"] = {
+    mode = "n",
+    fun = function()
+      Mapping.mark.select_bookmark_master()
+      Mapping.exit_close()
+    end,
+  }
+
+  _keys[Config.window.mark and Config.window.mark.keymap.select or "<F4>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.toggle_selection()
-      -- move cursor entry?
-      -- move_entry(1)
     end,
   }
 
@@ -760,26 +766,26 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
     end,
   }
 
-  _keys["<c-u>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymap.scroll_preview_up or "<C-u>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.scroll_preview_window(-1)
     end,
   }
-  _keys["<c-d>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymap.scroll_preview_down or "<C-d>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.scroll_preview_window(1)
     end,
   }
-  _keys["<c-b>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymap.scroll_preview_up_fast or "<C-b>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.scroll_preview_window(-1, 10)
     end,
   }
 
-  _keys["<c-f>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymap.scroll_preview_down_fast or "<C-f>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.scroll_preview_window(1, 10)
