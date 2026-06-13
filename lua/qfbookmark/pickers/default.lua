@@ -148,4 +148,9 @@ function M.set_state(config, contents, state)
   end)
 end
 
+function M.pick_master(files, qf_master)
+  print(vim.inspect(files))
+  print(vim.inspect(qf_master))
+end
+
 return M

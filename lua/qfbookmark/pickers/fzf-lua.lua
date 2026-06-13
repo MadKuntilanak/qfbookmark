@@ -215,6 +215,16 @@ function M.set_state(config, contents, state)
   handle_state(config, contents, state)
 end
 
+function M.pick_master(contents, qf_master)
+  setup_fzflua()
+  FzfLua.fzf_exec(contents, {
+    actions = {
+      ["default"] = Mapping.bookmark_master.default(qf_master),
+    },
+  })
+  -- RUtils.info(vim.inspect(qf_master))
+end
+
 ---@param config QFBookmarkConfig
 ---@param state QFBookState
 function Mapping.default_handle(config, state)
@@ -382,6 +392,32 @@ function Mapping.rename_itemqf(base_path)
       end,
     },
   })
+end
+
+Mapping.bookmark_master = {}
+
+function Mapping.bookmark_master.default(qf_master)
+  return function(selected)
+    if #selected == 0 then
+      return
+    end
+
+    local sel = selected[1]
+
+    local master_sel = qf_master[sel]
+    if not master_sel then
+      return
+    end
+
+    local Path = require "qfbookmark.path"
+    local QFbook = require "qfbookmark.qf"
+
+    local new_marks = Path.load_master(master_sel.orig)
+    QFbook.load_mark_lists(new_marks)
+    QFbook.__resync_setup()
+
+    QfbookmarkUtils.info("Load master bookmark: `" .. master_sel.project .. "`")
+  end
 end
 
 return M

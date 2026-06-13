@@ -390,6 +390,85 @@ function Mapping.mark.toggle_selection()
   update_title_main_win(total, Mapping.selected)
 end
 
+function Mapping.mark.select_bookmark_master()
+  local path_qf = Config.save_dir
+  local Path = require "qfbookmark.path"
+  local PUtils = require "qfbookmark.path.utils"
+
+  if not path_qf or not PUtils.is_dir(path_qf) then
+    QfbookmarkUtils.warn "something went wrong"
+    return
+  end
+
+  local prefix = "qfmark"
+
+  local cmd = {
+    "fd",
+    -- ".",
+    prefix,
+    -- vim.fn.shellescape(path_qf),
+    path_qf,
+    "-d",
+    "2",
+    "-t",
+    "f",
+    "-e",
+    "lua",
+  }
+
+  local files = vim.fn.systemlist(cmd)
+
+  local qf_master = {}
+  local select_files = {}
+
+  local reform = function(path, is_current)
+    is_current = is_current or false
+
+    local basename = PUtils.basename(path)
+
+    local parent = vim.fn.fnamemodify(path, ":h") -- /path/to/the
+    local dir = vim.fn.fnamemodify(parent, ":t") -- the
+
+    local dir_master = vim.split(dir, "-")
+    local name_project = dir_master[1]
+    local hash_project = dir_master[2]
+    local branch_name = ""
+    local shorten = QfbookmarkUIUtils.shorten_text(hash_project, 20)
+
+    local text = is_current and "current" or name_project .. "-" .. shorten
+    return {
+      orig = path,
+      dir = dir,
+      basename = basename,
+      project = name_project,
+      branch = branch_name,
+      text = text,
+    }
+  end
+
+  local path_git_cwd = Path.get_target_path_with_gitcwd(false)
+
+  --- Create table for current mark project first
+  local current_mark = reform(path_git_cwd, true)
+  -- table.insert(qf_master, current_mark)
+  qf_master[current_mark.text] = current_mark
+  table.insert(select_files, "current")
+
+  for _, f in ipairs(files) do
+    local other_mark = reform(f)
+
+    -- Do not include current project
+    if other_mark.orig ~= current_mark.orig then
+      -- qf_master[#qf_master + 1] = other_mark
+      qf_master[other_mark.text] = other_mark
+      select_files[#select_files + 1] = other_mark.text
+    end
+  end
+
+  local picker = require "qfbookmark.pickers"
+  picker.pick_master_bookmark(Config, select_files, qf_master)
+end
+
 --- Get list of selected mark entries (ordered by entry_start_line)
 function Mapping.mark.get_selected_marks()
   local sel = {}

@@ -37,6 +37,13 @@ local function get_picker(picker_name)
   return picker
 end
 
+function M.pick_master_bookmark(config, select_files, qf_master)
+  local picker_name = config.picker
+  local picker = get_picker(picker_name)
+
+  picker.pick_master(select_files, qf_master)
+end
+
 ---@param config QFBookmarkConfig
 function M.handle_state(config)
   local picker_name = config.picker

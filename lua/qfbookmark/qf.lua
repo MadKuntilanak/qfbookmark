@@ -221,6 +221,65 @@ local function clean_up_marks_harpoon()
   M.mark_lists_harpoon = mark_keep
 end
 
+function M.load_mark_lists(mark_lists)
+  mark_lists = mark_lists or QfbookmarkPaths.get_data_marks_from_local_project()
+  if not mark_lists or vim.tbl_isempty(mark_lists) then
+    return
+  end
+
+  -- fix old bufnr and support fugitive
+  for _, m in pairs(mark_lists) do
+    m.bufnr = QfbookmarkUtils.resolve_bufnr(m.filename)
+  end
+
+  -- Sort by inserted_at before loading into M.buffers (newest first)
+  local sorted_marks = {}
+  for m_idx, m in pairs(mark_lists) do
+    sorted_marks[#sorted_marks + 1] = { idx = m_idx, data = m }
+  end
+  table.sort(sorted_marks, function(a, b)
+    return (a.data.inserted_at or 0) > (b.data.inserted_at or 0)
+  end)
+
+  for _, entry in ipairs(sorted_marks) do
+    local m_idx, m = entry.idx, entry.data
+
+    if not M.buffers[m.mark_mode] then
+      M.buffers[m.mark_mode] = {}
+    end
+
+    M.buffers[m.mark_mode][m.id] = {
+      bufnr = m.bufnr,
+      filename = m.filename,
+      line = m.line,
+      col = m.col,
+      text = m.text,
+      harpoon = m.harpoon,
+      mark_mode = m.mark_mode,
+      fn_name = m.fn_name,
+      id = m.id,
+      note = m.note,
+      inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0, -- preserve from saved file; reject stale hrtime values (> 1e13 = nanoseconds, not Unix seconds)
+    }
+
+    M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)
+  end
+end
+
+--- Performs initial mark synchronization during setup.
+--- Loads existing marks, refreshes the mark cache, and updates bookmark
+--- signs for all loaded buffers.
+function M.__resync_setup()
+  sync_marks_harpoon()
+  M.invalidate_mark_cache()
+
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if vim.api.nvim_buf_is_loaded(bufnr) then
+      QfbookmarkBookmark.update_mark_sign(M.buffers, bufnr)
+    end
+  end
+end
+
 function M.setup_autocmds()
   local qfhighlights = require "qfbookmark.highlights"
   qfhighlights(M.prefix_app)
@@ -241,57 +300,8 @@ function M.setup_autocmds()
 
   if not status_autocmd_enabled then
     vim.schedule(function()
-      local mark_lists = QfbookmarkPaths.get_data_marks_from_local_project()
-      if not mark_lists or vim.tbl_isempty(mark_lists) then
-        return
-      end
-
-      -- fix old bufnr and support fugitive
-      for _, m in pairs(mark_lists) do
-        m.bufnr = QfbookmarkUtils.resolve_bufnr(m.filename)
-      end
-
-      -- Sort by inserted_at before loading into M.buffers (newest first)
-      local sorted_marks = {}
-      for m_idx, m in pairs(mark_lists) do
-        sorted_marks[#sorted_marks + 1] = { idx = m_idx, data = m }
-      end
-      table.sort(sorted_marks, function(a, b)
-        return (a.data.inserted_at or 0) > (b.data.inserted_at or 0)
-      end)
-
-      for _, entry in ipairs(sorted_marks) do
-        local m_idx, m = entry.idx, entry.data
-
-        if not M.buffers[m.mark_mode] then
-          M.buffers[m.mark_mode] = {}
-        end
-
-        M.buffers[m.mark_mode][m.id] = {
-          bufnr = m.bufnr,
-          filename = m.filename,
-          line = m.line,
-          col = m.col,
-          text = m.text,
-          harpoon = m.harpoon,
-          mark_mode = m.mark_mode,
-          fn_name = m.fn_name,
-          id = m.id,
-          note = m.note,
-          inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0, -- preserve from saved file; reject stale hrtime values (> 1e13 = nanoseconds, not Unix seconds)
-        }
-
-        M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)
-      end
-
-      sync_marks_harpoon()
-      M.invalidate_mark_cache()
-
-      for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-        if vim.api.nvim_buf_is_loaded(bufnr) then
-          QfbookmarkBookmark.update_mark_sign(M.buffers, bufnr)
-        end
-      end
+      M.load_mark_lists()
+      M.__resync_setup()
     end)
   end
 end

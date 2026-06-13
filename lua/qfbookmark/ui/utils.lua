@@ -133,7 +133,7 @@ end
 ---@param text string
 ---@param max_len integer
 ---@return string
-local function shorten_text(text, max_len)
+function M.shorten_text(text, max_len)
   -- strip leading whitespace
   text = text:match "^%s*(.-)%s*$" or text
   if vim.fn.strdisplaywidth(text) <= max_len then
@@ -324,7 +324,7 @@ function M.build_entry_lines(idx, mark, path_width, symbol)
   end
 
   local preview = mark.mark_mode == "NOTE" and ("⮞ " .. note_annotation or mark.text or "") or (mark.text or "")
-  preview = shorten_text(preview, path_width)
+  preview = M.shorten_text(preview, path_width)
 
   -- header: " N  BADGE  plugins/qf.lua ●"
   local line1 = string.format(" %d  %s  %s%s", idx, badge, path, cur_marker)

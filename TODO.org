@@ -13,6 +13,9 @@
   - [X] minimal design
 - [X] add toggle window for note annotation
 - [X] add toggle multi selection
+- [ ] load bookmark master from other projects [0/2]
+  - [ ] support branch?
+  - [ ] support tag?
 - [ ] more test for node treesitter [0/3]
   - [ ] for Go
   - [ ] for Rust
