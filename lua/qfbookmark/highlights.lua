@@ -180,6 +180,20 @@ local colors = {
       tint = { amount = 0.4 },
     },
   },
+  EntryModifiedFlag = {
+    fg = {
+      higroup = { fromTo = "DiagnosticError", attr = "fg" },
+      tint = { amount = 0.05 },
+    },
+    italic = true,
+  },
+  EntryHiddenFlag = {
+    fg = {
+      higroup = { fromTo = "comment", attr = "fg" },
+      tint = { amount = -0.1 },
+    },
+    italic = true,
+  },
 }
 
 ---@param hex_str string

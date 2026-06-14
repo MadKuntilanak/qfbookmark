@@ -30,7 +30,7 @@ end
 local getbuf = function(buf)
   return {
     bufnr = buf,
-    flag = (buf == M.get().bufnr and "%") or (buf == M.get().alt_bufnr and "#") or " ",
+    flag = (buf == M.get().bufnr and "%") or (buf == M.get().alt_bufnr and "#") or "",
     info = QfbookmarkUtils.getbufinfo(buf),
     readonly = vim.bo[buf].readonly,
     loaded = vim.api.nvim_buf_is_loaded(buf),
@@ -133,8 +133,7 @@ end
 
 ---@param opts QFBuffersCfg
 ---@param bufnrs integer[]
----@param winid integer?
-local function get_list_buffers(opts, bufnrs, winid)
+local function get_list_buffers(opts, bufnrs)
   ---@type table[]
   local buffers = {}
   -- Filter invalid buffers (#2519)

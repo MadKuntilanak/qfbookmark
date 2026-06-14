@@ -1,19 +1,17 @@
 * Todo
 
-- [x] resolve path git
-- [x] Support for Fugitive MARK signs
+- [x] mark: resolve path git
+- [x] mark: upport for Fugitive MARK signs
 - [x] integration with treesitter
-- [x] test width popup window
-- [X] enhanced note window resizing by percentage
-- [X] support float note window
-- [X] expose public APIs for mark-sign management to support third-party integrations
-- [X] support note extmarks [3/3]
+- [X] note: enhanced note window resizing by percentage
+- [X] note: support float note window
+- [X] mark: support note extmarks [3/3]
   - [X] create popup and preview
   - [X] add highlight
   - [X] minimal design
-- [X] add toggle window for note annotation
-- [X] add toggle multi selection
-- [ ] load bookmark master from other projects [0/2]
+- [X] mark: add toggle window for note annotation
+- [X] mark: add toggle multi selection
+- [ ] buffer: must have flag `+` if got modified
   - [ ] support branch?
   - [ ] support tag?
 - [ ] more test for node treesitter [0/3]

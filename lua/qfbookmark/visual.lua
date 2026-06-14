@@ -356,26 +356,59 @@ function M.apply_entry_buffer_highlights(bufnr)
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
   for lnum, line in ipairs(lines) do
-    if line and line ~= "" then
-      -- Flag
-      local flag = line:find "%%" or line:find "%#"
-      if flag then
-        vim.api.nvim_buf_set_extmark(bufnr, ns, lnum - 1, 0, {
-          end_col = 2,
-          hl_group = "QFBookmarkEntryFlag",
-        })
-      end
-
-      -- Path
-      local lnum_s = line:find ":%d+"
-      if lnum_s then
-        local lnum_e = line:find("[^%d]", lnum_s + 1) or #line
-        vim.api.nvim_buf_set_extmark(bufnr, ns, lnum - 1, lnum_s - 1, {
-          end_col = lnum_e,
-          hl_group = "QFBookmarkEntryLnum",
-        })
-      end
+    if not line or line == "" then
+      goto continue
     end
+
+    local col0 = line:sub(4, 4) -- 1-based pos 4 = 0-based col 3
+    local col1 = line:sub(5, 5) -- 1-based pos 5 = 0-based col 4
+
+    local is_flag = col0 == "%" or col0 == "#"
+    local is_hidden = col0 == "h"
+    local is_modified_col0 = col0 == "+" -- modified only (no flag)
+    local is_modified_col1 = col1 == "+" -- modified with flag
+
+    -- col0 highlights
+    if is_flag then
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 3, {
+        end_col = 4,
+        hl_group = "QFBookmarkEntryFlag",
+      })
+    elseif is_hidden then
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 3, {
+        end_col = 4,
+        hl_group = "QFBookmarkEntryHiddenFlag",
+      })
+    elseif is_modified_col0 then
+      -- "+" di col0 (no flag case)
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 3, {
+        end_col = 4,
+        hl_group = "QFBookmarkEntryModifiedFlag",
+      })
+    end
+
+    -- col1: "+" red at col0
+    if is_modified_col1 then
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 4, {
+        end_col = 5,
+        hl_group = "QFBookmarkEntryModifiedFlag",
+      })
+    end
+
+    -- path: from col 7 to lnum
+    local lnum_s = line:find ":%d+$" -- end of line
+    if lnum_s then
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 7, {
+        end_col = lnum_s - 2,
+        hl_group = "QFBookmarkEntryPath",
+      })
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, lnum_s - 1, {
+        end_col = #line,
+        hl_group = "QFBookmarkEntryLnum",
+      })
+    end
+
+    ::continue::
   end
 end
 

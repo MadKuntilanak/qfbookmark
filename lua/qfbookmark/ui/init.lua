@@ -4,17 +4,40 @@ local QfbookmarkUIView = require "qfbookmark.ui.view"
 
 ---@alias WinSizeCfg { row: integer, col: integer, height: integer, width: integer, title: string, title_pos: string, buf?: integer}
 
----@param buffer_opts QFBookBufferItem
+---@param buf QFBookBufferItem
 ---@param path_width integer
 ---@return string line
 ---@return QFBookBufferItem buffer_opts
-local function build_entry_line_buffers(buffer_opts, path_width)
-  local badge = buffer_opts.flag
-  local path = QfbookmarkUIUtils.shorten_path(buffer_opts.info.name, path_width)
-  local lnum = string.format(":%d", buffer_opts.info.lnum)
+local function build_entry_line_buffers(buf, path_width)
+  local flag = buf.flag or ""
+  local changed = buf.info.changed == 1
+  local hidden = buf.info.hidden == 1
 
-  local line = " " .. badge .. " " .. path .. " " .. lnum
-  return line, buffer_opts
+  local col0, col1
+
+  if #flag > 0 then
+    -- flag (% atau #): flag at col0, modified at col1
+    col0 = flag
+    col1 = changed and "+" or " "
+  elseif changed then
+    -- modified only: + at col0
+    col0 = "+"
+    col1 = " "
+  elseif hidden then
+    -- hidden: h at col0,
+    col0 = "h"
+    col1 = " "
+  else
+    col0 = " "
+    col1 = " "
+  end
+
+  local badge = col0 .. col1
+  local path = QfbookmarkUIUtils.shorten_path(buf.info.name, path_width)
+  local lnum = string.format(":%d", buf.info.lnum)
+
+  local line = "   " .. badge .. "  " .. path .. " " .. lnum
+  return line, buf
 end
 
 --- Compute optimal path column width across all mark entries
@@ -296,7 +319,7 @@ local function buffers_popup(buffer_lists)
   local editor = QfbookmarkUIUtils.get_editor_size()
 
   local height = math.max(2, #buffer_lists) + 1
-  local width = calc_popup_width(buffer_lists)
+  local width = calc_popup_width(buffer_lists) + 5
 
   local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
 
@@ -324,7 +347,7 @@ local function buffers_popup(buffer_lists)
       title = QfbookmarkUIUtils.format_title(title_str),
       title_pos = "center",
 
-      footer = " <C-q> Quit | <C-y/v/s/t> Enter/V/Split/Tab ",
+      footer = " q quit · c-v/s/t open ",
       footer_pos = "center",
     },
   }
@@ -340,7 +363,7 @@ local function buffers_popup(buffer_lists)
 end
 
 ---@param note_path string
----@param cfg_note QFBookNotes
+---@param cfg_note QFBookWindowNotes
 ---@param is_global? boolean
 local function open_note_in_float(note_path, cfg_note, is_global)
   is_global = is_global or false

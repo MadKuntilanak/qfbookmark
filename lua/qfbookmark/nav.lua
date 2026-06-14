@@ -53,15 +53,39 @@ function M.jump_to(opts)
       mode = "edit"
     end
 
-    local ok, _ = pcall(function()
+    local ok, err = pcall(function()
       vim.cmd(string.format("%s %s", mode, vim.fn.fnameescape(filename)))
     end)
 
     if not ok then
-      vim.cmd("edit " .. vim.fn.fnameescape(filename))
+      if err and err:match "E37" then
+        -- buffer modified: use nvim_win_set_buf instead to avoid E37
+        local target_buf = vim.fn.bufnr(filename)
+        if target_buf == -1 then
+          target_buf = vim.fn.bufadd(filename)
+        end
+        if not vim.api.nvim_buf_is_loaded(target_buf) then
+          vim.fn.bufload(target_buf)
+        end
+        vim.api.nvim_win_set_buf(0, target_buf)
+      else
+        ---@diagnostic disable-next-line: param-type-mismatch
+        pcall(vim.cmd, "edit " .. vim.fn.fnameescape(filename))
+      end
     end
   elseif filename ~= current_file then
-    vim.cmd("edit " .. vim.fn.fnameescape(filename))
+    ---@diagnostic disable-next-line: param-type-mismatch
+    local ok, err = pcall(vim.cmd, "edit " .. vim.fn.fnameescape(filename))
+    if not ok and err and err:match "E37" then
+      local target_buf = vim.fn.bufnr(filename)
+      if target_buf == -1 then
+        target_buf = vim.fn.bufadd(filename)
+      end
+      if not vim.api.nvim_buf_is_loaded(target_buf) then
+        vim.fn.bufload(target_buf)
+      end
+      vim.api.nvim_win_set_buf(0, target_buf)
+    end
   end
 
   -- jump position
