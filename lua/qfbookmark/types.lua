@@ -93,17 +93,11 @@
 ---@field note string[]
 ---@field id integer
 
----@class QFBookExtermarks
+---@class QFBookmarkExtermarks
 ---@field excluded { buftypes: string[], filetypes: string[] }
 ---@field throttle integer
 ---@field priority integer
 ---@field keywords QFBookKeywords
-
----@class QFBookNotes
----@field open_cmd string | { mode: string, anchor: string }
----@field size string
----@field filetype string
----@field current_project { enabled: boolean, filename: string }
 
 ---@class QFbookMarkKeymaps
 ---@field up string,
@@ -111,18 +105,51 @@
 ---@field move_item_up string,
 ---@field move_item_down string
 ---@field load_all string
----@field select string
 ---@field zoom string
+---@field del_item_all string
+---@field send_cb string
+---@field del_item string
+---@field toggle_select string
+---@field diselect_all string
 ---@field scroll_preview_up string
 ---@field scroll_preview_down string
 ---@field scroll_preview_up_fast string
 ---@field scroll_preview_down_fast string
 
----@class WindowConfig
+---@class QFbookMasterOpts
+---@field orig string,
+---@field dir string,
+---@field basename string,
+---@field project string,
+---@field branch string,
+---@field tag string,
+---@field text string,
+
+---@class QFBookWindowNotes
+---@field enabled boolean
+---@field open_cmd string | { mode: string, anchor: string }
+---@field size string
+---@field filetype string
+---@field current_project { enabled: boolean, filename: string }
+
+---@class QFBookWindowMarkAnnotationKeymaps
+---@field accept string
+
+---@class QFBookWindowMarkAnnotation
+---@field keymaps QFBookWindowMarkAnnotationKeymaps
+
+---@class QFBookWindowMark
+---@field enabled boolean
+---@field anchor string
+---@field keymaps QFbookMarkKeymaps
+---@field on_send function | nil
+---@field annotation QFBookWindowMarkAnnotation
+
+---@class QFBookmarkWindowCfg
 ---@field notify { enabled: boolean, mark: boolean, plugin: boolean }
 ---@field quickfix { enabled: boolean, copen: string, lopen: string, theme: {  enabled: boolean, maxheight: integer, limit: integer, highlight: boolean  }, actions: { auto_center: boolean, auto_unfold: boolean } }
----@field mark { anchor: string, keymap: QFbookMarkKeymaps, on_send: function | nil }
----@field note QFBookNotes
+---@field mark QFBookWindowMark
+---@field note QFBookWindowNotes
 
 ---@class QFBookKeymapQfSpec
 ---@field toggle_open string | string[]
@@ -231,8 +258,8 @@
 ---@class QFBookmarkConfig
 ---@field save_dir string
 ---@field picker "fzf-lua" | "default"
----@field extmarks QFBookExtermarks
----@field window WindowConfig
+---@field extmarks QFBookmarkExtermarks
+---@field window QFBookmarkWindowCfg
 ---@field keymaps QFBookmarkKeymap
 ---@field ns? integer
 ---@field sign_group? string

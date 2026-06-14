@@ -12,7 +12,7 @@ local toggle_open = false
 
 ---@param note_path string
 ---@param window_command string
----@param cfg_note QFBookNotes
+---@param cfg_note QFBookWindowNotes
 local function toggle_note(note_path, window_command, cfg_note, is_global)
   local buf_note = QfbookmarkUtils.windows_is_opened_by_name(note_path)
 
@@ -85,7 +85,7 @@ end
 
 ---@param is_global boolean
 ---@param window_command string
----@param cfg_note QFBookNotes
+---@param cfg_note QFBookWindowNotes
 function M.handle_open(is_global, window_command, cfg_note)
   local note_path
 

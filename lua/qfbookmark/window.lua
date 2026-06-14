@@ -66,7 +66,7 @@ function M.get_next_rotate_note_window()
   return win_layouts[current_idx_win_layout]
 end
 
----@param cfg_note QFBookNotes
+---@param cfg_note QFBookWindowNotes
 function M.get_size_note_window(cfg_note)
   if type(cfg_note.open_cmd) == "table" then
     QfbookmarkUtils.warn "Invalid configuration: `open_cmd` should be something like 'botright vsplit'"

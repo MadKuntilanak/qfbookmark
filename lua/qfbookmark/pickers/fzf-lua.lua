@@ -203,6 +203,20 @@ local function handle_state(config, contents, state)
   FzfLua.fzf_exec(contents, fzf_opts)
 end
 
+---@param contents string[]
+---@param qf_master QFbookMasterOpts
+local function handle_pick_master(contents, qf_master)
+  fzf_opts.actions = function()
+    return {
+      ["default"] = Mapping.bookmark_master.default(qf_master),
+    }
+  end
+
+  fzf_opts.winopts.title = format_title("Merge QFMark Master", "+")
+
+  FzfLua.fzf_exec(contents, fzf_opts)
+end
+
 ---@param config QFBookmarkConfig
 ---@param contents? string[]
 ---@param state QFBookState
@@ -215,15 +229,16 @@ function M.set_state(config, contents, state)
   handle_state(config, contents, state)
 end
 
+---@param contents string[]
+---@param qf_master QFbookMasterOpts
 function M.pick_master(contents, qf_master)
   setup_fzflua()
-  FzfLua.fzf_exec(contents, {
-    actions = {
-      ["default"] = Mapping.bookmark_master.default(qf_master),
-    },
-  })
-  -- RUtils.info(vim.inspect(qf_master))
+  handle_pick_master(contents, qf_master)
 end
+
+-- +-----------------------------------------------------------------------------+
+-- |                                   MAPPING                                   |
+-- +-----------------------------------------------------------------------------+
 
 ---@param config QFBookmarkConfig
 ---@param state QFBookState
@@ -351,6 +366,7 @@ function Mapping.remove_itemqf(base_path)
   })
 end
 
+---@param base_path string
 function Mapping.rename_itemqf(base_path)
   __fzf_open_files("Rename", base_path, {
     actions = {
@@ -394,8 +410,13 @@ function Mapping.rename_itemqf(base_path)
   })
 end
 
-Mapping.bookmark_master = {}
+-- ├───────────────────────┤ MAPPING QFBOOKMARK MASTER ├────────────────────┤
 
+if not Mapping.bookmark_master then
+  Mapping.bookmark_master = {}
+end
+
+---@param qf_master QFbookMasterOpts
 function Mapping.bookmark_master.default(qf_master)
   return function(selected)
     if #selected == 0 then

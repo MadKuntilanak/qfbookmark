@@ -5,7 +5,12 @@ local colors = {
   -- +-----------------------------------------------------------------------------+
 
   PreviewFloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
-  PreviewCursorline = { bg = { higroup = { fromTo = "type", attr = "fg" }, tint = { amount = -0.8 } } },
+  PreviewCursorline = {
+    bg = {
+      higroup = { fromTo = "type", attr = "fg" },
+      darken = { fromTo = "NormalFloat", attr = "bg", amount = -0.15 },
+    },
+  },
   PreviewFloatCursorLineNr = {
     fg = { higroup = { fromTo = "NormalFloat", attr = "bg" } },
     bg = {
@@ -35,7 +40,7 @@ local colors = {
   },
   FloatTitle = { fg = { higroup = { fromTo = "FloatTitle", attr = "fg" }, tint = { amount = 0.5 } } },
   FloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
-  FloatFooter = { fg = { higroup = { fromTo = "FloatTitle", attr = "fg" } } },
+  FloatFooter = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" }, tint = { amount = 1 } } },
   FloatCursorLine = {
     fg = {
       higroup = { fromTo = "Directory", attr = "fg" },
@@ -87,7 +92,7 @@ local colors = {
   },
 
   -- Preview text on the detail line
-  EntryDetail = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = 0.7 } } },
+  EntryDetail = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = 0.6 } } },
 
   EntryNote = { fg = { higroup = { fromTo = "String", attr = "fg" }, tint = { amount = 0.3 } } },
 

@@ -148,9 +148,28 @@ function M.set_state(config, contents, state)
   end)
 end
 
-function M.pick_master(files, qf_master)
-  print(vim.inspect(files))
-  print(vim.inspect(qf_master))
+---@param contents string[]
+---@param qf_master QFbookMasterOpts
+function M.pick_master(contents, qf_master)
+  vim.ui.select(contents, { prompt = "Merge QFMark Master" }, function(choice)
+    if not choice then
+      return
+    end
+
+    local master_sel = qf_master[choice]
+    if not master_sel then
+      return
+    end
+
+    local Path = require "qfbookmark.path"
+    local QFbook = require "qfbookmark.qf"
+
+    local new_marks = Path.load_master(master_sel.orig)
+    QFbook.load_mark_lists(new_marks)
+    QFbook.__resync_setup()
+
+    QfbookmarkUtils.info("Load master bookmark: `" .. master_sel.project .. "`")
+  end)
 end
 
 return M

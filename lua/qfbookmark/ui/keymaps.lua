@@ -409,8 +409,39 @@ function Mapping.mark.select_bookmark_master()
     return
   end
 
-  local prefix = "qfmark"
+  ---@param path string
+  ---@param is_current? boolean
+  ---@return QFbookMasterOpts
+  local reform = function(path, is_current)
+    is_current = is_current or false
 
+    local basename = PUtils.basename(path)
+
+    local parent = vim.fn.fnamemodify(path, ":h") -- /path/to/the
+    local dir = vim.fn.fnamemodify(parent, ":t") -- the
+
+    local dir_master = vim.split(dir, "-")
+    local name_project = dir_master[1]
+    local hash_project = dir_master[2]
+
+    local branch_name = ""
+    local tag = ""
+
+    local shorten = QfbookmarkUIUtils.shorten_text(hash_project, 20)
+
+    local text = is_current and "current" or name_project .. "-" .. shorten
+    return {
+      orig = path,
+      dir = dir,
+      basename = basename,
+      project = name_project,
+      branch = branch_name,
+      tag = tag,
+      text = text,
+    }
+  end
+
+  local prefix = "qfmark"
   local cmd = {
     "fd",
     -- ".",
@@ -430,36 +461,10 @@ function Mapping.mark.select_bookmark_master()
   local qf_master = {}
   local select_files = {}
 
-  local reform = function(path, is_current)
-    is_current = is_current or false
-
-    local basename = PUtils.basename(path)
-
-    local parent = vim.fn.fnamemodify(path, ":h") -- /path/to/the
-    local dir = vim.fn.fnamemodify(parent, ":t") -- the
-
-    local dir_master = vim.split(dir, "-")
-    local name_project = dir_master[1]
-    local hash_project = dir_master[2]
-    local branch_name = ""
-    local shorten = QfbookmarkUIUtils.shorten_text(hash_project, 20)
-
-    local text = is_current and "current" or name_project .. "-" .. shorten
-    return {
-      orig = path,
-      dir = dir,
-      basename = basename,
-      project = name_project,
-      branch = branch_name,
-      text = text,
-    }
-  end
-
   local path_git_cwd = Path.get_target_path_with_gitcwd(false)
 
   --- Create table for current mark project first
   local current_mark = reform(path_git_cwd, true)
-  -- table.insert(qf_master, current_mark)
   qf_master[current_mark.text] = current_mark
   table.insert(select_files, "current")
 
@@ -508,6 +513,108 @@ function Mapping.mark.deselect_all_marks()
       Mapping.selected[entry.hval] = nil
     end
   end
+end
+
+---@param is_all? boolean
+local function mark_del_item(is_all)
+  is_all = is_all or false
+
+  local is_let = false
+
+  -- delete both lines of the entry (header + detail) at once
+  if QfbookmarkUtils.is_buf_readonly(Mapping.buf) then
+    vim.api.nvim_set_option_value("modifiable", true, { buf = Mapping.buf })
+    vim.api.nvim_set_option_value("readonly", false, { buf = Mapping.buf })
+    is_let = true
+  end
+
+  local function restore_readonly()
+    if is_let then
+      vim.api.nvim_set_option_value("modifiable", false, { buf = Mapping.buf })
+      vim.api.nvim_set_option_value("readonly", true, { buf = Mapping.buf })
+    end
+  end
+
+  local cur = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
+
+  local entries = Mapping.content_map
+  if not entries or #entries == 0 then
+    return
+  end
+
+  -- Start delete item or all items
+  if is_all then
+    for _ = 1, #entries do
+      local target = entries[1]
+      if not target then
+        goto continue
+      end
+
+      table.remove(entries, 1)
+      ::continue::
+    end
+  else
+    -- find current entry index
+    local cur_idx = 1
+    for i, e in ipairs(entries) do
+      if e.start_line <= cur then
+        cur_idx = i
+      end
+    end
+
+    local target = entries[cur_idx]
+    if not target then
+      return
+    end
+
+    table.remove(entries, cur_idx)
+  end
+
+  Mapping.content_map = entries
+
+  -- rebuild again from data
+  local lines = {}
+  local line_nr = 1
+
+  for i, entry in ipairs(entries) do
+    local mark = entry.mark
+
+    local symbol = QfbookmarkUIUtils.resolve_fn_name(mark)
+    local l1, l2, l3 = QfbookmarkUIUtils.build_entry_lines(i, mark, Mapping.mark_original_width, symbol)
+
+    entry.start_line = line_nr
+
+    table.insert(lines, l1)
+    table.insert(lines, l2)
+
+    line_nr = line_nr + 2
+
+    if l3 then
+      table.insert(lines, l3)
+      entry.line_count = 3
+      line_nr = line_nr + 1
+    else
+      entry.line_count = 2
+    end
+  end
+
+  vim.api.nvim_buf_set_lines(Mapping.buf, 0, -1, false, lines)
+
+  local QfbookmarkMarkVisual = require "qfbookmark.visual"
+  QfbookmarkMarkVisual.apply_entry_highlights(Mapping.buf, entries, Mapping.selected, Mapping.opts_popup.active)
+
+  -- Update title count
+  local total = #entries
+  update_title_main_win(total, Mapping.selected)
+
+  vim.defer_fn(function()
+    restore_readonly()
+    vim.cmd "redraw"
+  end, 400)
+end
+
+function Mapping.mark.clear_all_items()
+  mark_del_item(true)
 end
 
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
@@ -702,7 +809,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
 
   -- stylua: ignore start
   mark_preview_fullscreen = false -- toggle resize preview win
-  _keys[Config.window.mark and Config.window.mark.keymap.zoom or "<C-r>"] = { mode = "n", fun = function()  Mapping.mark.full_screen_preview() end }
+  _keys[Config.window.mark and Config.window.mark.keymaps.zoom or "<C-z>"] = { mode = "n", fun = function()  Mapping.mark.full_screen_preview() end }
 
   _keys["<c-n>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(1) end }
   _keys["<c-p>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(-1) end }
@@ -713,20 +820,20 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
   _keys["<c-j>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(1) end }
   -- stylua: ignore end
 
-  _keys[Config.window.mark and Config.window.mark.keymap.move_item_down or "<a-n>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.move_item_down or "<a-n>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.move_item_to()
     end,
   }
-  _keys[Config.window.mark and Config.window.mark.keymap.move_item_up or "<a-p>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.move_item_up or "<a-p>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.move_item_to(true)
     end,
   }
 
-  _keys[Config.window.mark and Config.window.mark.keymap.load_all or "<F4>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.load_all or "<C-a>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.select_bookmark_master()
@@ -734,14 +841,21 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
     end,
   }
 
-  _keys[Config.window.mark and Config.window.mark.keymap.select or "<F4>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.toggle_select or "<Tab>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.toggle_selection()
     end,
   }
 
-  _keys["s"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.del_item_all or "<Leader>C"] = {
+    mode = "n",
+    fun = function()
+      Mapping.mark.clear_all_items()
+    end,
+  }
+
+  _keys[Config.window.mark and Config.window.mark.keymaps.send_cb or "s"] = {
     mode = "n",
     fun = function()
       local sel_marks = Mapping.mark.get_selected_marks()
@@ -766,115 +880,38 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
     end,
   }
 
-  _keys["D"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.diselect_all or "D"] = {
     mode = "n",
     fun = Mapping.mark.deselect_all_marks,
   }
 
-  _keys["dd"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.del_item or "dd"] = {
     mode = "n",
     fun = function()
-      local is_let = false
-      -- delete both lines of the entry (header + detail) at once
-      if QfbookmarkUtils.is_buf_readonly(Mapping.buf) then
-        vim.api.nvim_set_option_value("modifiable", true, { buf = Mapping.buf })
-        vim.api.nvim_set_option_value("readonly", false, { buf = Mapping.buf })
-        is_let = true
-      end
-
-      local function restore_readonly()
-        if is_let then
-          vim.api.nvim_set_option_value("modifiable", false, { buf = Mapping.buf })
-          vim.api.nvim_set_option_value("readonly", true, { buf = Mapping.buf })
-        end
-      end
-
-      local cur = vim.api.nvim_win_get_cursor(0)[1]
-
-      local entries = Mapping.content_map
-      if not entries or #entries == 0 then
-        return
-      end
-
-      -- find current entry index
-      local cur_idx = 1
-      for i, e in ipairs(entries) do
-        if e.start_line <= cur then
-          cur_idx = i
-        end
-      end
-
-      local target = entries[cur_idx]
-      if not target then
-        return
-      end
-
-      table.remove(entries, cur_idx)
-
-      Mapping.content_map = entries
-
-      -- rebuild again from data
-      local lines = {}
-      local line_nr = 1
-
-      for i, entry in ipairs(entries) do
-        local mark = entry.mark
-
-        local symbol = QfbookmarkUIUtils.resolve_fn_name(mark)
-        local l1, l2, l3 = QfbookmarkUIUtils.build_entry_lines(i, mark, Mapping.mark_original_width, symbol)
-
-        entry.start_line = line_nr
-
-        table.insert(lines, l1)
-        table.insert(lines, l2)
-
-        line_nr = line_nr + 2
-
-        if l3 then
-          table.insert(lines, l3)
-          entry.line_count = 3
-          line_nr = line_nr + 1
-        else
-          entry.line_count = 2
-        end
-      end
-
-      vim.api.nvim_buf_set_lines(Mapping.buf, 0, -1, false, lines)
-
-      local QfbookmarkMarkVisual = require "qfbookmark.visual"
-      QfbookmarkMarkVisual.apply_entry_highlights(Mapping.buf, entries, Mapping.selected, Mapping.opts_popup.active)
-
-      -- Update title count
-      local total = #entries
-      update_title_main_win(total, Mapping.selected)
-
-      vim.defer_fn(function()
-        restore_readonly()
-        vim.cmd "redraw"
-      end, 400)
+      mark_del_item()
     end,
   }
 
-  _keys[Config.window.mark and Config.window.mark.keymap.scroll_preview_up or "<C-u>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.scroll_preview_up or "<C-u>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.scroll_preview_window(-1)
     end,
   }
-  _keys[Config.window.mark and Config.window.mark.keymap.scroll_preview_down or "<C-d>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.scroll_preview_down or "<C-d>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.scroll_preview_window(1)
     end,
   }
-  _keys[Config.window.mark and Config.window.mark.keymap.scroll_preview_up_fast or "<C-b>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.scroll_preview_up_fast or "<C-b>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.scroll_preview_window(-1, 10)
     end,
   }
 
-  _keys[Config.window.mark and Config.window.mark.keymap.scroll_preview_down_fast or "<C-f>"] = {
+  _keys[Config.window.mark and Config.window.mark.keymaps.scroll_preview_down_fast or "<C-f>"] = {
     mode = "n",
     fun = function()
       Mapping.mark.scroll_preview_window(1, 10)
@@ -960,7 +997,7 @@ function M.setup_keymap_mark_annotation(opts_popup, buf, cb)
   setup_mapping_opts(opts_popup, buf, cb)
 
   local _keys = {
-    ["<C-c>"] = {
+    [Config.window.mark.annotation and Config.window.mark.annotation.keymaps.accept or "<C-s>"] = {
       mode = { "n", "i" },
       fun = function()
         Mapping.setup_open_key "default"

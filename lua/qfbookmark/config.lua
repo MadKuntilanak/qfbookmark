@@ -31,6 +31,7 @@ M.defaults = {
       },
     },
     note = {
+      enabled = true,
       open_cmd = {
         mode = "float",
         anchor = "SE",
@@ -43,18 +44,32 @@ M.defaults = {
       },
     },
     mark = {
+      enabled = true,
       anchor = "SE", -- NW/SW --- SE/NE
-      on_send = nil,
-      keymap = {
+      on_send_fadhfh = nil,
+      annotation = {
+        keymaps = {
+          accept = "<C-s>",
+        },
+      },
+      keymaps = {
         up = "",
         down = "",
+
         move_item_down = "<a-n>",
         move_item_up = "<a-p>",
 
-        select = "<Tab>",
+        toggle_select = "<Tab>",
+        diselect_all = "D",
+
         zoom = "<C-z>",
 
-        load_all = "<F4>",
+        del_item = "dd",
+        del_item_all = "<Leader>C",
+
+        load_all = "<C-a>",
+
+        send_cb = "s",
 
         scroll_preview_up = "<C-u>",
         scroll_preview_down = "<C-d>",
@@ -69,6 +84,7 @@ M.defaults = {
     actions = { -- General actions
       delete_mark = "dm",
       delete_mark_buffer = "dM",
+
       delete_item = "dd",
       delete_item_all = "<Localleader>qC",
       rename_title = "<Localleader>qR",
@@ -145,7 +161,7 @@ M.defaults = {
 -- +-----------------------------------------------------------------------------+
 -- |                    QFTF: Quickfix Title Format Function                     |
 -- +-----------------------------------------------------------------------------+
----@param opts WindowConfig
+---@param opts QFBookmarkWindowCfg
 local function make_qftf(opts)
   local _qftf_limit = opts.quickfix.theme.limit
   local _fname_fmt1 = "%-" .. _qftf_limit .. "s"

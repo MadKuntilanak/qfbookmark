@@ -137,6 +137,10 @@ local __popup_opts_for = {
         return
       end
 
+      if not main_win or not vim.api.nvim_win_is_valid(main_win) then
+        return
+      end
+
       local cur = vim.api.nvim_win_get_cursor(main_win)[1]
       local entries = opts_popup.content_map
       if not entries then
