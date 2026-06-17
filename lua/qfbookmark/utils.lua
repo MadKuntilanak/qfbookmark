@@ -64,7 +64,7 @@ local results = {
   },
 }
 
----@param list_items QFBookLists
+---@param list_items QFBookmarkLists
 local build_qf_opts = function(list_items)
   local opts = {
     items = list_items.items,
@@ -80,7 +80,7 @@ local build_qf_opts = function(list_items)
   return opts
 end
 
----@param list_items QFBookLists
+---@param list_items QFBookmarkLists
 ---@param is_loc? boolean
 ---@param winid? integer
 ---@param mode? string
@@ -143,7 +143,7 @@ end
 
 ---@param is_loc? boolean
 ---@param context_name? string
----@return QFBookLists
+---@return QFBookmarkLists
 function M.get_list_qf(is_loc, context_name)
   is_loc = is_loc or false
   context_name = context_name or ""
@@ -257,7 +257,7 @@ function M.get_data_qf(is_loc, context_name)
 end
 
 ---@param is_loc? boolean
----@return QFBookLists | nil
+---@return QFBookmarkLists | nil
 function M.get_populate_data_qf(is_loc)
   is_loc = is_loc or false
   local qf_list = {}
@@ -307,7 +307,7 @@ function M.strip_whitespace(str)
   return ""
 end
 
----@param list_items QFBookLists
+---@param list_items QFBookmarkLists
 ---@param cmd_open string
 ---@param is_loc? boolean
 ---@param winid? string
@@ -627,7 +627,7 @@ function M.clear_autocmd_group(augroup_name)
   pcall(vim.api.nvim_del_augroup_by_name, augroup_name)
 end
 
----@param contents QFbookBufferMark
+---@param contents QFBookmarkBufferMark
 ---@param filename string
 function M.save_table_to_file(contents, filename)
   local file = io.open(filename, "w")

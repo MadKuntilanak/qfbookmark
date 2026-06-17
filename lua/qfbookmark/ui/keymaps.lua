@@ -2,6 +2,8 @@ local Config = require("qfbookmark.config").defaults
 
 local QfbookmarkUIUtils = require "qfbookmark.ui.utils"
 local QfbookmarkUtils = require "qfbookmark.utils"
+local QfbookmarkKeymapUtils = require "qfbookmark.keymaps.utils"
+
 local QfbookmarkNav = require "qfbookmark.nav"
 local QfbookmarkUIPopup = require "qfbookmark.ui.popup"
 
@@ -639,23 +641,23 @@ function Mapping.buffer.item_del()
   end
 end
 
-local function set_vim_keymaps(_keys)
-  if type(_keys) ~= "table" then
-    QfbookmarkUIUtils.warn "`_keys` must a table!"
-    return
-  end
-
-  for i, x in pairs(_keys) do
-    vim.keymap.set(x.mode, i, x.fun, { buffer = Mapping.buf, nowait = true })
-  end
-end
-
 -- ├──────────────────────────────────┤ API ├───────────────────────────────┤
 
----@param opts_popup QfBookUiPopupCfg
+function M.get_selected_marks()
+  local sel_marks = Mapping.mark.get_selected_marks()
+
+  QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
+  QfbookmarkUIUtils.clean_up(Mapping.popup)
+
+  local results = { selected = sel_marks, data = Mapping.content_map }
+
+  return results
+end
+
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
 ---@param cb? function
-local setup_mapping_opts = function(opts_popup, buf, cb)
+local setup_popup_options = function(opts_popup, buf, cb)
   cb = cb or nil
 
   Mapping.buf = buf
@@ -685,119 +687,164 @@ local setup_mapping_opts = function(opts_popup, buf, cb)
   })
 end
 
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
 ---@param cb? function
+---@return QFBookKeys[]
 function M.build_keymaps(opts_popup, buf, cb)
   cb = cb or nil
 
   if not opts_popup.popup then
     QfbookmarkUIUtils.warn "Field `opts_popup.popup` is empty or nil!"
-    return
+    return {}
   end
 
-  setup_mapping_opts(opts_popup, buf, cb)
+  setup_popup_options(opts_popup, buf, cb)
 
-  local _keys = {
-    ["<CR>"] = {
-      mode = { "n", "i" },
-      fun = function()
-        if Mapping.is_buffers or Mapping.is_harpoon then
-          Mapping.setup_open_key "default"
-          Mapping.exit_close()
-        else
-          Mapping.save.save_input()
-        end
-      end,
-    },
-    ["o"] = {
-      mode = "n",
-      fun = function()
-        Mapping.setup_open_key "default"
-      end,
-    },
-    ["q"] = {
-      mode = { "n", "i" },
-      fun = Mapping.exit_close,
-    },
-    ["<Esc>"] = {
-      mode = { "n", "i" },
-      fun = Mapping.exit_close,
-    },
-    ["<C-c>"] = {
-      mode = { "n", "i" },
-      fun = Mapping.exit_close,
-    },
-    ["<C-q>"] = {
-      mode = { "n", "i" },
-      fun = Mapping.exit_close,
-    },
-  }
-
-  local nav_keys = {
-
+  local keymaps_opts = {
     -- +-----------------------------------------------------------------------------+
-    -- |                                 NAVIGATION                                  |
+    -- |                                    QUIT                                     |
     -- +-----------------------------------------------------------------------------+
 
-    ["<c-p>"] = {
-      mode = "n",
-      fun = function()
-        Mapping.press_normal_key("up", true)
+    {
+      desc = "Qfmark: quit",
+      func = function()
+        Mapping.exit_close()
       end,
-    },
-    ["<c-k>"] = {
+      keys = Config.keymaps.actions and Config.keymaps.actions.quit,
       mode = "n",
-      fun = function()
-        Mapping.press_normal_key("up", true)
-      end,
-    },
-    ["<c-n>"] = {
-      mode = "n",
-      fun = function()
-        Mapping.press_normal_key("down", true)
-      end,
-    },
-    ["<c-j>"] = {
-      mode = "n",
-      fun = function()
-        Mapping.press_normal_key("down", true)
-      end,
+      buffer = Mapping.buf,
+      from_user = true,
     },
 
     -- +-----------------------------------------------------------------------------+
     -- |                                  MODE OPEN                                  |
     -- +-----------------------------------------------------------------------------+
 
-    ["<c-s>"] = {
+    {
+      desc = "Qfmark: open",
+      func = function()
+        Mapping.setup_open_key "default"
+        Mapping.exit_close()
+      end,
+      keys = Config.keymaps.actions and Config.keymaps.actions.default,
       mode = "n",
-      fun = function()
+      buffer = Mapping.buf,
+      from_user = true,
+    },
+    {
+      desc = "Qfmark: open in split",
+      func = function()
         Mapping.setup_open_key "split"
+        Mapping.exit_close()
       end,
-    },
-    ["<c-v>"] = {
+      keys = Config.keymaps.actions and Config.keymaps.actions.split,
       mode = "n",
-      fun = function()
+      buffer = Mapping.buf,
+      from_user = true,
+    },
+    {
+      desc = "Qfmark: open in vsplit",
+      func = function()
         Mapping.setup_open_key "vsplit"
+        Mapping.exit_close()
       end,
-    },
-    ["<c-t>"] = {
+      keys = Config.keymaps.actions and Config.keymaps.actions.vsplit,
       mode = "n",
-      fun = function()
+      buffer = Mapping.buf,
+      from_user = true,
+    },
+    {
+      desc = "Qfmark: open in tab",
+      func = function()
         Mapping.setup_open_key "tabnew"
+        Mapping.exit_close()
       end,
+      keys = Config.keymaps.actions and Config.keymaps.actions.tab,
+      mode = "n",
+      buffer = Mapping.buf,
+      from_user = true,
+    },
+
+    -- +-----------------------------------------------------------------------------+
+    -- |                                     NAV                                     |
+    -- +-----------------------------------------------------------------------------+
+
+    {
+      desc = "Qfmark: up",
+      func = function()
+        Mapping.press_normal_key("up", true)
+        -- Mapping.mark.nav_entry(-1)
+      end,
+      keys = Config.keymaps and Config.keymaps.actions.up,
+      mode = "n",
+      buffer = Mapping.buf,
+      from_user = true,
+    },
+    {
+      desc = "Qfmark: down",
+      func = function()
+        Mapping.press_normal_key("down", true)
+        -- Mapping.mark.nav_entry(1)
+      end,
+      keys = Config.keymaps and Config.keymaps.actions.down,
+      mode = "n",
+      buffer = Mapping.buf,
+      from_user = true,
+    },
+
+    -- +-----------------------------------------------------------------------------+
+    -- |                                   PREVIEW                                   |
+    -- +-----------------------------------------------------------------------------+
+
+    {
+      desc = "Qfmark: scroll preview up",
+      func = function()
+        Mapping.mark.scroll_preview_window(-1)
+      end,
+      keys = Config.keymaps.actions and Config.keymaps.actions.scroll_preview_up,
+      mode = "n",
+      buffer = Mapping.buf,
+      from_user = true,
+    },
+
+    {
+      desc = "Qfmark: scroll preview down",
+      func = function()
+        Mapping.mark.scroll_preview_window(1)
+      end,
+      keys = Config.keymaps.actions and Config.keymaps.actions.scroll_preview_down,
+      mode = "n",
+      buffer = Mapping.buf,
+      from_user = true,
+    },
+
+    {
+      desc = "Qfmark: scroll preview up fast",
+      func = function()
+        Mapping.mark.scroll_preview_window(-1, 10)
+      end,
+      keys = Config.keymaps.actions and Config.keymaps.actions.scroll_preview_up_fast,
+      mode = "n",
+      buffer = Mapping.buf,
+      from_user = true,
+    },
+
+    {
+      desc = "Qfmark: scroll preview down fast",
+      func = function()
+        Mapping.mark.scroll_preview_window(1, 10)
+      end,
+      keys = Config.keymaps.actions and Config.keymaps.actions.scroll_preview_down_fast,
+      mode = "n",
+      buffer = Mapping.buf,
+      from_user = true,
     },
   }
-
-  for nav_key, nav_val in pairs(nav_keys) do
-    if not _keys[nav_key] then
-      _keys[nav_key] = nav_val
-    end
-  end
-  return _keys
+  return keymaps_opts
 end
 
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
 function M.setup_keymap_mark(opts_popup, buf, cb)
   opts_popup.is_buffers = false
@@ -807,121 +854,157 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
 
   local _keys = M.build_keymaps(opts_popup, buf, cb)
 
-  -- stylua: ignore start
   mark_preview_fullscreen = false -- toggle resize preview win
-  _keys[Config.window.mark and Config.window.mark.keymaps.zoom or "<C-z>"] = { mode = "n", fun = function()  Mapping.mark.full_screen_preview() end }
 
-  _keys["<c-n>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(1) end }
-  _keys["<c-p>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(-1) end }
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
 
-  _keys["j"] = { mode = "n", fun = function() Mapping.mark.nav_entry(1) end }
-  _keys["k"] = { mode = "n", fun = function() Mapping.mark.nav_entry(-1) end }
-  _keys["<c-k>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(-1) end }
-  _keys["<c-j>"] = { mode = "n", fun = function() Mapping.mark.nav_entry(1) end }
-  -- stylua: ignore end
+      -- +-----------------------------------------------------------------------------+
+      -- |                                 NAVIGATION                                  |
+      -- +-----------------------------------------------------------------------------+
 
-  _keys[Config.window.mark and Config.window.mark.keymaps.move_item_down or "<a-n>"] = {
-    mode = "n",
-    fun = function()
-      Mapping.mark.move_item_to()
-    end,
-  }
-  _keys[Config.window.mark and Config.window.mark.keymaps.move_item_up or "<a-p>"] = {
-    mode = "n",
-    fun = function()
-      Mapping.mark.move_item_to(true)
-    end,
-  }
+      {
+        desc = "Qfmark: up",
+        func = function()
+          Mapping.mark.nav_entry(-1)
+        end,
+        keys = Config.keymaps and Config.keymaps.actions.up,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+      {
+        desc = "Qfmark: down",
+        func = function()
+          Mapping.mark.nav_entry(1)
+        end,
+        keys = Config.keymaps and Config.keymaps.actions.down,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
 
-  _keys[Config.window.mark and Config.window.mark.keymaps.load_all or "<C-a>"] = {
-    mode = "n",
-    fun = function()
-      Mapping.mark.select_bookmark_master()
-      Mapping.exit_close()
-    end,
-  }
+      -- +-----------------------------------------------------------------------------+
+      -- |                                    ZOOM                                     |
+      -- +-----------------------------------------------------------------------------+
 
-  _keys[Config.window.mark and Config.window.mark.keymaps.toggle_select or "<Tab>"] = {
-    mode = "n",
-    fun = function()
-      Mapping.mark.toggle_selection()
-    end,
-  }
+      {
+        desc = "Qfmark: toggle zoom",
+        func = function()
+          Mapping.mark.full_screen_preview()
+        end,
+        keys = Config.keymaps.mark and Config.keymaps.mark.zoom,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
 
-  _keys[Config.window.mark and Config.window.mark.keymaps.del_item_all or "<Leader>C"] = {
-    mode = "n",
-    fun = function()
-      Mapping.mark.clear_all_items()
-    end,
-  }
+      -- +-----------------------------------------------------------------------------+
+      -- |                                   MOVE TO                                   |
+      -- +-----------------------------------------------------------------------------+
 
-  _keys[Config.window.mark and Config.window.mark.keymaps.send_cb or "s"] = {
-    mode = "n",
-    fun = function()
-      local sel_marks = Mapping.mark.get_selected_marks()
-      if #sel_marks == 0 then
-        QfbookmarkUtils.warn "No marks selected."
-        return
-      end
+      {
+        desc = "Qfmark: move item up",
+        func = function()
+          Mapping.mark.move_item_to(true)
+        end,
+        keys = Config.keymaps.mark and Config.keymaps.mark.move_item_up,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
 
-      QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
-      QfbookmarkUIUtils.clean_up(Mapping.popup)
+      {
+        desc = "Qfmark: move item down",
+        func = function()
+          Mapping.mark.move_item_to()
+        end,
+        keys = Config.keymaps.mark and Config.keymaps.mark.move_item_down,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
 
-      local results = {
-        selected = true,
-        data = sel_marks,
-      }
+      -- +-----------------------------------------------------------------------------+
+      -- |                                    MISC                                     |
+      -- +-----------------------------------------------------------------------------+
 
-      vim.schedule(function()
-        if Mapping.cb then
-          Mapping.cb(results)
-        end
-      end)
-    end,
-  }
+      {
+        desc = "Qfmark: delete item",
+        func = function()
+          mark_del_item()
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.del_item,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+      {
+        desc = "Qfmark: delete items all",
+        func = function()
+          Mapping.mark.clear_all_items()
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.del_item_all,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
 
-  _keys[Config.window.mark and Config.window.mark.keymaps.diselect_all or "D"] = {
-    mode = "n",
-    fun = Mapping.mark.deselect_all_marks,
-  }
+      {
+        desc = "Qfmark: load qfmaster",
+        func = function()
+          Mapping.mark.select_bookmark_master()
+          Mapping.exit_close()
+        end,
+        keys = Config.keymaps.mark and Config.keymaps.mark.load_all,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
 
-  _keys[Config.window.mark and Config.window.mark.keymaps.del_item or "dd"] = {
-    mode = "n",
-    fun = function()
-      mark_del_item()
-    end,
-  }
+      {
+        desc = "Qfmark: toggle select",
+        func = function()
+          Mapping.mark.toggle_selection()
+        end,
+        keys = Config.keymaps.mark and Config.keymaps.mark.toggle_select,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
 
-  _keys[Config.window.mark and Config.window.mark.keymaps.scroll_preview_up or "<C-u>"] = {
-    mode = "n",
-    fun = function()
-      Mapping.mark.scroll_preview_window(-1)
-    end,
-  }
-  _keys[Config.window.mark and Config.window.mark.keymaps.scroll_preview_down or "<C-d>"] = {
-    mode = "n",
-    fun = function()
-      Mapping.mark.scroll_preview_window(1)
-    end,
-  }
-  _keys[Config.window.mark and Config.window.mark.keymaps.scroll_preview_up_fast or "<C-b>"] = {
-    mode = "n",
-    fun = function()
-      Mapping.mark.scroll_preview_window(-1, 10)
-    end,
-  }
+      {
+        desc = "Qfmark: diselect all",
+        func = function()
+          Mapping.mark.deselect_all_marks()
+        end,
+        keys = Config.keymaps.mark and Config.keymaps.mark.diselect_all,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
 
-  _keys[Config.window.mark and Config.window.mark.keymaps.scroll_preview_down_fast or "<C-f>"] = {
-    mode = "n",
-    fun = function()
-      Mapping.mark.scroll_preview_window(1, 10)
-    end,
-  }
+  if Config.keymaps.mark.integrations.custom.enabled then
+    local user_mark_cmds = Config.keymaps.mark.integrations.custom
+    if not user_mark_cmds then
+      return
+    end
 
-  set_vim_keymaps(_keys)
+    local _, user_keyft = QfbookmarkKeymapUtils.set_user_mappings(user_mark_cmds, "mark", Mapping.buf)
+
+    QfbookmarkKeymapUtils.append_active_keymaps({
+      is_set = Config.keymaps.quickfix.integrations.custom.enabled,
+      keymaps = user_keyft,
+    }, _keys)
+  end
+
+  QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end
 
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
 function M.setup_keymap_buffers(opts_popup, buf)
   opts_popup.is_buffers = true
@@ -929,31 +1012,26 @@ function M.setup_keymap_buffers(opts_popup, buf)
   opts_popup.is_mark_annotation = false
   local _keys = M.build_keymaps(opts_popup, buf)
 
-  _keys["gp"] = {
-    mode = "n",
-    fun = function()
-      Mapping.press_normal_key("up", true)
-    end,
-  }
-  _keys["gn"] = {
-    mode = "n",
-    fun = function()
-      Mapping.press_normal_key("down", true)
-    end,
-  }
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: delete",
+        func = function()
+          Mapping.buffer.item_del()
+        end,
+        keys = Config.keymaps and Config.keymaps.actions.del_item,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
 
-  _keys["dd"] = {
-    mode = "n",
-    fun = Mapping.buffer.item_del,
-  }
-
-  _keys["<c-d>"] = nil
-  _keys["<c-u>"] = nil
-
-  set_vim_keymaps(_keys)
+  QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end
 
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
 ---@param cb function
 function M.setup_keymap_save_input(opts_popup, buf, cb)
@@ -963,13 +1041,26 @@ function M.setup_keymap_save_input(opts_popup, buf, cb)
   opts_popup.is_note = false
   local _keys = M.build_keymaps(opts_popup, buf, cb)
 
-  _keys["<c-d>"] = nil
-  _keys["<c-u>"] = nil
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: save",
+        func = function()
+          Mapping.save.save_input()
+        end,
+        keys = "<CR>",
+        mode = { "i", "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
 
-  set_vim_keymaps(_keys)
+  QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end
 
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
 function M.setup_keymap_note(opts_popup, buf)
   opts_popup.is_buffers = false
@@ -979,13 +1070,10 @@ function M.setup_keymap_note(opts_popup, buf)
 
   local _keys = M.build_keymaps(opts_popup, buf)
 
-  _keys["<c-d>"] = nil
-  _keys["<c-u>"] = nil
-
-  set_vim_keymaps(_keys)
+  QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end
 
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
 ---@param cb function
 function M.setup_keymap_mark_annotation(opts_popup, buf, cb)
@@ -994,31 +1082,28 @@ function M.setup_keymap_mark_annotation(opts_popup, buf, cb)
   opts_popup.is_note = false
   opts_popup.is_mark_annotation = true
 
-  setup_mapping_opts(opts_popup, buf, cb)
+  setup_popup_options(opts_popup, buf, cb)
 
-  local _keys = {
-    [Config.window.mark.annotation and Config.window.mark.annotation.keymaps.accept or "<C-s>"] = {
-      mode = { "n", "i" },
-      fun = function()
-        Mapping.setup_open_key "default"
-        Mapping.exit_close()
-      end,
-    },
+  local _keys = M.build_keymaps(opts_popup, buf, cb)
 
-    ["<Esc>"] = {
-      mode = { "n", "i" },
-      fun = Mapping.exit_close,
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: save mark annotation",
+        func = function()
+          Mapping.setup_open_key "default"
+          Mapping.exit_close()
+        end,
+        keys = Config.keymaps and Config.keymaps.mark.save_annotation,
+        mode = { "i", "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
     },
-    ["<C-q>"] = {
-      mode = { "n", "i" },
-      fun = Mapping.exit_close,
-    },
-    ["q"] = {
-      mode = "n",
-      fun = Mapping.exit_close,
-    },
-  }
-  set_vim_keymaps(_keys)
+  }, _keys)
+
+  QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end
 
 return M

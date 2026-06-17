@@ -16,7 +16,7 @@ local last_winid = 0
 local status_autocmd_enabled = false
 local MARK_MODE = vim.tbl_keys(Config.extmarks.keywords) -- { mark, debug, note .. }
 
----@type QFbookBufferMark
+---@type QFBookmarkBufferMark
 M.buffers = {}
 
 ---@type QFbookBufferMarkEntry[]
@@ -568,13 +568,13 @@ function M.open_mark_harpoon_window()
       return
     end
 
-    if harpoon_vals.selected then
-      local selected_marks = harpoon_vals.data
-      if Config.window.mark.on_send then
-        Config.window.mark.on_send(selected_marks)
-      end
-      return
-    end
+    -- if harpoon_vals.selected then
+    --   local selected_marks = harpoon_vals.data
+    --   if Config.window.mark.on_send then
+    --     Config.window.mark.on_send(selected_marks)
+    --   end
+    --   return
+    -- end
 
     if #old_harpoon ~= #harpoon_vals then
       local idx_lookup = {}
@@ -678,8 +678,8 @@ local function add_item(list_type)
   end
 
   local is_location_target = list_type == "loclist"
-  local cmd_ = is_location_target and { "lclose", Config.window.quickfix.lopen, "loclist" }
-    or { "cclose", Config.window.quickfix.copen, "qflist" }
+  local cmd_ = is_location_target and { "lclose", Config.window.quickfix.actions.lopen, "loclist" }
+    or { "cclose", Config.window.quickfix.actions.copen, "qflist" }
 
   local title = QfbookmarkUtils.get_title_qf(QfbookmarkUtils.is_loclist())
   if title and title:match "setqflist" or #title == 0 then
@@ -690,7 +690,7 @@ local function add_item(list_type)
   local lnum = pos[1]
   local col = pos[2]
 
-  ---@type QFBookLists
+  ---@type QFBookmarkLists
   local list_items = {
     items = {
       {
@@ -730,8 +730,8 @@ end
 ---@param list_type QFBookListType
 local function rename_header(list_type)
   local is_location_target = list_type == "loclist"
-  local cmd = is_location_target and { Config.window.quickfix.lopen, "LocList" }
-    or { Config.window.quickfix.copen, "QuickFix" }
+  local cmd = is_location_target and { Config.window.quickfix.actions.lopen, "LocList" }
+    or { Config.window.quickfix.actions.copen, "QuickFix" }
 
   if QfbookmarkUtils.is_loclist() then
     QfbookmarkUtils.warn("Renaming the title is not supported in the " .. cmd[2] .. ",\nOnly in Quickfix")
@@ -762,8 +762,8 @@ local function toggle_list(list_type, force_close)
   force_close = force_close or false
 
   local is_location_target = list_type == "loclist"
-  local cmd_ = is_location_target and { "lclose", Config.window.quickfix.lopen }
-    or { "cclose", Config.window.quickfix.copen }
+  local cmd_ = is_location_target and { "lclose", Config.window.quickfix.actions.lopen }
+    or { "cclose", Config.window.quickfix.actions.copen }
   local is_open, qf_or_loclist = QfbookmarkUtils.is_vim_list_open(true)
 
   if (is_open and (list_type == qf_or_loclist)) or force_close then
@@ -804,7 +804,7 @@ function M.open_item_qf()
   local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_open("default", is_center, is_ispanded)
 
-  if Config.keymaps.open_item.default.auto_close then
+  if Config.window.quickfix.actions.default.auto_close then
     toggle_list(list_type, true)
   end
 end
@@ -814,7 +814,7 @@ function M.open_item_in_tab()
   local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_open("tabnew", is_center, is_ispanded)
 
-  if Config.keymaps.open_item.tab.auto_close then
+  if Config.window.quickfix.actions.tab.auto_close then
     toggle_list(list_type, true)
   end
 end
@@ -824,7 +824,7 @@ function M.open_item_in_split()
   local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_open("split", is_center, is_ispanded)
 
-  if Config.keymaps.open_item.split.auto_close then
+  if Config.window.quickfix.actions.split.auto_close then
     toggle_list(list_type, true)
   end
 end
@@ -834,7 +834,7 @@ function M.open_item_in_vsplit()
   local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_open("vsplit", is_center, is_ispanded)
 
-  if Config.keymaps.open_item.vsplit.auto_close then
+  if Config.window.quickfix.actions.vsplit.auto_close then
     toggle_list(list_type, true)
   end
 end
@@ -881,7 +881,8 @@ function M.delete_item()
   data_lists = QfbookmarkUtils.get_list_qf(QfbookmarkUtils.is_loclist()).items
 
   local close_cmd = QfbookmarkUtils.is_loclist() and "lclose" or "cclose"
-  local open_cmd = QfbookmarkUtils.is_loclist() and Config.window.quickfix.lopen or Config.window.quickfix.copen
+  local open_cmd = QfbookmarkUtils.is_loclist() and Config.window.quickfix.actions.lopen
+    or Config.window.quickfix.actions.copen
 
   local count = vim.v.count
   if count == 0 then
@@ -899,7 +900,7 @@ function M.delete_item()
   if #data_lists ~= 0 then
     local title = QfbookmarkUtils.get_title_qf(QfbookmarkUtils.is_loclist())
 
-    ---@type QFBookLists
+    ---@type QFBookmarkLists
     local list_items = {
       items = data_lists,
       title = title,
@@ -925,38 +926,43 @@ end
 -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 function M.integrations_trouble_qflist()
-  if Config.keymaps.integrations.trouble.enabled then
-    local trouble = require "qfbookmark.integrations.trouble"
-    if vim.bo.filetype == "qf" then
-      trouble.handle_toggle_qf(false, "quickfix")
-    end
-    if vim.bo.filetype == "trouble" then
-      trouble.handle_toggle_qf(true, "quickfix")
-    end
+  if not Config.keymaps.quickfix.integrations.trouble.enabled then
+    return
+  end
+
+  local trouble = require "qfbookmark.integrations.trouble"
+  if vim.bo.filetype == "qf" then
+    trouble.handle_toggle_qf(false, "quickfix")
+  end
+  if vim.bo.filetype == "trouble" then
+    trouble.handle_toggle_qf(true, "quickfix")
   end
 end
 function M.integrations_trouble_loclist()
-  if Config.keymaps.integrations.trouble.enabled then
-    local trouble = require "qfbookmark.integrations.trouble"
-    if vim.bo.filetype == "qf" then
-      if QfbookmarkUtils.is_loclist() then
-        trouble.handle_toggle_qf(false, "loclist")
-      end
+  if not Config.keymaps.quickfix.integrations.trouble.enabled then
+    return
+  end
+
+  local trouble = require "qfbookmark.integrations.trouble"
+  if vim.bo.filetype == "qf" then
+    if QfbookmarkUtils.is_loclist() then
+      trouble.handle_toggle_qf(false, "loclist")
     end
-    if vim.bo.filetype == "trouble" then
-      trouble.handle_toggle_qf(true, "loclist", true)
-    end
+  end
+  if vim.bo.filetype == "trouble" then
+    trouble.handle_toggle_qf(true, "loclist", true)
   end
 end
 function M.integrations_grugfar()
-  local keymap_grugfar_opts = Config.keymaps.integrations.grugfar
-  if keymap_grugfar_opts.enabled then
-    local grugfar = require "qfbookmark.integrations.grugfar"
-    if QfbookmarkUtils.is_loclist() then
-      grugfar.handle_toggle_qf("loclist", false, true)
-    else
-      grugfar.handle_toggle_qf("quickfix", false)
-    end
+  if not Config.keymaps.quickfix.integrations.grugfar.enabled then
+    return
+  end
+
+  local grugfar = require "qfbookmark.integrations.grugfar"
+  if QfbookmarkUtils.is_loclist() then
+    grugfar.handle_toggle_qf("loclist", false, true)
+  else
+    grugfar.handle_toggle_qf("quickfix", false)
   end
 end
 function M.integrations_copyline()
@@ -966,8 +972,8 @@ function M.integrations_copyline()
     return
   end
 
-  local keymap_copyline_opts = Config.keymaps.integrations.copyline
-  if keymap_copyline_opts.enabled then
+  local keymap_copyline_opts = Config.keymaps.quickfix.integrations.copyline
+  if keymap_copyline_opts and keymap_copyline_opts.enabled then
     local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
     local filename = vim.api.nvim_buf_get_name(bufnr)
 
@@ -1027,14 +1033,9 @@ function M.move_layout_qf_down()
   end)
 end
 
-local was_warn = false
-
 function M.toggle_rotate_note_window()
   if type(Config.window.note.open_cmd) == "table" and Config.window.note.open_cmd.mode == "float" then
-    if not was_warn then
-      QfbookmarkUtils.warn "This action is cancelled because a floating note window is in use"
-      was_warn = true
-    end
+    QfbookmarkUtils.warn "This action is cancelled because a floating note window is in use"
     return
   end
 

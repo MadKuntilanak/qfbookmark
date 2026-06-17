@@ -1,46 +1,47 @@
 ---@alias KeyMode "n" | "x" | "i" | "t" | "o"
 ---@alias QFBookCurrentState "Local" | "Global"
----@alias QFBookListType "loclist" | "quickfix" | "none"
+---@alias QFBookListType "loclist" | "quickfix" | "none" | "trouble_mode" | "trouble_source"
+---@alias QFBookListProviders "buffers" | "mark" | "quickfix" | "note"
 ---@alias QFBookMarkMode "MARK" | "DEBUG" | "NOTE" | "FIX"
 ---@alias QFBookState "Save Qflist" | "Save Loclist" | "Load"
 
----@alias QFbookBufferMarkGroup table<string, QFbookBufferMarkEntry>
----@alias QFbookBufferMark table<QFBookMarkMode, QFbookBufferMarkGroup>
+---@alias QFBookmarkBufferMarkGroup table<string, QFbookBufferMarkEntry>
+---@alias QFBookmarkBufferMark table<QFBookMarkMode, QFBookmarkBufferMarkGroup>
 
----@alias QfBookUiPreview { win?: integer, buf?: integer, wincfg?: table }
----@alias QfBookUiPopup { win?: integer, buf?: integer, preview?: QfBookUiPreview }
+---@alias QFBookmarkUiPreview { win?: integer, buf?: integer, wincfg?: table }
+---@alias QFBookmarkUiPopup { win?: integer, buf?: integer, preview?: QFBookmarkUiPreview }
 
----@alias QfBookUiSaveCfg {
+---@alias QFBookmarkUiSaveCfg {
 --- title: string,
 --- target_path: string,
 --- is_loc: boolean,
 --- cb: function,
 --- for_what: "save"|"rename" }
 
----@alias QfBookEntry {
+---@alias QFBookmarkEntry {
 --- hval: string,
 --- id: integer,
 --- start_line: integer,
 --- line_count: integer,
 --- mark: QFbookBufferMarkEntry, }
 
----@alias QfBookUiPopupCfg {
+---@alias QFBookmarkUiPopupCfg {
 --- contents: table,
---- content_map: table<integer, QfBookEntry>,
+--- content_map: table<integer, QFBookmarkEntry>,
 --- win_opts: WinCfg,
 --- original_popup_mark_width: integer,
 --- display_lines: string[],
---- popup?: QfBookUiPopup,
+--- popup?: QFBookmarkUiPopup,
 --- is_harpoon?: boolean,
 --- is_buffers?: boolean,
 --- is_mark_annotation?: boolean,
 --- is_note?: boolean,
 --- active: string,
---- save?: QfBookUiSaveCfg,
+--- save?: QFBookmarkUiSaveCfg,
 --- selected: table<string, boolean>,
 --- data_annotation?: { chunk: QFbookBufferMarkEntry, load_chunk: boolean } }
 
----@alias QfBookUiWinCfg {
+---@alias QFBookmarkWinCfg {
 --- save: QFBookUiCfg,
 --- save_footer: QFBookUiCfg,
 --- mark_preview: QFBookUiCfg,
@@ -50,19 +51,21 @@
 --- mark_annotation: QFBookUiCfg,
 --- mark_annotation_preview: QFBookUiCfg }
 
----@class QfBookContextQFlist
+---@class QFBookmarkContextQFlist
 ---@field name string
 ---@field bufnr? integer
 
----@class QFBookLists
+---@class QFBookmarkLists
 ---@field title string
 ---@field items table[]
 ---@field id? integer
----@field context? QfBookContextQFlist | string
+---@field context? QFBookmarkContextQFlist | string
+---@field trouble_mode? string
+---@field trouble_source? string
 
 ---@class QFBookListResults
----@field quickfix QFBookLists
----@field location QFBookLists
+---@field quickfix QFBookmarkLists
+---@field location QFBookmarkLists
 
 ---@class QFBookSpec
 ---@field icon string
@@ -99,22 +102,40 @@
 ---@field priority integer
 ---@field keywords QFBookKeywords
 
----@class QFbookMarkKeymaps
----@field up string,
----@field down string,
----@field move_item_up string,
----@field move_item_down string
----@field load_all string
----@field zoom string
----@field del_item_all string
----@field send_cb string
----@field del_item string
----@field toggle_select string
----@field diselect_all string
----@field scroll_preview_up string
----@field scroll_preview_down string
----@field scroll_preview_up_fast string
----@field scroll_preview_down_fast string
+---@class QFBookmarkMarkKeymaps
+---@field move_item_up string | string[]
+---@field move_item_down string | string[]
+---@field load_all string | string[]
+---@field zoom string | string[]
+---@field open_popup string | string[]
+---@field toggle_select string | string[]
+---@field diselect_all string | string[]
+---@field del_mark string | string[]
+---@field del_mark_buffer string | string[]
+---@field harpoon QFBookKeymapMarkHarpoon
+---@field save_annotation string | string[]
+---@field add_mark string | string[]
+---@field add_fix string | string[]
+---@field add_debug string | string[]
+---@field add_mark_annotation string | string[]
+---@field integrations QFBookKeymapIntegrations
+
+---@class QFBookmarkKeymapQfSpec
+---@field toggle_open string | string[]
+---@field add_item string | string[]
+
+---@class QFBookmarkQuickfixKeymaps
+---@field rename_title string | table[]
+---@field next_hist string | string[]
+---@field prev_hist string | string[]
+---@field add_item_to_loc string | string[]
+---@field add_item_to_qf string | string[]
+---@field open_toggle_loc string | string[]
+---@field open_toggle_qf string | string[]
+---@field save_or_load string | string[]
+---@field layout_up string | string[]
+---@field layout_down string | string[]
+---@field integrations QFBookKeymapIntegrations
 
 ---@class QFbookMasterOpts
 ---@field orig string,
@@ -141,40 +162,34 @@
 ---@class QFBookWindowMark
 ---@field enabled boolean
 ---@field anchor string
----@field keymaps QFbookMarkKeymaps
----@field on_send function | nil
----@field annotation QFBookWindowMarkAnnotation
+
+---@class QFBookItemOpenMode
+---@field auto_close boolean
+
+---@class QFBookWindowQuickfixActions
+---@field auto_center boolean
+---@field auto_unfold boolean
+---@field copen string
+---@field lopen string
+---@field split QFBookItemOpenMode
+---@field vsplit QFBookItemOpenMode
+---@field default QFBookItemOpenMode
+---@field tab QFBookItemOpenMode
+
+---@class QFBookWindowQuickfix
+---@field enabled boolean
+---@field theme { enabled: boolean, maxheight: integer, limit: integer, highlight: boolean  }
+---@field actions  QFBookWindowQuickfixActions
+
+---@class QFBookWindowBuffers
+---@field enabled boolean
 
 ---@class QFBookmarkWindowCfg
 ---@field notify { enabled: boolean, mark: boolean, plugin: boolean }
----@field quickfix { enabled: boolean, copen: string, lopen: string, theme: {  enabled: boolean, maxheight: integer, limit: integer, highlight: boolean  }, actions: { auto_center: boolean, auto_unfold: boolean } }
+---@field quickfix QFBookWindowQuickfix
 ---@field mark QFBookWindowMark
+---@field buffers QFBookWindowBuffers
 ---@field note QFBookWindowNotes
-
----@class QFBookKeymapQfSpec
----@field toggle_open string | string[]
----@field add_item string | string[]
-
----@class QFBookItemOpenMode
----@field keys string | string[]
----@field auto_close boolean
-
----@class QFBookKeymapOpenItem
----@field default QFBookItemOpenMode
----@field split  QFBookItemOpenMode
----@field vsplit QFBookItemOpenMode
----@field tab QFBookItemOpenMode
-
----@class QFBookKeymapMoveWindow
----@field move_up string | string[]
----@field move_down string | string[]
----@field rotate_layout_note string | string[]
-
----@class QFBookKeymapMoveQFlist
----@field next string | string[]
----@field prev string | string[]
----@field next_hist string | string[]
----@field prev_hist string | string[]
 
 ---@class QFBookKeymapMoveMark
 ---@field next string | string[]
@@ -184,12 +199,7 @@
 ---@field next string | string[]
 ---@field prev string | string[]
 
----@class QFBookKeymapMove
----@field quicklist QFBookKeymapMoveQFlist
----@field window QFBookKeymapMoveWindow
----@field mark QFBookKeymapMoveMark
-
----@class QFBookKeymapTrouble
+---@class QFBookKeymapTroubleIntegration
 ---@field enabled boolean
 ---@field toggle_qflist string | string[]
 ---@field toggle_loclist string | string[]
@@ -203,21 +213,25 @@
 ---@field cmd string | function
 ---@field desc string
 ---@field mode? KeyMode
----@field buffer? boolean
+---@field buffer? integer
 
----@class QFBookKeymapCMDLineStrings
+---@class QFBookKeymapCustomIntegration
 ---@field enabled boolean
 ---@field commands QFBookKeymapCMDPattern[]
 
----@class QFBookKeymapNotes
----@field toggle_local_note string | string[]
----@field toggle_global_note string | string[]
+---@class QFBookmarkNoteKeymaps
+---@field open_toggle_global string | string[]
+---@field open_toggle_local string | string[]
+---@field layout_rotate string | string[]
+
+---@class QFBookKeymapMarkOpenItem
+---@field default string | string[]
 
 ---@class QFBookKeymapIntegrations
----@field trouble QFBookKeymapTrouble
----@field grugfar QFBookKeymapIntegrationSpec
----@field copyline QFBookKeymapIntegrationSpec
----@field cmdline_strings QFBookKeymapCMDLineStrings
+---@field trouble? QFBookKeymapTroubleIntegration
+---@field grugfar? QFBookKeymapIntegrationSpec
+---@field copyline? QFBookKeymapIntegrationSpec
+---@field custom? QFBookKeymapCustomIntegration
 
 ---@class QFBookKeymapMarkHarpoon
 ---@field mark_1 string | string[],
@@ -230,30 +244,33 @@
 ---@field mark_8 string | string[],
 ---@field mark_9 string | string[],
 
----@class QFBookKeymapActions
----@field delete_mark string | string[]
----@field delete_mark_buffer string | string[]
----@field delete_item string | string[]
----@field delete_item_all string | string[]
----@field rename_title string | string[]
----@field save_or_load string | string[]
----@field mark_win_open string | string[]
----@field mark string | string[]
----@field fix string | string[]
----@field debug string | string[]
----@field note string | string[]
----@field harpoon QFBookKeymapMarkHarpoon
----@field buffers string
+---@class QFBookmarkKeymapActions
+---@field quit string | string[]
+---@field up string | string[]
+---@field down string | string[]
+---@field default string | string[]
+---@field split  string | string[]
+---@field vsplit string | string[]
+---@field tab string | string[]
+---@field next_item string | string[]
+---@field prev_item string | string[]
+---@field del_item string | table[]
+---@field del_item_all string | table[]
+---@field scroll_preview_up string | string[]
+---@field scroll_preview_down string | string[]
+---@field scroll_preview_up_fast string | string[]
+---@field scroll_preview_down_fast string | string[]
+
+---@class QFBookmarkBuffersKeymaps
+---@field toggle_open string | string[]
 
 ---@class QFBookmarkKeymap
 ---@field disable_all boolean
----@field actions QFBookKeymapActions
----@field navigation QFBookKeymapMove
----@field open_item QFBookKeymapOpenItem
----@field quickfix QFBookKeymapQfSpec
----@field loclist QFBookKeymapQfSpec
----@field integrations QFBookKeymapIntegrations
----@field note QFBookKeymapNotes
+---@field actions QFBookmarkKeymapActions
+---@field mark QFBookmarkMarkKeymaps
+---@field quickfix QFBookmarkQuickfixKeymaps
+---@field note QFBookmarkNoteKeymaps
+---@field buffers QFBookmarkBuffersKeymaps
 
 ---@class QFBookmarkConfig
 ---@field save_dir string
@@ -270,6 +287,7 @@
 ---@field keys string | string[] | nil
 ---@field mode string | string[]
 ---@field from_user? boolean
+---@field buffer? integer
 
 ---@class QFBookUiCfg
 ---@field win integer?

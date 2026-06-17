@@ -103,7 +103,7 @@ function M.fn_json_decode(tbl)
   return vim.fn.json_decode(tbl)
 end
 
----@param list_items QFBookLists
+---@param list_items QFBookmarkLists
 ---@param path_fname string
 function M.write_to_file(list_items, path_fname)
   if list_items.items and list_items.items == 0 then

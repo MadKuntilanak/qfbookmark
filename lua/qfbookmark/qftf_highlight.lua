@@ -297,8 +297,23 @@ local function apply_line(qf_buf, row, line, e)
 
   local line_len = #line
 
+  local path_text = line:sub(L.fname_s + 1, L.fname_e)
+  local last_slash = nil
+  for i = #path_text, 1, -1 do
+    if path_text:sub(i, i) == "/" then
+      last_slash = i
+      break
+    end
+  end
+
   -- Structural columns.
-  set_mark(qf_buf, row, L.fname_s, L.fname_e, "QFBookmarkQfFile", 100)
+  if last_slash then
+    set_mark(qf_buf, row, L.fname_s, L.fname_e, "QFBookmarkQfFile", 100)
+    -- Basename
+    set_mark(qf_buf, row, last_slash, L.fname_e + last_slash, "QFBookmarkQfFileBasename", 100)
+  else
+    set_mark(qf_buf, row, L.fname_s, L.fname_e, "QFBookmarkQfFileBasename", 100)
+  end
   set_mark(qf_buf, row, L.sep1_s, L.sep1_s + SEP_LEN, "QFBookmarkQfSep", 100)
   set_mark(qf_buf, row, L.lnum_s, L.lnum_e, "QFBookmarkQfLineNr", 100)
   set_mark(qf_buf, row, L.sep2_s, L.sep2_s + SEP_LEN, "QFBookmarkQfSep", 100)
@@ -383,9 +398,10 @@ end
 function M.setup()
   local defs = {
     QFBookmarkQfFile = { link = "Directory", default = true },
+    QFBookmarkQfFileBasename = { link = "Normal", default = true },
     QFBookmarkQfText = { link = "Normal", default = true },
-    QFBookmarkQfSep = { link = "NonText", default = true },
-    QFBookmarkQfLineNr = { link = "LineNr", default = true },
+    QFBookmarkQfSep = { link = "NonText", default = true, bold = false },
+    QFBookmarkQfLineNr = { link = "LineNr", default = true, bold = false },
     QFBookmarkQfError = { link = "DiagnosticError", default = true },
     QFBookmarkQfWarn = { link = "DiagnosticWarn", default = true },
     QFBookmarkQfInfo = { link = "DiagnosticInfo", default = true },

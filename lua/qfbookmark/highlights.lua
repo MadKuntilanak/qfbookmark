@@ -42,10 +42,10 @@ local colors = {
   FloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
   FloatFooter = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" }, tint = { amount = 1 } } },
   FloatCursorLine = {
-    fg = {
-      higroup = { fromTo = "Directory", attr = "fg" },
-      tint = { amount = 0.1 },
-    },
+    -- fg = {
+    --   higroup = { fromTo = "Directory", attr = "fg" },
+    --   tint = { amount = 0.1 },
+    -- },
     bg = {
       higroup = { fromTo = "FloatBorder", attr = "fg" },
       tint = { amount = -0.1 },
@@ -61,10 +61,12 @@ local colors = {
   EntryIdx = { fg = { higroup = { fromTo = "Comment", attr = "fg" } } },
   -- path on the header line
   EntryPath = { fg = { higroup = { fromTo = "Directory", attr = "fg" } }, bold = true },
+  -- basename more bright
+  EntryBasename = { fg = { higroup = { fromTo = "Directory", attr = "fg" }, tint = { amount = 0.2 } }, bold = true },
   -- current-file indicator "●"
   EntryCurrentFile = { fg = { higroup = { fromTo = "String", attr = "fg" } }, bold = true },
   -- lnum portion ":92" on the detail line
-  EntryLnum = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = 0.05 } } },
+  EntryLnum = { fg = { higroup = { fromTo = "type", attr = "fg" }, tint = { amount = -0.6 } } },
   -- directory value in save footer (cyan-ish)
   EntryDirectory = { fg = { higroup = { fromTo = "Special", attr = "fg" } } },
 
@@ -92,15 +94,15 @@ local colors = {
   },
 
   -- Preview text on the detail line
-  EntryDetail = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = 0.6 } } },
+  EntryDetail = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = 0.1 } } },
 
   EntryNote = { fg = { higroup = { fromTo = "String", attr = "fg" }, tint = { amount = 0.3 } } },
 
   -- function name context "ƒ fn_name" on the detail line (purple)
-  EntryFnName = { fg = { higroup = { fromTo = "Function", attr = "fg" }, tint = { amount = -0.2 } } },
+  EntryFnName = { fg = { higroup = { fromTo = "Function", attr = "fg" }, tint = { amount = 0.05 } } },
 
   -- class/struct/impl symbol kind (orange-ish, from type highlight)
-  EntrySymbolType = { fg = { higroup = { fromTo = "Type", attr = "fg" }, tint = { amount = -0.1 } }, italic = true },
+  EntrySymbolType = { fg = { higroup = { fromTo = "Type", attr = "fg" }, tint = { amount = 0.05 } }, italic = true },
 
   -- +-----------------------------------------------------------------------------+
   -- |                        SELECTED ENTRY IN MARK POPUP                         |
@@ -120,7 +122,7 @@ local colors = {
     bold = true,
   },
 
-  EntryUnselectedCheck = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = -0.05 } } },
+  EntryUnselectedCheck = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = -0.15 } } },
 
   -- Checkbox when the cursor is on the entry (background follows cursorline)
   EntrySelectedCheckCursor = {

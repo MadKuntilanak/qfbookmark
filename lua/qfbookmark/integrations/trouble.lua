@@ -171,6 +171,7 @@ local function open_trouble_with_items(mode, items)
 
   -- No open view
   -- create a new one and inject items before the first render.
+  ---@diagnostic disable-next-line: param-type-mismatch
   local view = View.new(opts)
 
   -- Freeze: M:refresh() in view/init.lua checks view._frozen and skips section:refresh()
@@ -198,7 +199,7 @@ end
 -- ---------------------------------------------------------------------------
 -- data_troubles: read items from the currently open trouble window
 -- ---------------------------------------------------------------------------
----@return QFBookLists
+---@return QFBookmarkLists
 local function data_troubles()
   local severities_key = {
     [1] = "E",
@@ -264,7 +265,8 @@ local function toggle_trouble_window(list_type, is_loc)
     Trouble.close()
   end
 
-  local open_cmd = list_type == "loclist" and Config.window.quickfix.lopen or Config.window.quickfix.copen
+  local open_cmd = list_type == "loclist" and Config.window.quickfix.actions.lopen
+    or Config.window.quickfix.actions.copen
 
   QfbookmarkUtils.save_to_qf_and_auto_open_qf(list_items, open_cmd, is_loc)
 

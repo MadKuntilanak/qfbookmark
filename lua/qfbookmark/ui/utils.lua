@@ -360,7 +360,7 @@ function M.resolve_fn_name(mark)
   return { kind = "fn", chain = cached.chain }
 end
 
----@param entries table<integer, QfBookEntry>,
+---@param entries table<integer, QFBookmarkEntry>,
 ---@param lnum integer
 function M.get_entry_at_line(entries, lnum)
   for _, entry in ipairs(entries) do

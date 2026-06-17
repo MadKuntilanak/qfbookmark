@@ -231,7 +231,7 @@ local function mark_harpoon_popup(mark_lists, cb)
   QfbookmarkUIView.build_popup("mark", __opts, cb)
 end
 
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param cb function
 ---@param load_chunk? {load_chunk: boolean, chunk: QFbookBufferMarkEntry}
 local function place_mark_annotation(mark_lists, cb, load_chunk)

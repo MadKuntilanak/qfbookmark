@@ -11,10 +11,19 @@
   - [X] minimal design
 - [X] mark: add toggle window for note annotation
 - [X] mark: add toggle multi selection
-- [ ] buffer: must have flag `+` if got modified
+- [X] buffer: must have flag `+` if got modified
+- [X] config: restructure keymap configs [4/4]
+  - [X] quickfix
+  - [X] mark
+  - [X] note
+  - [X] buffers
+- [X] mark: make send callback work
+- [ ] mark: load bookmark master from other projects [0/2]
   - [ ] support branch?
   - [ ] support tag?
-- [ ] more test for node treesitter [0/3]
+- [ ] mark: relate error path when the project is not a git repo
+- [ ] update README
+- [ ] mark: more test for node treesitter [0/3]
   - [ ] for Go
   - [ ] for Rust
   - [ ] for TypeScript

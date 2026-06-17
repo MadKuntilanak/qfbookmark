@@ -54,7 +54,7 @@ local function insert_sign_and_extmark(mark_lists, id, mark_mode, bufnr, lnum, e
   end
 end
 
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param s_opts { bufnr?: integer, id?: integer, no_id?: boolean }
 ---@return { id: integer, mark_mode: QFBookMarkMode, extmarkspec: QFBookSpec, bufnr?: integer} | nil
 function M.is_current_line_got_mark(mark_lists, s_opts)
@@ -118,7 +118,7 @@ function M.is_current_line_got_mark(mark_lists, s_opts)
   end
 end
 
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param force_refresh boolean
 ---@param bufnr? integer
 local function refresh_mark(mark_lists, force_refresh, bufnr)
@@ -174,7 +174,7 @@ end
 
 local autocmds_set = false
 
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param force_set? boolean
 function M.setup_mark_autocmds(mark_lists, force_set)
   force_set = force_set or false
@@ -202,7 +202,7 @@ function M.setup_mark_autocmds(mark_lists, force_set)
   })
 end
 
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param extmarkspec QFBookSpec
 ---@param id integer
@@ -212,7 +212,7 @@ end
 ---@param text string
 ---@param note? string[]
 ---@param inserted_at? integer
----@return QFbookBufferMark | nil
+---@return QFBookmarkBufferMark | nil
 local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum, col, text, inserted_at, note)
   note = note or {}
 
@@ -268,7 +268,7 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum
   return mark_lists
 end
 
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param extmarkspec QFBookSpec
 ---@param id integer
@@ -277,7 +277,7 @@ end
 ---@param col integer
 ---@param text string
 ---@param is_open_window boolean
----@return QFbookBufferMark | nil
+---@return QFBookmarkBufferMark | nil
 function M.place_next_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum, col, text, is_open_window)
   if mark_mode == "NOTE" then
     local target_mark = mark_lists[mark_mode] and mark_lists[mark_mode][id] or {}
@@ -298,7 +298,7 @@ function M.place_next_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum, 
   return register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum, col, text)
 end
 
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param bufnr integer
 function M.update_mark_sign(mark_lists, bufnr)
   if vim.tbl_isempty(mark_lists) then
@@ -341,7 +341,7 @@ function M.update_mark_sign(mark_lists, bufnr)
   end
 end
 
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@return  { id: integer, mark_mode: QFBookMarkMode, extmarkspec: QFBookSpec, bufnr?: integer} | nil
 function M.get_mark_id(mark_lists)
   -- bufnr = bufnr or vim.api.nvim_get_current_buf()
@@ -368,7 +368,7 @@ end
 --- Check whether mark data exists in the bookmark storage.
 --- This only checks the internal `mark_lists` table and does not inspect
 --- placed signs or extmarks in the buffer.
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param id? integer
 ---@param bufnr? integer
@@ -385,7 +385,7 @@ end
 --- Remove a mark entry and its associated sign.
 --- Returns `true` when the mark exists and is successfully removed from
 --- the internal storage; otherwise returns `false`.
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param id? integer
 ---@param bufnr? integer
@@ -404,11 +404,11 @@ end
 
 --- Update an existing mark annotation using mark id
 ---
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param extmarkspec QFBookSpec
 ---@param id integer
----@return QFbookBufferMark|nil
+---@return QFBookmarkBufferMark|nil
 function M.update_mark_annotation(mark_lists, mark_mode, extmarkspec, id)
   local line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
 
@@ -435,11 +435,11 @@ end
 --- Add a new mark at the current cursor position.
 --- Uses the current buffer, line, and column to create a mark and store
 --- it through `place_next_mark()`.
----@param mark_lists QFbookBufferMark
+---@param mark_lists QFBookmarkBufferMark
 ---@param mark_mode QFBookMarkMode
 ---@param extmarkspec QFBookSpec
 ---@param is_open_window? boolean
----@return QFbookBufferMark|nil
+---@return QFBookmarkBufferMark|nil
 function M.add_mark(mark_lists, mark_mode, extmarkspec, is_open_window)
   is_open_window = is_open_window or false
 

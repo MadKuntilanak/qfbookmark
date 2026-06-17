@@ -115,7 +115,7 @@ local function load_content(filename, bufnr)
   return vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 end
 
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param cur_line_nr integer
 local function get_data_from_opts_popup(opts_popup, cur_line_nr)
   local harpoon_val
@@ -154,7 +154,7 @@ end
 
 --- Update the preview window based on the current cursor line.
 --- Resolves the harpoon value from harpoon_map instead of parsing raw lines.
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
 ---@param win integer
 ---@param is_note_mark boolean
@@ -274,7 +274,7 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
 end
 
 --- Setup CursorMoved autocmd to update the preview window on navigation.
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param win_preview integer
 ---@param buf_preview integer
 ---@param is_note_mark? boolean
@@ -384,7 +384,7 @@ function M.mark_note_preview(main_wincfg, width, height)
   return buf_preview, win_preview
 end
 
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param main_cfg vim.api.keyset.win_config_ret
 ---@return integer, integer
 function M.save_footer(opts_popup, main_cfg)

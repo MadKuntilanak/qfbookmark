@@ -9,7 +9,7 @@ local M = {}
 
 M.filetype = "qfbookmark"
 
----@type QfBookUiWinCfg
+---@type QFBookmarkWinCfg
 M.window = {
   save = {
     augroup = "WinSavePopup",
@@ -82,7 +82,7 @@ local function setup_option_main_popup(win, buf, is_editable)
 end
 
 local __popup_opts_for = {
-  ---@param opts_popup QfBookUiPopupCfg
+  ---@param opts_popup QFBookmarkUiPopupCfg
   ---@param cb function
   ["mark"] = function(opts_popup, cb)
     local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
@@ -225,7 +225,7 @@ local __popup_opts_for = {
 
     QfbookmarkUIKeymaps.setup_keymap_mark(opts_popup, main_buf, cb_wrapper)
   end,
-  ---@param opts_popup QfBookUiPopupCfg
+  ---@param opts_popup QFBookmarkUiPopupCfg
   ["buffer"] = function(opts_popup)
     local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
     if not win or not vim.api.nvim_win_is_valid(win) then
@@ -251,7 +251,7 @@ local __popup_opts_for = {
 
     QfbookmarkUIKeymaps.setup_keymap_buffers(opts_popup, buf)
   end,
-  ---@param opts_popup QfBookUiPopupCfg
+  ---@param opts_popup QFBookmarkUiPopupCfg
   ["save"] = function(opts_popup, cb)
     local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
     if not win or not vim.api.nvim_win_is_valid(win) then
@@ -320,7 +320,7 @@ local __popup_opts_for = {
 
     QfbookmarkUIKeymaps.setup_keymap_note(opts_popup, main_buf)
   end,
-  ---@param opts_popup QfBookUiPopupCfg
+  ---@param opts_popup QFBookmarkUiPopupCfg
   ---@param cb function
   ["mark_annotation"] = function(opts_popup, cb)
     local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
@@ -380,7 +380,7 @@ local __popup_opts_for = {
 }
 
 ---@param for_what "mark" | "buffer" | "save"| "note" | "mark_annotation"
----@param opts_popup QfBookUiPopupCfg
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param is_editable? boolean
 ---@param cb? function | nil
 function M.build_popup(for_what, opts_popup, cb, is_editable)

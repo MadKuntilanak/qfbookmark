@@ -104,7 +104,7 @@ function M.setup_path(is_global)
   end
 end
 
----@param list_items QFBookLists
+---@param list_items QFBookmarkLists
 ---@param is_global boolean
 ---@param is_loc boolean
 function M.save_data_lists(list_items, is_global, is_loc)
@@ -137,7 +137,7 @@ function M.is_json_path_exists(path)
 end
 
 ---@param path string
----@return QFBookLists | nil
+---@return QFBookmarkLists | nil
 function M.read_from_file_json(path)
   if not QfbookmarkPathUtils.is_file(path) then
     QfbookmarkUtils.error("Can’t find this file:`" .. path .. "`")
