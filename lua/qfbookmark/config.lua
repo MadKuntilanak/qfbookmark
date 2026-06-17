@@ -22,7 +22,12 @@ M.defaults = {
     notify = { mark = true, plugin = true },
     quickfix = {
       enabled = true,
-      theme = { enabled = true, limit = 50, highlight = true },
+      theme = {
+        enabled = true,
+        limit = 50,
+        highlight = true,
+        maxheight = 7,
+      },
       actions = {
         copen = "belowright copen",
         lopen = "belowright lopen",
@@ -244,6 +249,34 @@ function M.update_settings(user_opts)
     -- Setup highlights and autocmds for qf buffer coloring
     if M.defaults.window.quickfix.theme.highlight then
       require("qfbookmark.qftf_highlight").setup()
+    end
+
+    local function addjustWindowHWQf(maxheight)
+      maxheight = maxheight or 7
+      local l = 1
+      local n_lines = 0
+      local w_width = vim.fn.winwidth(vim.api.nvim_get_current_win())
+
+      for i = l, vim.fn.line "$" do
+        local l_len = vim.fn.strlen(vim.fn.getline(l)) + 0.0
+        local line_width = l_len / w_width
+        n_lines = n_lines + vim.fn.float2nr(vim.fn.ceil(line_width))
+        i = i + 1
+      end
+      --
+      local height = math.min(n_lines, maxheight)
+      vim.cmd(string.format("%swincmd _", height + 1))
+    end
+
+    if M.defaults.window.quickfix.theme.maxheight then
+      local augroup = vim.api.nvim_create_augroup("QFbookmarkQuickfixHeight", { clear = true })
+      vim.api.nvim_create_autocmd("FileType", {
+        pattern = { "qf" },
+        group = augroup,
+        callback = function()
+          addjustWindowHWQf(M.defaults.window.quickfix.theme.maxheight)
+        end,
+      })
     end
   end
 
