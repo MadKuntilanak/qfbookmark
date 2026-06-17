@@ -258,6 +258,21 @@ local function qf_keymaps()
         keys = get_keymap(Config.keymaps, "quickfix", "layout_down"),
         mode = { "n", "x" },
       },
+
+      -- Select item
+      {
+        desc = "Qfmark: toggle select",
+        func = "qf_toggle_selection",
+        keys = get_keymap(Config.keymaps, "actions", "toggle_select"),
+        mode = "n",
+      },
+
+      {
+        desc = "Qfmark: diselect all",
+        func = "diselect_all",
+        keys = get_keymap(Config.keymaps, "actions", "diselect_all"),
+        mode = "n",
+      },
     },
   }, keys_ft)
 

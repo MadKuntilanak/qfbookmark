@@ -668,6 +668,80 @@ end
 -- ╏                                  QUICKFIX                                   ╏
 -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
+local qf_selected = {}
+
+---@param is_loc boolean
+---@return QFBookmarkLists
+local function __get_data(is_loc)
+  local qf_result
+
+  if is_loc then
+    local data = QfbookmarkUtils.get_data_qf(true)
+    qf_result = data.location
+  else
+    local data = QfbookmarkUtils.get_data_qf()
+    qf_result = data.quickfix
+  end
+
+  return qf_result
+end
+
+function M.qf_toggle_selection()
+  local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
+
+  local is_loc = QfbookmarkUtils.is_loclist()
+
+  local qf_result = __get_data(is_loc)
+
+  local item = qf_result.items[cur_line_nr]
+  if not item then
+    return
+  end
+
+  -- Unique key per item
+  local key = cur_line_nr
+
+  if qf_selected[key] then
+    qf_selected[key] = nil
+  else
+    qf_selected[key] = true
+  end
+
+  local QfbookmarkMarkVisual = require "qfbookmark.visual"
+  QfbookmarkMarkVisual.apply_qf_selection_highlights(qf_selected, is_loc)
+end
+
+---@return table[]  selected quickfix items
+function M.get_qf_selected()
+  local is_loc = QfbookmarkUtils.is_loclist()
+
+  local qf_result = __get_data(is_loc)
+
+  local result = {}
+
+  for idx, item in ipairs(qf_result.items) do
+    if qf_selected[idx] then
+      result[#result + 1] = item
+    end
+  end
+  return result
+end
+
+function M.diselect_all()
+  local is_loc = QfbookmarkUtils.is_loclist()
+
+  local qf_result = __get_data(is_loc)
+
+  for idx, _ in ipairs(qf_result.items) do
+    if qf_selected[idx] then
+      qf_selected[idx] = nil
+    end
+  end
+
+  local QfbookmarkMarkVisual = require "qfbookmark.visual"
+  QfbookmarkMarkVisual.apply_qf_selection_highlights(qf_selected, is_loc)
+end
+
 ---@param list_type QFBookListType
 local function add_item(list_type)
   local bufnr = vim.api.nvim_get_current_buf()
@@ -860,11 +934,13 @@ local function clear_all_items_qflist()
   QfbookmarkUtils.info "✅ The item list has been cleared"
   vim.fn.setqflist {}
   vim.cmd.cclose()
+  M.diselect_all()
 end
 local function clear_all_items_loclist()
   QfbookmarkUtils.info "✅ The item list has been cleared"
   vim.fn.setloclist(0, {}, "r")
   vim.cmd.lclose()
+  M.diselect_all()
 end
 
 function M.delete_all_items()

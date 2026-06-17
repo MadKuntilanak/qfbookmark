@@ -77,14 +77,11 @@ require("qfbookmark").setup {
 
 ```lua
 require("qfbookmark").setup {
-  -- Directory where marks are persisted across sessions.
   save_dir = vim.fn.stdpath "data" .. "/qfbookmark",
 
   -- Picker backend. "default" uses the built-in popup.
   -- "fzf-lua" uses fzf-lua for fuzzy search.
   picker = "default",
-
-  -- Extmark (inline sign) settings
   extmarks = {
     priority = 20,
 
@@ -98,30 +95,39 @@ require("qfbookmark").setup {
 
     -- Mark mode definitions: icon, highlight group, and sign text
     keywords = {
-      MARK = { icon = "📌", hl_group = "QFBookMark", alt = " -> " },
-      FIX = { icon = "🔧", hl_group = "QFBookFix", alt = " -> " },
-      DEBUG = { icon = "🚧", hl_group = "QFBookDebug", alt = " -> " },
-      NOTE = { icon = "📝", hl_group = "QFBookNote", alt = " -> " },
+      MARK = { icon = "📌", hl_group = "QFBookMark", alt = " -> " },
+      FIX = { icon = "🔧", hl_group = "QFBookFix", alt = " -> " },
+      DEBUG = { icon = "🚧", hl_group = "QFBookDebug", alt = " -> " },
+      NOTE = { icon = "📝", hl_group = "QFBookNote", alt = " -> " },
     },
   },
-
-  -- Window and UI settings
   window = {
-    notify = {
-      mark = true, -- notify when a mark is created/deleted
-      plugin = true, -- notify plugin-level messages
-    },
+    notify = { mark = true, plugin = true },
     quickfix = {
       enabled = true,
-      copen = "belowright copen",
-      lopen = "belowright lopen",
-      theme = { enabled = true, limit = 50, highlight = true },
+      theme = {
+        enabled = true,
+        limit = 50,
+        highlight = true,
+        maxheight = 7,
+      },
       actions = {
+        copen = "belowright copen",
+        lopen = "belowright lopen",
         auto_center = true, -- center buffer on jump
         auto_unfold = true,
+        default = { auto_close = true },
+        split = { auto_close = false },
+        vsplit = { auto_close = false },
+        tab = { auto_close = true },
       },
     },
+    buffers = {
+      enabled = true,
+    },
     note = {
+      enabled = true,
+
       -- Auto-save behavior:
       -- Changes are automatically saved when opening, closing, or toggling the note window.
       -- You don't need to manually save (no :w required),
@@ -137,9 +143,12 @@ require("qfbookmark").setup {
       --   string: Vim command used to open the note (e.g. "botright vsplit")
       --   table : floating window configuration
       --           { mode = "float", anchor = "NW|NE|SW|SE" }
-      open_cmd = "botright vsplit",
+      open_cmd = {
+        mode = "float",
+        anchor = "SE",
+      },
 
-      size = "50", -- or 12%
+      size = "40%",
 
       -- Syntax highlighting is not provided by this plugin,
       -- it relies on nvim built-in filetypes or external plugins :D
@@ -157,48 +166,63 @@ require("qfbookmark").setup {
       },
     },
     mark = {
-      anchor = "SE",
-      on_send = nil,
-      keymap = {
-        up = "",
-        down = "",
-        move_item_down = "<a-n>",
-        move_item_up = "<a-p>",
-
-        select = "<Tab>",
-        zoom = "<C-z>",
-
-        load_all = "<F4>",
-
-        scroll_preview_up = "<C-u>",
-        scroll_preview_down = "<C-d>",
-        scroll_preview_up_fast = "<C-b>",
-        scroll_preview_down_fast = "<C-f>",
-      },
+      enabled = true,
+      anchor = "SE", -- NW/SW --- SE/NE
     },
   },
-
-  -- Keymaps
   keymaps = {
     -- Set to true to disable all default keymaps and define your own
     disable_all = false,
 
-    actions = {
-      delete_mark = "dm",
-      delete_mark_buffer = "dM",
-      delete_item = "dd",
-      delete_item_all = "<Localleader>qC",
-      rename_title = "<Localleader>qR",
+    actions = { -- General actions
+      up = { "<C-p>", "<C-k>", "k" },
+      down = { "<C-n>", "<C-j>", "j" },
 
-      save_or_load = "<Leader>qy",
-      mark_win_open = "gp",
-      buffers = "gn",
+      default = { "o", "<CR>" },
+      split = "<C-s>",
+      vsplit = "<C-v>",
+      tab = "<C-t>",
 
+      scroll_preview_up = "<C-u>",
+      scroll_preview_down = "<C-d>",
+      scroll_preview_up_fast = "<C-b>",
+      scroll_preview_down_fast = "<C-f>",
+
+      toggle_select = "<Tab>",
+      diselect_all = "D",
+
+      next_item = "<C-n>",
+      prev_item = "<C-p>",
+
+      quit = { "q", "<Esc>", "<C-c>", "<C-q>" },
+
+      del_item = "dd",
+      del_item_all = "dM",
+    },
+
+    mark = {
       -- Create marks
-      mark = "<Leader>qq",
-      fix = "<Leader>qf",
-      debug = "<Leader>qd",
-      note = "<Leader>qN",
+      add_mark = "<Leader>qq",
+      add_fix = "<Leader>qf",
+      add_debug = "<Leader>qd",
+      add_mark_annotation = "<Leader>qn",
+
+      open_popup = "gl",
+
+      save_annotation = "<C-s>",
+
+      del_mark = "dm",
+      del_mark_buffer = "dM",
+
+      next_mark = "gn",
+      prev_mark = "gp",
+
+      move_item_down = "<a-n>",
+      move_item_up = "<a-p>",
+
+      zoom = "<C-z>",
+
+      load_all = "<C-a>",
 
       -- Jump directly to harpoon slot N
       harpoon = {
@@ -212,52 +236,43 @@ require("qfbookmark").setup {
         mark_8 = "<a-8>",
         mark_9 = "<a-9>",
       },
-    },
-
-    open_item = {
-      default = { keys = { "o", "<CR>" }, auto_close = true },
-      split = { keys = { "ss", "<C-s>" }, auto_close = false },
-      vsplit = { keys = { "sv", "<C-v>" }, auto_close = false },
-      tab = { keys = { "st", "tn" }, auto_close = true },
-    },
-
-    navigation = {
-      quicklist = {
-        next = "<a-n>",
-        prev = "<a-p>",
-        next_hist = "gl",
-        prev_hist = "gh",
-      },
-      window = {
-        move_up = "<c-k>",
-        move_down = "<c-j>",
-        rotate_layout_note = "<a-=>",
-      },
-      mark = {
-        next = "gj",
-        prev = "gk",
+      integrations = {
+        custom = { enabled = false, commands = {} },
       },
     },
-
     quickfix = {
-      toggle_open = "<Leader>qj",
-      add_item = "tt",
+      next_hist = "gl",
+      prev_hist = "gh",
+
+      rename_title = "<Localleader>qR",
+
+      add_item_to_qf = "tt",
+      add_item_to_loc = "ty",
+
+      open_toggle_qf = "<Leader>qj",
+      open_toggle_loc = "<Leader>ql",
+
+      save_or_load = "<Leader>qy",
+
+      layout_up = "<c-k>",
+      layout_down = "<c-j>",
+
+      integrations = {
+        trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
+        grugfar = { enabled = true, toggle = "<Localleader>gg" },
+        copyline = { enabled = true, toggle = "<Leader>qc" },
+        custom = { enabled = false, commands = {} },
+      },
     },
-    loclist = {
-      toggle_open = "<Leader>ql",
-      add_item = "ty",
+
+    buffers = {
+      toggle_open = "gb",
     },
 
     note = {
-      toggle_local_note = "<Leader>fn",
-      toggle_global_note = "<Leader>fN",
-    },
-
-    integrations = {
-      trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
-      grugfar = { enabled = true, toggle = "<Localleader>gg" },
-      copyline = { enabled = true, toggle = "<Leader>qc" },
-      cmdline_strings = { enabled = false, commands = {} },
+      open_toggle_global = "<Leader>fn",
+      open_toggle_local = "<Leader>fN",
+      layout_rotate = "<a-=>",
     },
   },
 }

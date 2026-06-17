@@ -968,7 +968,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
         func = function()
           Mapping.mark.toggle_selection()
         end,
-        keys = Config.keymaps.mark and Config.keymaps.mark.toggle_select,
+        keys = Config.keymaps.actions and Config.keymaps.actions.toggle_select,
         mode = "n",
         buffer = Mapping.buf,
         from_user = true,
@@ -979,7 +979,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
         func = function()
           Mapping.mark.deselect_all_marks()
         end,
-        keys = Config.keymaps.mark and Config.keymaps.mark.diselect_all,
+        keys = Config.keymaps.actions and Config.keymaps.actions.diselect_all,
         mode = "n",
         buffer = Mapping.buf,
         from_user = true,

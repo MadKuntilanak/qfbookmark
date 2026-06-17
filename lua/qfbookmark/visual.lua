@@ -501,4 +501,39 @@ function M.apply_save_highlights(bufnr, fn_opts, type_label, dir_display)
   })
 end
 
+local sign_group = "qfbookmark_qf_select"
+vim.fn.sign_define("QFSelected", { text = "✓", texthl = "QFBookmarkEntrySelectedCheck" })
+vim.fn.sign_define("QFUnselected", { text = " ", texthl = "QFBookmarkEntryUnselectedCheck" })
+
+---@param qf_selected table[]
+---@param is_loc boolean
+function M.apply_qf_selection_highlights(qf_selected, is_loc)
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  -- sign column: checkbox
+  vim.fn.sign_unplace(sign_group, { buffer = bufnr })
+
+  -- extmark: background highlight
+  local ns = vim.api.nvim_create_namespace "qfbookmark_qf_selection"
+  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+
+  local list = is_loc and vim.fn.getloclist(0) or vim.fn.getqflist()
+
+  for idx = 1, #list do
+    local is_sel = qf_selected[idx] == true
+
+    vim.fn.sign_place(0, sign_group, is_sel and "QFSelected" or "QFUnselected", bufnr, { lnum = idx })
+
+    if is_sel then
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, idx - 1, 0, {
+        end_row = idx,
+        end_col = 0,
+        hl_group = "QFBookmarkEntrySelected",
+        hl_eol = true,
+        priority = 40,
+      })
+    end
+  end
+end
+
 return M

@@ -77,6 +77,9 @@ M.defaults = {
       scroll_preview_up_fast = "<C-b>",
       scroll_preview_down_fast = "<C-f>",
 
+      toggle_select = "<Tab>",
+      diselect_all = "D",
+
       next_item = "<C-n>",
       prev_item = "<C-p>",
 
@@ -104,9 +107,6 @@ M.defaults = {
 
       move_item_down = "<a-n>",
       move_item_up = "<a-p>",
-
-      toggle_select = "<Tab>",
-      diselect_all = "D",
 
       zoom = "<C-z>",
 
@@ -263,8 +263,8 @@ function M.update_settings(user_opts)
         n_lines = n_lines + vim.fn.float2nr(vim.fn.ceil(line_width))
         i = i + 1
       end
-      --
-      local height = math.min(n_lines, maxheight)
+
+      local height = math.min(n_lines + 3, maxheight)
       vim.cmd(string.format("%swincmd _", height + 1))
     end
 

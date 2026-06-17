@@ -86,7 +86,7 @@ end
 
 local select_providers = {
   ["quickfix"] = function(val)
-    local qf_result, marks
+    local qf_result, selected
 
     if QfbookmarkUtils.is_loclist() then
       local data = QfbookmarkUtils.get_data_qf(true)
@@ -102,8 +102,11 @@ local select_providers = {
       qf_result.stack_idx = qflist_stack_idx
     end
 
+    local qf = require "qfbookmark.qf"
+    selected = qf.get_qf_selected()
+
     local results = {
-      selected = marks or {},
+      selected = selected or {},
       data = qf_result or {},
     }
 

@@ -108,8 +108,6 @@
 ---@field load_all string | string[]
 ---@field zoom string | string[]
 ---@field open_popup string | string[]
----@field toggle_select string | string[]
----@field diselect_all string | string[]
 ---@field del_mark string | string[]
 ---@field del_mark_buffer string | string[]
 ---@field harpoon QFBookKeymapMarkHarpoon
@@ -256,6 +254,8 @@
 ---@field prev_item string | string[]
 ---@field del_item string | table[]
 ---@field del_item_all string | table[]
+---@field toggle_select string | string[]
+---@field diselect_all string | string[]
 ---@field scroll_preview_up string | string[]
 ---@field scroll_preview_down string | string[]
 ---@field scroll_preview_up_fast string | string[]

@@ -18,6 +18,7 @@
   - [X] note
   - [X] buffers
 - [X] mark: make send callback work
+- [x] quickfix: implement selection toggle
 - [ ] mark: load bookmark master from other projects [0/2]
   - [ ] support branch?
   - [ ] support tag?
