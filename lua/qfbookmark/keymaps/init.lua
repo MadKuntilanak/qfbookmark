@@ -291,12 +291,11 @@ local function qf_keymaps()
       return
     end
 
-    local _, user_keyft =
-      QfbookmarkKeymapUtils.set_user_mappings(mapping_cmdline, "quickfix", vim.api.nvim_get_current_buf())
+    local user_keys = QfbookmarkKeymapUtils.set_user_mappings(mapping_cmdline, "quickfix")
 
     QfbookmarkKeymapUtils.append_active_keymaps({
       is_set = Config.keymaps.quickfix.integrations.custom.enabled,
-      keymaps = user_keyft,
+      keymaps = user_keys,
     }, keys_ft)
   end
 

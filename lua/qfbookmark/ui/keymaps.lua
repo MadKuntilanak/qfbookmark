@@ -993,11 +993,11 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       return
     end
 
-    local _, user_keyft = QfbookmarkKeymapUtils.set_user_mappings(user_mark_cmds, "mark", Mapping.buf)
+    local user_keys = QfbookmarkKeymapUtils.set_user_mappings(user_mark_cmds, "mark", Mapping.buf)
 
     QfbookmarkKeymapUtils.append_active_keymaps({
       is_set = Config.keymaps.quickfix.integrations.custom.enabled,
-      keymaps = user_keyft,
+      keymaps = user_keys,
     }, _keys)
   end
 

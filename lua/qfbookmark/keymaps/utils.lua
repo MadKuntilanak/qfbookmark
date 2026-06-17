@@ -119,22 +119,19 @@ local select_providers = {
 ---@param tbl_cmdline_strings QFBookKeymapCustomIntegration
 ---@param providers QFBookListProviders
 ---@param buf? integer
----@return QFBookKeys[], QFBookKeys[]
+---@return QFBookKeys[]
 function M.set_user_mappings(tbl_cmdline_strings, providers, buf)
   if not providers or providers == nil then
-    return {}, {}
+    return {}
   end
 
   local cmdline_strs = tbl_cmdline_strings.commands
   if vim.tbl_isempty(cmdline_strs) then
-    return {}, {}
+    return {}
   end
 
   ---@type QFBookKeys[]
   local __keys = {}
-
-  ---@type QFBookKeys[]
-  local __keys_ft = {}
 
   for idx, val in pairs(cmdline_strs) do
     if not val.key or #val.key == 0 then
@@ -168,29 +165,19 @@ function M.set_user_mappings(tbl_cmdline_strings, providers, buf)
       end
     end
 
-    if val.buffer then
-      __keys_ft[#__keys_ft + 1] = {
-        keys = val.key,
-        func = keymap_func,
-        mode = val.mode,
-        desc = val.desc,
-        buffer = val.buffer,
-        from_user = true,
-      }
-    else
-      __keys[#__keys + 1] = {
-        keys = val.key,
-        func = keymap_func,
-        mode = val.mode,
-        desc = val.desc,
-        from_user = true,
-      }
-    end
+    __keys[#__keys + 1] = {
+      keys = val.key,
+      func = keymap_func,
+      mode = val.mode,
+      desc = val.desc,
+      buffer = val.buffer or nil,
+      from_user = true,
+    }
 
     ::continue::
   end
 
-  return __keys, __keys_ft
+  return __keys
 end
 
 return M
