@@ -537,6 +537,8 @@ local function mark_del_item(is_all)
     end
   end
 
+  local selected = Mapping.mark.get_selected_marks()
+
   local cur = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
 
   local entries = Mapping.content_map
@@ -554,6 +556,20 @@ local function mark_del_item(is_all)
 
       table.remove(entries, 1)
       ::continue::
+    end
+  elseif #selected > 0 then
+    for idx_hval, _ in pairs(Mapping.selected) do
+      for i, e in ipairs(entries) do
+        if idx_hval == e.hval then
+          if entries[i] then
+            table.remove(entries, i)
+
+            if Mapping.selected[idx_hval] then
+              Mapping.selected[idx_hval] = nil
+            end
+          end
+        end
+      end
     end
   else
     -- find current entry index
@@ -615,6 +631,10 @@ local function mark_del_item(is_all)
   end, 400)
 end
 
+function Mapping.mark.delete_item()
+  mark_del_item()
+end
+
 function Mapping.mark.clear_all_items()
   mark_del_item(true)
 end
@@ -644,14 +664,16 @@ end
 -- ├──────────────────────────────────┤ API ├───────────────────────────────┤
 
 function M.get_selected_marks()
+  local data = Mapping.content_map
+
   local sel_marks = Mapping.mark.get_selected_marks()
 
-  QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
-  QfbookmarkUIUtils.clean_up(Mapping.popup)
+  if #sel_marks > 0 then
+    QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
+    QfbookmarkUIUtils.clean_up(Mapping.popup)
+  end
 
-  local results = { selected = sel_marks, data = Mapping.content_map }
-
-  return results
+  return { selected = sel_marks, data = data }
 end
 
 ---@param opts_popup QFBookmarkUiPopupCfg
@@ -933,7 +955,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       {
         desc = "Qfmark: delete item",
         func = function()
-          mark_del_item()
+          Mapping.mark.delete_item()
         end,
         keys = Config.keymaps.actions and Config.keymaps.actions.del_item,
         mode = "n",

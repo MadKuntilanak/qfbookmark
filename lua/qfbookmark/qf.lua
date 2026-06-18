@@ -803,8 +803,8 @@ end
 
 ---@param list_type QFBookListType
 local function rename_header(list_type)
-  local is_location_target = list_type == "loclist"
-  local cmd = is_location_target and { Config.window.quickfix.actions.lopen, "LocList" }
+  local is_loc = list_type == "loclist"
+  local cmd = is_loc and { Config.window.quickfix.actions.lopen, "LocList" }
     or { Config.window.quickfix.actions.copen, "QuickFix" }
 
   if QfbookmarkUtils.is_loclist() then
@@ -813,7 +813,7 @@ local function rename_header(list_type)
   end
 
   local title = string.format("📝 Rename %s Title", cmd[2])
-  QfbookmarkUI.saveqf_popup(title, "", "rename", is_location_target, function(input_msg)
+  QfbookmarkUI.saveqf_popup(title, "", "rename", is_loc, function(input_msg)
     if input_msg == "" or input_msg == nil then
       return
     end
@@ -835,8 +835,8 @@ end
 local function toggle_list(list_type, force_close)
   force_close = force_close or false
 
-  local is_location_target = list_type == "loclist"
-  local cmd_ = is_location_target and { "lclose", Config.window.quickfix.actions.lopen }
+  local is_loc = list_type == "loclist"
+  local cmd_ = is_loc and { "lclose", Config.window.quickfix.actions.lopen }
     or { "cclose", Config.window.quickfix.actions.copen }
   local is_open, qf_or_loclist = QfbookmarkUtils.is_vim_list_open(true)
 
@@ -850,14 +850,15 @@ local function toggle_list(list_type, force_close)
     vim.cmd.wincmd "p"
   end
 
-  local list = QfbookmarkUtils.get_list_qf(is_location_target)
+  local list = QfbookmarkUtils.get_list_qf(is_loc)
+
   if not vim.tbl_isempty(list.items) then
     last_winid = vim.fn.win_getid()
     vim.cmd(cmd_[2])
     return
   end
 
-  local msg_prefix = (is_location_target and "LocList" or "QuickFix")
+  local msg_prefix = (is_loc and "LocList" or "QuickFix")
   QfbookmarkUtils.warn(msg_prefix .. " items is empty")
 
   if vim.bo[0].filetype == "qf" then
@@ -924,9 +925,20 @@ function M.prev_item()
   QfbookmarkNav.handle_nav(true, "open", is_center, is_ispanded, false)
 end
 function M.next_hist_qf()
+  local selected = M.get_qf_selected()
+  if #selected > 0 then
+    M.diselect_all()
+  end
+
   QfbookmarkNav.handle_hist(Config.window.notify.plugin)
 end
+
 function M.prev_hist_qf()
+  local selected = M.get_qf_selected()
+  if #selected > 0 then
+    M.diselect_all()
+  end
+
   QfbookmarkNav.handle_hist(Config.window.notify.plugin, true)
 end
 
@@ -951,49 +963,97 @@ function M.delete_all_items()
   end
 end
 function M.delete_item()
-  local curqfidx = vim.fn.line "."
+  local is_loc = QfbookmarkUtils.is_loclist()
 
-  local data_lists = {}
-  data_lists = QfbookmarkUtils.get_list_qf(QfbookmarkUtils.is_loclist()).items
+  local data_lists = QfbookmarkUtils.get_list_qf(is_loc).items
 
-  local close_cmd = QfbookmarkUtils.is_loclist() and "lclose" or "cclose"
-  local open_cmd = QfbookmarkUtils.is_loclist() and Config.window.quickfix.actions.lopen
-    or Config.window.quickfix.actions.copen
+  local mode = vim.fn.mode(1) -- :h mode()
 
-  local count = vim.v.count
-  if count == 0 then
-    count = 1
-  end
-  if count > #data_lists then
-    count = #data_lists
-  end
+  local selected = M.get_qf_selected()
 
-  local item = vim.api.nvim_win_get_cursor(0)[1]
-  for _ = item, item + count - 1 do
-    table.remove(data_lists, item)
-  end
+  local is_visual = false
 
-  if #data_lists ~= 0 then
-    local title = QfbookmarkUtils.get_title_qf(QfbookmarkUtils.is_loclist())
-
-    ---@type QFBookmarkLists
-    local list_items = {
-      items = data_lists,
-      title = title,
-    }
-    QfbookmarkUtils.save_to_qf(list_items, QfbookmarkUtils.is_loclist())
-
-    if QfbookmarkUtils.is_loclist() then
-      vim.cmd(string.format("%slfirst", curqfidx))
-    else
-      vim.cmd(string.format("%scfirst", curqfidx))
+  if mode == "v" or mode == "V" then
+    local from, to
+    from, to = vim.fn.line ".", vim.fn.line "v"
+    if from > to then
+      from, to = to, from
     end
 
-    vim.schedule(function()
-      vim.cmd(open_cmd)
-    end)
+    for i = from, to do
+      local item = data_lists[i]
+      if item then
+        data_lists[i] = nil
+      end
+    end
+
+    is_visual = true
+  elseif #selected > 0 then
+    for dlist_idx, dlist in pairs(data_lists) do
+      for _, sel in pairs(selected) do
+        if
+          sel.filename == vim.api.nvim_buf_get_name(dlist.bufnr)
+          and sel.col == dlist.col
+          and sel.lnum == dlist.lnum
+        then
+          if data_lists[dlist_idx] then
+            data_lists[dlist_idx] = nil
+          end
+          if qf_selected[dlist_idx] then
+            qf_selected[dlist_idx] = nil
+          end
+        end
+      end
+    end
+
+    local QfbookmarkMarkVisual = require "qfbookmark.visual"
+    QfbookmarkMarkVisual.apply_qf_selection_highlights(qf_selected, is_loc)
+  else
+    local count = vim.v.count
+
+    if count == 0 then
+      count = 1
+    end
+    if count > #data_lists then
+      count = #data_lists
+    end
+
+    local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
+
+    for _ = cur_line_nr, cur_line_nr + count - 1 do
+      table.remove(data_lists, cur_line_nr)
+    end
+  end
+
+  local curqfidx = vim.fn.line "."
+
+  local title = QfbookmarkUtils.get_title_qf(is_loc)
+
+  ---@type QFBookmarkLists
+  local list_items = {
+    items = data_lists,
+    title = title,
+  }
+
+  -- Exit visual mode before refreshing the quickfix list.
+  if is_visual then
+    vim.api.nvim_input "<Esc>"
+  end
+
+  QfbookmarkUtils.save_to_qf(list_items, is_loc)
+
+  if #data_lists > 0 then
+    local target_line = math.min(curqfidx, #data_lists)
+    pcall(vim.api.nvim_win_set_cursor, 0, { target_line, 0 })
+
+    if #selected > 0 then
+      local QfbookmarkMarkVisual = require "qfbookmark.visual"
+      QfbookmarkMarkVisual.apply_qf_selection_highlights(qf_selected, is_loc)
+    end
   elseif #data_lists == 0 then
+    local close_cmd = is_loc and "lclose" or "cclose"
     vim.api.nvim_command(close_cmd)
+    M.diselect_all()
   end
 end
 

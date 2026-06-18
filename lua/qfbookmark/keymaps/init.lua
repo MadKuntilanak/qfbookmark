@@ -222,7 +222,7 @@ local function qf_keymaps()
         desc = "Qfmark: delete item",
         func = "delete_item",
         keys = get_keymap(Config.keymaps, "actions", "del_item"),
-        mode = { "n" },
+        mode = { "n", "x" },
       },
       {
         desc = "Qfmark: delete all items",
