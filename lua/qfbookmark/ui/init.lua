@@ -295,6 +295,8 @@ end
 
 ---@param buffer_lists table
 local function buffers_popup(buffer_lists)
+  local curbuf = vim.api.nvim_get_current_buf()
+
   -- Build display lines
   local display_lines = {}
   local entries = {}
@@ -357,6 +359,7 @@ local function buffers_popup(buffer_lists)
     content_map = entries,
     display_lines = display_lines,
     win_opts = wincfg,
+    last_buf = curbuf,
   }
 
   QfbookmarkUIView.build_popup("buffer", __opts)

@@ -676,7 +676,7 @@ function Mapping.buffer.clear_all_items()
 
   for _, buf in ipairs(list) do
     local bufnr = buf.bufnr
-    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+    if bufnr and bufnr ~= Mapping.last_buf and vim.api.nvim_buf_is_valid(bufnr) then
       local ok = pcall(vim.api.nvim_buf_delete, bufnr, { force = false })
       if ok then
         removed = removed + 1
@@ -725,6 +725,7 @@ local setup_popup_options = function(opts_popup, buf, cb)
   Mapping.popup.preview = opts_popup.popup.preview and opts_popup.popup.preview or nil
   Mapping.wincfg = opts_popup.win_opts.wincfg
   Mapping.selected = opts_popup.selected
+  Mapping.last_buf = opts_popup.last_buf
   Mapping.content_map = opts_popup.content_map
   Mapping.is_harpoon = opts_popup.is_harpoon and opts_popup.is_harpoon or false
   Mapping.is_buffers = opts_popup.is_buffers and opts_popup.is_buffers or false
