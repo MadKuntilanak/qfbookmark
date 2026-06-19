@@ -97,6 +97,8 @@ M.defaults = {
 
       open_popup = "gl",
 
+      -- debug = "<Leader>q?",
+
       save_annotation = "<C-s>",
 
       del_mark = "dm",

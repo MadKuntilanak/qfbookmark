@@ -10,6 +10,14 @@ local M = {
   ns = 0,
 }
 
+M.dirty = false
+
+---@type integer ms timestamp of last branch check (for debounce)
+local last_check = 0
+
+---@type integer minimum ms between branch checks
+local CHECK_INTERVAL = 1500
+
 ---@type uv.uv_timer_t?
 M.timer = assert(vim.uv.new_timer())
 
@@ -52,6 +60,10 @@ local function insert_sign_and_extmark(mark_lists, id, mark_mode, bufnr, lnum, e
       QfbookmarkMarkVisual.insert_sign(id, mark_mode, bufnr, lnum, extmarkspec)
     end
   end
+end
+
+function M.mark_dirty()
+  M.dirty = true
 end
 
 ---@param mark_lists QFBookmarkBufferMark
@@ -141,64 +153,154 @@ local function refresh_mark(mark_lists, force_refresh, bufnr)
   end
 end
 
-local is_setup_path = false
+---@param mark_lists QFbookBufferMarkEntry[]
+local function __save_marks(mark_lists, target_path)
+  if not QfbookmarkPathUtils.is_file(target_path) then
+    QfbookmarkPathUtils.create_file(target_path)
+  end
+
+  QfbookmarkUtils.save_table_to_file(mark_lists, target_path)
+end
 
 ---@param mark_lists QFbookBufferMarkEntry[]
-local function __save_marks(mark_lists)
-  local is_save_global_mark = false
+function M.save_marks(mark_lists, target_path, is_global)
+  is_global = is_global or false
+
+  target_path = target_path or QfbookmarkPaths.get_target_file_path(is_global)
+
+  -- Remove saved file when there are no marks left
   if #mark_lists == 0 then
-    local path_local_cwd = QfbookmarkPaths.get_target_path_with_gitcwd(is_save_global_mark)
-    if QfbookmarkPathUtils.is_file(path_local_cwd) then
-      vim.system { "rm", path_local_cwd }
+    if QfbookmarkPathUtils.is_file(target_path) then
+      vim.fn.delete(target_path)
     end
     return
   end
 
-  if not is_setup_path then
-    QfbookmarkPaths.setup_path(is_save_global_mark)
-    is_setup_path = true
-  end
-
-  local path_git_cwd = QfbookmarkPaths.get_target_path_with_gitcwd(is_save_global_mark)
-  if not QfbookmarkPathUtils.is_file(path_git_cwd) then
-    QfbookmarkPathUtils.create_file(path_git_cwd)
-  end
-
-  QfbookmarkUtils.save_table_to_file(mark_lists, path_git_cwd)
+  __save_marks(mark_lists, target_path)
 end
 
+--- Save current in-memory marks to the previously active branch file,
+--- then load marks for the newly active branch file, and refresh
+--- extmarks in all currently open buffers.
 ---@param mark_lists QFbookBufferMarkEntry[]
-function M.save_marks(mark_lists)
-  __save_marks(mark_lists)
+---@param new_root string
+---@param new_branch string
+function M.switch_to(mark_lists, new_root, new_branch)
+  local current_root = QfbookmarkPaths.path_opts.current_root
+  local current_branch = QfbookmarkPaths.path_opts.current_branch
+  local dirty = M.dirty
+
+  -- Nothing changed — skip
+  if new_root == current_root and new_branch == current_branch then
+    return
+  end
+
+  -- Save current marks before switching, but only if something changed
+  if dirty and current_root and current_branch then
+    local old_path = QfbookmarkPaths.resolve_marks_path(current_root, current_branch)
+    M.save_marks(mark_lists, old_path)
+    M.dirty = false
+  end
+
+  local new_path = QfbookmarkPaths.resolve_marks_path(new_root, new_branch, false, true)
+
+  local is_empty = false
+
+  -- Offer to seed from a sensible default when no marks exist yet for this branch.
+  -- Most useful right after creating a new feature branch
+  if vim.fn.filereadable(new_path) == 0 and new_root then
+    is_empty = true
+
+    -- return
+    --   unplan: do I need this?
+    --   local seed_choice = Config.get.something --> retrieve the user's preferred choice from the config
+    --   if seed_choice then
+    --     local choice = vim.fn.confirm(
+    --       string.format("No marks found for branch '%s'. Copy marks from previous branch?", new_branch or "?"),
+    --       "&Yes\n&No, start empty",
+    --       2
+    --     )
+    --     if choice == 1 and current_root and current_branch then
+    --       local old_path = QfbookmarkPaths.resolve_marks_path(current_root, current_branch)
+    --       ...copy
+    --     end
+    --   end
+  end
+
+  QfbookmarkPaths.path_opts.current_root = new_root
+  QfbookmarkPaths.path_opts.current_branch = new_branch
+
+  local qf = require "qfbookmark.qf"
+
+  -- Refresh extmarks/signs in every currently loaded buffer:
+  -- 1. Clean up the sign first
+  qf.__remove_all_signs()
+
+  -- 2. Load a new sign
+  qf.load_mark_lists(nil, true)
+  qf.__resync_setup()
+
+  local label = new_branch and (" · " .. new_branch) or ""
+  local msg = "Marks reloaded: " .. label
+  if is_empty then
+    msg = msg .. " is empty.\nTry adding some marks first."
+    QfbookmarkUtils.warn(msg)
+    return
+  end
+  QfbookmarkUtils.info(msg)
 end
 
-local autocmds_set = false
+--- Check whether the active branch/root has changed since last check,
+--- and switch marks accordingly. Debounced via CHECK_INTERVAL.
+---@param mark_lists QFbookBufferMarkEntry[]
+---@param force boolean  skip debounce, always check
+function M.check_and_reload(mark_lists, force)
+  local now = vim.uv.now()
+
+  if not force and (now - last_check) < CHECK_INTERVAL then
+    return
+  end
+
+  last_check = now
+
+  local _, root, branch = QfbookmarkPaths.resolve_active_marks_file()
+  if root and branch then
+    M.switch_to(mark_lists, root, branch)
+  end
+end
+
+local autocmds_set_once = false
 
 ---@param mark_lists QFBookmarkBufferMark
 ---@param force_set? boolean
 function M.setup_mark_autocmds(mark_lists, force_set)
   force_set = force_set or false
 
-  if autocmds_set and not force_set then
+  if autocmds_set_once and not force_set then
     return
   end
 
-  autocmds_set = true
+  autocmds_set_once = true
+
+  QfbookmarkUtils.clear_autocmd_group(Config.sign_group .. "RefreshMark")
+  local refresh_group = QfbookmarkUtils.create_augroup_name "RefreshMark"
 
   vim.api.nvim_create_autocmd("BufReadPost", {
-    group = QfbookmarkUtils.create_augroup_name "RefreshMark",
+    group = refresh_group,
     pattern = "*",
     callback = function(ctx)
       refresh_mark(mark_lists, true, ctx.buf)
     end,
+    desc = "qfbookmark: refresh marks after read post buffer",
   })
 
   vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
-    group = QfbookmarkUtils.create_augroup_name "RefreshMark",
+    group = refresh_group,
     pattern = "*",
     callback = function(ctx)
       refresh_mark(mark_lists, true, ctx.buf)
     end,
+    desc = "qfbookmark: refresh marks after text changed or edited",
   })
 end
 
@@ -214,6 +316,8 @@ end
 ---@param inserted_at? integer
 ---@return QFBookmarkBufferMark | nil
 local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum, col, text, inserted_at, note)
+  M.mark_dirty()
+
   note = note or {}
 
   bufnr = bufnr or vim.api.nvim_get_current_buf()
@@ -229,20 +333,6 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum
   if not mark_lists[mark_mode] then
     mark_lists[mark_mode] = {}
   end
-
-  -- local text_concat = ""
-  --
-  -- --- Handle note if its type is table or string before saving
-  -- if mark_mode == "NOTE" then
-  --   if type(note) == "table" then
-  --     text_concat = table.concat(note, " ")
-  --   elseif type(note) == "string" then
-  --     text_concat = note
-  --   end
-  --   if #text_concat == 0 then
-  --     return
-  --   end
-  -- end
 
   if not mark_lists[mark_mode][id] then
     local cwd = vim.uv.cwd()
@@ -344,24 +434,6 @@ end
 ---@param mark_lists QFBookmarkBufferMark
 ---@return  { id: integer, mark_mode: QFBookMarkMode, extmarkspec: QFBookSpec, bufnr?: integer} | nil
 function M.get_mark_id(mark_lists)
-  -- bufnr = bufnr or vim.api.nvim_get_current_buf()
-  -- local filename = vim.api.nvim_buf_get_name(bufnr)
-  -- local line = vim.api.nvim_win_get_cursor(0)[1]
-  --
-  -- local list = mark_lists[mark_mode]
-  -- if not list then
-  --   return nil
-  -- end
-  --
-  -- for _, mark in pairs(list) do
-  --   -- RUtils.info(mark.id)
-  --   if mark.filename == filename and mark.line == line then
-  --     return tonumber(mark.id)
-  --   end
-  -- end
-  -- return nil
-  --
-  --- { id: integer, mark_mode: QFBookMarkMode, extmarkspec: QFBookSpec, bufnr?: integer} | nil
   return M.is_current_line_got_mark(mark_lists, { no_id = true })
 end
 
@@ -391,6 +463,8 @@ end
 ---@param bufnr? integer
 ---@return boolean
 function M.delete_mark(mark_lists, mark_mode, id, bufnr)
+  M.mark_dirty()
+
   local _, ok = M.has_mark_data(mark_lists, mark_mode, id, bufnr)
   if not ok or not id then
     return false

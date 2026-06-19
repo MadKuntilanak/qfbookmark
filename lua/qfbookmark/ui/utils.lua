@@ -136,9 +136,21 @@ end
 function M.shorten_text(text, max_len)
   -- strip leading whitespace
   text = text:match "^%s*(.-)%s*$" or text
+
+  -- Expand tabs to a fixed width BEFORE measuring display width.
+  -- vim.fn.strdisplaywidth() resolves tab width using the *current*
+  -- window's 'tabstop', which differs between the source buffer
+  -- (where the mark text was captured) and the popup buffer (where this
+  -- function may be re-invoked later, e.g. after `dd`). The same raw
+  -- text was reporting different widths depending on which window was
+  -- active at call time — this normalizes that.
+  local TAB_WIDTH = 4
+  text = text:gsub("\t", string.rep(" ", TAB_WIDTH))
+
   if vim.fn.strdisplaywidth(text) <= max_len then
     return text
   end
+
   -- truncate and append ellipsis
   local result = ""
   local i = 0

@@ -100,7 +100,7 @@ local function save_to_qf(state, select_state)
 
   local data_lists = QfbookmarkUtils.get_populate_data_qf(is_loc)
   if data_lists then
-    QfbookmarkPaths.save_data_lists(data_lists, is_global, is_loc)
+    QfbookmarkPaths.qf.save_data_lists(data_lists, is_global, is_loc)
   end
 end
 
@@ -148,15 +148,18 @@ end
 ---@param select_state QFBookCurrentState
 local function load_to_qf(state, select_state)
   local is_global = select_state == "Global" and true or false
-  local path = QfbookmarkPaths.get_target_path(is_global)
+  local dir_path = QfbookmarkPaths.get_target_dir_path(is_global)
+  if not dir_path then
+    return
+  end
 
-  if not QfbookmarkPaths.is_json_path_exists(path) then
-    QfbookmarkUtils.warn([[No quickfix lists were found at `]] .. path .. [[`.\nPlease create one]])
+  if not QfbookmarkPaths.json.is_dir_json_exists(dir_path) then
+    QfbookmarkUtils.warn([[No quickfix lists were found at dir `]] .. dir_path .. [[`.\nPlease create one]])
     return
   end
 
   local title_prompt = format_title(state, load_icon)
-  __fzf_open_files(title_prompt, path)
+  __fzf_open_files(title_prompt, dir_path)
 end
 
 local fzf_opts = {
@@ -285,7 +288,7 @@ local function load_open(sel_fname, base_path, is_loc)
 
   local fname_path = base_path .. "/" .. fname .. ".json"
 
-  local list_items = QfbookmarkPaths.read_from_file_json(fname_path)
+  local list_items = QfbookmarkPaths.json.read_from_file_json(fname_path)
   if not list_items then
     return
   end

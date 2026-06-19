@@ -48,6 +48,10 @@ function M.not_implemented_yet(msg)
   M.warn(msg)
 end
 
+function M.echo_empty_mark()
+  M.info "Marks is empty!"
+end
+
 -- ═════════════════════════════════════════════════════════════════════════════
 
 M.__IS_WINDOWS = vim.fn.has "win32" == 1 or vim.fn.has "win64" == 1
@@ -763,10 +767,6 @@ function M.buf_del(selected)
       delete_bufnr(bufnr)
     end
   end
-end
-
-function M.echo_emtpy_mark()
-  M.info "Marks is empty!"
 end
 
 return M

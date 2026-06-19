@@ -45,46 +45,84 @@ function M.create_dir(path)
   end
 end
 
----@return string
-local function __get_cwd_root()
-  local HAVE_GITSIGNS = pcall(require, "gitsigns")
-
-  ---@diagnostic disable-next-line: undefined-field
-  local status = vim.b.gitsigns_status_dict or nil
-
-  local root_path = ""
-  if not HAVE_GITSIGNS or status == nil or status["root"] == nil then
-    root_path = vim.fn.getcwd()
-  else
-    root_path = status["root"]
+---@return string|nil
+local function __get_cwd_root(dir)
+  local ok, result = pcall(vim.fn.systemlist, { "git", "-C", dir, "rev-parse", "--show-toplevel" })
+  if not ok or vim.v.shell_error ~= 0 or not result or #result == 0 then
+    return nil
   end
-
-  if #root_path > 0 then
-    root_path = vim.fs.basename(root_path)
-  end
-
-  return root_path
+  return result[1]
 end
 
+--- Resolve the current Git reference for a repository root.
+--- Branches return their name, tags return "tag-<name>", and detached
+--- HEAD states return "detached-<short-hash>".
+--- e.g: qfmark_master.lua
+---      qfmark_feature-foo.lua
+---      qfmark_tag-v1.2.0.lua
+---      qfmark_detached-a1b2c3d.lua
+---@param root string
+---@return string|nil
+function M.get_git_branch(root)
+  local ok, result = pcall(vim.fn.systemlist, { "git", "-C", root, "rev-parse", "--abbrev-ref", "HEAD" })
+
+  if not ok or vim.v.shell_error ~= 0 or not result or #result == 0 then
+    return nil
+  end
+
+  local branch = result[1]
+
+  if branch ~= "HEAD" then
+    return branch
+  end
+
+  -- Detached HEAD: try to resolve tag first.
+  local tag_ok, tag_result = pcall(vim.fn.systemlist, { "git", "-C", root, "describe", "--tags", "--exact-match" })
+
+  if tag_ok and vim.v.shell_error == 0 and tag_result and #tag_result > 0 then
+    return "tag-" .. tag_result[1]
+  end
+
+  -- Fall back to short commit hash.
+  local hash_ok, hash_result = pcall(vim.fn.systemlist, { "git", "-C", root, "rev-parse", "--short", "HEAD" })
+
+  if hash_ok and vim.v.shell_error == 0 and hash_result and #hash_result > 0 then
+    return "detached-" .. hash_result[1]
+  end
+
+  return "detached"
+end
+
+--- Build a storage path relative to the current project root.
+--- The project root is resolved from the current buffer's directory.
+--- If no project root can be found, the current working directory is used.
+---
 ---@param path string
 ---@param is_global? boolean
----@return string
+---@return string save_path
+---@return string root
 function M.get_base_path_root(path, is_global)
   is_global = is_global or false
 
-  local full_path = path
+  local bufname = vim.api.nvim_buf_get_name(0)
+  local dir = bufname ~= "" and vim.fn.fnamemodify(bufname, ":p:h") or vim.fn.getcwd()
+
+  local root = __get_cwd_root(dir) or vim.fn.getcwd()
+
+  local save_path = path
 
   if not is_global then
-    local root_path = __get_cwd_root()
-    full_path = full_path .. "/" .. root_path
+    save_path = save_path .. "/" .. M.basename(root)
   end
-  return full_path
+
+  return save_path, root
 end
 
----@return string | function| table
+-- Hash the root path so nested/duplicate project names never collide
+---@return string
 function M.get_hash_note(filePath)
   local SHA = require "qfbookmark.path.sha"
-  return SHA.sha1(filePath)
+  return SHA.sha1(filePath):sub(1, 12)
 end
 
 ---@return string
@@ -229,21 +267,16 @@ function M.basename(path)
   return path:sub(i + 1, #path)
 end
 
----@param command string
----@return string|nil
-local function cmd(command)
-  local h = io.popen(command)
-  if h == nil then
-    return nil
-  end
-  local result = h:read("*a"):gsub("%s+", "")
-  h:close()
-  return result ~= "" and result or nil
-end
-
 ---@return string|nil
 function M.git_branch()
-  return cmd "git branch --show-current"
+  local result = vim.system({ "git", "branch", "--show-current" }, { text = true }):wait()
+
+  if result.code ~= 0 then
+    return nil
+  end
+
+  local branch = vim.trim(result.stdout or "")
+  return branch ~= "" and branch or nil
 end
 
 ---@param byte number

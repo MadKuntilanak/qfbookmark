@@ -470,7 +470,7 @@ function Mapping.mark.select_bookmark_master()
   local qf_master = {}
   local select_files = {}
 
-  local path_git_cwd = Path.get_target_path_with_gitcwd(false)
+  local path_git_cwd = Path.get_target_file_path(false)
 
   --- Create table for current mark project first
   local current_mark = reform(path_git_cwd, true)

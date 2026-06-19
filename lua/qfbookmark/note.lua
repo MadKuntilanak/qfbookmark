@@ -93,7 +93,7 @@ function M.handle_open(is_global, window_command, cfg_note)
 
   if is_global then
     QfbookmarkPath.setup_path(is_global)
-    note_path = QfbookmarkPath.get_target_path(is_global)
+    note_path = QfbookmarkPath.get_target_file_path(is_global)
     note_path = note_path .. "/note" .. file_extension
   else
     if cfg_note.current_project.enabled then

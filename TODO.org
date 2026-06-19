@@ -20,10 +20,11 @@
 - [X] mark: make send callback work
 - [x] quickfix: implement selection toggle
 - [X] quickfix: fix minor
-- [ ] mark: load bookmark master from other projects [0/2]
-  - [ ] support branch?
-  - [ ] support tag?
-- [ ] mark: relate error path when the project is not a git repo
+- [X] mark: relate error path when the project is not a git repo
+- [X] mark: load bookmark master from other projects [3/3]
+  - [X] support branch?
+  - [X] support tag?
+  - [X] bug: signs are not cleared when reloading an empty mark list
 - [ ] update README
 - [ ] mark: more test for node treesitter [0/3]
   - [ ] for Go

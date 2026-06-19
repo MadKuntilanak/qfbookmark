@@ -100,30 +100,80 @@ local function exclude_buf(bufnr)
   return true
 end
 
+local call_once = false
+
 local function recall_augroup()
   QfbookmarkBookmark.setup_mark_autocmds(M.buffers, true)
 
-  QfbookmarkUtils.clear_autocmd_group(Config.sign_group .. "SaveMark")
-  if status_autocmd_enabled then
-    vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
-      group = QfbookmarkUtils.create_augroup_name "SaveMark",
-      callback = function()
-        local mark_lists = get_lists_marks()
-        QfbookmarkBookmark.save_marks(mark_lists)
-      end,
-    })
+  if not status_autocmd_enabled then
+    return
   end
+
+  if call_once then
+    return
+  end
+
+  call_once = true
+
+  QfbookmarkUtils.clear_autocmd_group(Config.sign_group .. "SaveMark")
+  local save_group = QfbookmarkUtils.create_augroup_name "SaveMark"
+
+  vim.api.nvim_create_autocmd({ "VimLeavePre" }, {
+    group = save_group,
+    callback = function()
+      local mark_lists = get_lists_marks()
+      QfbookmarkBookmark.save_marks(mark_lists)
+    end,
+  })
+
+  QfbookmarkUtils.clear_autocmd_group(Config.sign_group .. "BranchWatch")
+  local path_group = QfbookmarkUtils.create_augroup_name "BranchWatch"
+
+  --- unplan: no need this?
+  --- DirChanged fires immediately on `:cd`, `:lcd`, or `:tcd` — covers the
+  --- case where the user explicitly changes Neovim's working directory.
+  -- vim.api.nvim_create_autocmd("DirChanged", {
+  --   group = path_group,
+  --   callback = function()
+  --     M.check_and_reload(mark_lists, true)
+  --   end,
+  --   desc = "qfbookmark: reload marks when cwd changes",
+  -- })
+
+  --- FocusGained fires when Neovim regains focus (e.g. switching back from
+  --- a terminal where `git checkout` was run). Debounced to avoid running
+  --- git commands on every alt-tab.
+  vim.api.nvim_create_autocmd("FocusGained", {
+    group = path_group,
+    callback = function()
+      QfbookmarkBookmark.check_and_reload(M.get_current_mark_lists(), false)
+    end,
+    desc = "qfbookmark: reload marks when regaining focus (debounced)",
+  })
+
+  --- BufEnter covers the case where the user opens a file belonging to a
+  --- different git repository than the one they were just working in,
+  --- without ever leaving Neovim's focus (e.g. via :edit, telescope, etc).
+  vim.api.nvim_create_autocmd("BufEnter", {
+    group = path_group,
+    callback = function(args)
+      -- skip special buffers (popups, terminals, quickfix, etc.)
+      local buftype = vim.bo[args.buf].buftype
+      if buftype ~= "" then
+        return
+      end
+      QfbookmarkBookmark.check_and_reload(M.get_current_mark_lists(), false)
+    end,
+    desc = "qfbookmark: reload marks when entering a buffer from a different project",
+  })
 end
 
 local function remove_augroup()
   if status_autocmd_enabled then
     if M.buffers and #M.buffers == 0 then
-      local list_augroups = {
-        Config.sign_group .. "RefreshMark",
-        Config.sign_group .. "SaveMark",
-      }
+      local list_augroups = { "RefreshMark", "SaveMark", "BranchWatch" }
       for _, au_group in pairs(list_augroups) do
-        QfbookmarkUtils.clear_autocmd_group(au_group)
+        QfbookmarkUtils.clear_autocmd_group(Config.sign_group .. au_group)
       end
     end
     status_autocmd_enabled = false
@@ -189,8 +239,6 @@ local function reset_harpoon_list()
       M.mark_lists_harpoon[idx] = QfbookmarkUtils.add_idx_m_harpoon(idx, harp)
     end
   end
-
-  -- QfbookmarkBookmark.save_marks(M.buffers)
 end
 local function sync_marks_harpoon()
   reset_harpoon_list()
@@ -202,7 +250,6 @@ local function sync_marks_harpoon()
     remove_augroup()
   end
 end
-
 local function clean_up_marks_harpoon()
   local mark_entry_lists = get_lists_marks()
 
@@ -221,10 +268,46 @@ local function clean_up_marks_harpoon()
   M.mark_lists_harpoon = mark_keep
 end
 
-function M.load_mark_lists(mark_lists)
-  mark_lists = mark_lists or QfbookmarkPaths.get_data_marks_from_local_project()
+function M.__remove_all_signs()
+  local mark_lists_master = M.get_buffers()
+
+  for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
+    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+      goto continue
+    end
+
+    local filename = vim.api.nvim_buf_get_name(bufnr)
+
+    for mode, mode_list in pairs(mark_lists_master) do
+      for id, mark in pairs(mode_list) do
+        local mark_id = tonumber(id)
+
+        if mark_id and mark.filename == filename then
+          -- if is_not_valid_line_and_col(bufnr, mark.line, mark.col) then
+          QfbookmarkBookmark.delete_mark(mark_lists_master, mode, mark_id, bufnr)
+          -- end
+        end
+      end
+    end
+    ::continue::
+  end
+end
+
+---@param mark_lists? QFbookBufferMarkEntry[]
+---@param is_renew? boolean
+function M.load_mark_lists(mark_lists, is_renew)
+  is_renew = is_renew or false
+
+  mark_lists = mark_lists or QfbookmarkPaths.get_data_marks_from_local_project(is_renew)
+
   if not mark_lists or vim.tbl_isempty(mark_lists) then
     return
+  end
+
+  if is_renew then
+    M.buffers = {}
+    M.mark_lists = {}
+    M.mark_lists_harpoon = {}
   end
 
   -- fix old bufnr and support fugitive
@@ -281,6 +364,8 @@ function M.__resync_setup()
 end
 
 function M.setup_autocmds()
+  QfbookmarkBookmark.mark_dirty()
+
   local qfhighlights = require "qfbookmark.highlights"
   qfhighlights(M.prefix_app)
 
@@ -321,13 +406,6 @@ function M.status_mark()
   end
   return _cache_mark
 end
-
---- plan: toggle a mark sign on the current line.
---- - Empty line: add the given mark mode
---- - Update note annnotation, open the note window (no delete)
---- - Same mode already present (non-NOTE): delete (toggle off)
---- - Different non-NOTE mode present (e.g. FIX → press MARK): delete existing
---- - NOTE present: block adding MARK/FIX/DEBUG on the same line
 
 ---@param mark_mode QFBookMarkMode
 local function add_sign(mark_mode)
@@ -437,16 +515,7 @@ end
 function M.delete_mark()
   delete_mark_builtin()
 
-  -- local bufnr = vim.api.nvim_get_current_buf()
-  -- local pos = vim.api.nvim_win_get_cursor(0)
-
-  -- local line = pos[1]
-  -- local id = tonumber(line .. bufnr)
-  -- if not id then
-  --   return
-  -- end
-
-  local mark_lists = M.buffers
+  local mark_lists = M.get_buffers()
 
   local opts = QfbookmarkBookmark.is_current_line_got_mark(mark_lists, { no_id = true })
   if not opts then
@@ -505,7 +574,7 @@ end
 local function next_prev_mark(is_prev_or_next)
   local status_mark = M.status_mark()
   if not status_mark then
-    QfbookmarkUtils.echo_emtpy_mark()
+    QfbookmarkUtils.echo_empty_mark()
     return
   end
   local mark_lists = get_lists_marks()
@@ -538,18 +607,35 @@ end
 -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
 -- Delete this func!
-function M.debug_qf()
-  QfbookmarkUtils.info(vim.inspect(M.buffers))
-  QfbookmarkUtils.info(vim.inspect(M.mark_lists))
-  QfbookmarkUtils.info(vim.inspect(M.mark_lists_harpoon))
-end
+-- function M.debug_qf()
+--   QfbookmarkUtils.info(vim.inspect(M.buffers))
+--   QfbookmarkUtils.info(vim.inspect(M.mark_lists))
+--   QfbookmarkUtils.info(vim.inspect(M.mark_lists_harpoon))
+-- end
 
+---@return QFBookmarkBufferMark
 function M.get_buffers()
   local status_mark = M.status_mark()
   if not status_mark then
     return {}
   end
   return M.buffers
+end
+
+--- Flatten the current in-memory M.buffers (keyed by mark_mode -> id) into
+--- a plain array.
+--- Always call this right before saving or comparing marks, rather than
+--- capturing a stale snapshot in a closure, M.buffers mutates continuously as
+--- marks are added/deleted/cleared.
+---@return QFbookBufferMarkEntry[]
+function M.get_current_mark_lists()
+  local list = {}
+  for _, marks_by_id in pairs(M.buffers) do
+    for _, m in pairs(marks_by_id) do
+      list[#list + 1] = m
+    end
+  end
+  return list
 end
 
 function M.open_mark_harpoon_window()

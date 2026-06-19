@@ -23,7 +23,7 @@ local function load_open(sel_fname, base_path, is_loc)
   local fname = sel_fname
   local fname_path = base_path .. "/" .. fname .. ".json"
 
-  local list_items = QfbookmarkPaths.read_from_file_json(fname_path)
+  local list_items = QfbookmarkPaths.json.read_from_file_json(fname_path)
   if not list_items then
     return
   end
@@ -43,9 +43,9 @@ end
 ---@param selected string
 local function load_to_qf(state, selected)
   local is_global = selected == "Global" and true or false
-  local path = QfbookmarkPaths.get_target_path(is_global)
+  local path = QfbookmarkPaths.get_target_file_path(is_global)
 
-  if not QfbookmarkPaths.is_json_path_exists(path) then
+  if not QfbookmarkPaths.json.is_dir_json_exists(path) then
     QfbookmarkUtils.warn([[No quickfix lists were found at `]] .. path .. [[`.\nPlease create one]])
     return
   end
@@ -100,7 +100,7 @@ local function save_to_qf(state, selected)
 
   local data_lists = QfbookmarkUtils.get_populate_data_qf(is_loc)
   if data_lists then
-    QfbookmarkPaths.save_data_lists(data_lists, is_global, is_loc)
+    QfbookmarkPaths.qf.save_data_lists(data_lists, is_global, is_loc)
   end
 end
 

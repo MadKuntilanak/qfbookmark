@@ -103,6 +103,14 @@ local function mark_keymaps()
         keys = get_keymap(Config.keymaps, "mark", "prev_mark"),
         mode = { "n" },
       },
+
+      -- NOTE: Remove this keybinding before release
+      -- { -- Debug only
+      --   desc = "Qfmark: debug",
+      --   func = "debug_qf",
+      --   keys = get_keymap(Config.keymaps, "mark", "debug"),
+      --   mode = { "n" },
+      -- },
     },
   }, keys)
 

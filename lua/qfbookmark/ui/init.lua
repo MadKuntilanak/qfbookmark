@@ -145,7 +145,7 @@ local active_cursor_selection = ""
 ---@param cb function
 local function mark_harpoon_popup(mark_lists, cb)
   if #mark_lists == 0 then
-    QfbookmarkUtils.echo_emtpy_mark()
+    QfbookmarkUtils.echo_empty_mark()
     return
   end
 
