@@ -25,6 +25,7 @@
   - [X] support branch?
   - [X] support tag?
   - [X] bug: signs are not cleared when reloading an empty mark list
+- [X] buffer: invalid buffers cannot be deleted
 - [ ] update README
 - [ ] mark: more test for node treesitter [0/3]
   - [ ] for Go

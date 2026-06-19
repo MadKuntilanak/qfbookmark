@@ -668,6 +668,35 @@ function Mapping.buffer.item_del()
   end
 end
 
+--- Delete all currently listed buffers
+function Mapping.buffer.clear_all_items()
+  local buffers = require "qfbookmark.buffers"
+  local list = buffers.load_buffers()
+  local removed, skipped = 0, 0
+
+  for _, buf in ipairs(list) do
+    local bufnr = buf.bufnr
+    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+      local ok = pcall(vim.api.nvim_buf_delete, bufnr, { force = false })
+      if ok then
+        removed = removed + 1
+      else
+        skipped = skipped + 1
+      end
+    end
+  end
+
+  if skipped > 0 then
+    QfbookmarkUtils.warn(string.format("Deleted %d buffers, skipped %d (unsaved changes)", removed, skipped))
+  else
+    QfbookmarkUtils.info(string.format("Deleted %d buffers", removed))
+  end
+
+  vim.cmd "redraw"
+
+  Mapping.exit_close()
+end
+
 -- ├──────────────────────────────────┤ API ├───────────────────────────────┤
 
 function M.get_selected_marks()
@@ -1050,6 +1079,16 @@ function M.setup_keymap_buffers(opts_popup, buf)
           Mapping.buffer.item_del()
         end,
         keys = Config.keymaps and Config.keymaps.actions.del_item,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+      {
+        desc = "Qfmark: delete all items",
+        func = function()
+          Mapping.buffer.clear_all_items()
+        end,
+        keys = Config.keymaps and Config.keymaps.actions.del_item_all,
         mode = "n",
         buffer = Mapping.buf,
         from_user = true,

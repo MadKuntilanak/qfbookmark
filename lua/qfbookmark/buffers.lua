@@ -27,10 +27,11 @@ end
 
 ---@param buf integer
 ---@return { bufnr: integer, flag: string, info: table, readonly: boolean }
-local getbuf = function(buf)
+local getbuf = function(buf, cur)
+  cur = cur or M.get()
   return {
     bufnr = buf,
-    flag = (buf == M.get().bufnr and "%") or (buf == M.get().alt_bufnr and "#") or "",
+    flag = (buf == cur.bufnr and "%") or (buf == cur.alt_bufnr and "#") or "",
     info = QfbookmarkUtils.getbufinfo(buf),
     readonly = vim.bo[buf].readonly,
     loaded = vim.api.nvim_buf_is_loaded(buf),
@@ -54,6 +55,8 @@ local filter_buffers = function(opts, unfiltered)
     unfiltered = unfiltered()
   end
 
+  local cur = M.get()
+
   local function cwd()
     return assert(vim.uv.cwd())
   end
@@ -61,8 +64,7 @@ local filter_buffers = function(opts, unfiltered)
   local curtab_bufnrs = {}
   if opts.current_tab_only then
     for _, w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-      local b = vim.api.nvim_win_get_buf(w)
-      curtab_bufnrs[b] = true
+      curtab_bufnrs[vim.api.nvim_win_get_buf(w)] = true
     end
   end
 
@@ -81,47 +83,37 @@ local filter_buffers = function(opts, unfiltered)
       excluded[b] = true
       return false
     end
-
     if name:match "^term://" then
       excluded[b] = true
       return false
     end
-
-    if not opts.show_unlisted and b ~= M.get().bufnr and vim.fn.buflisted(b) ~= 1 then
+    if not opts.show_unlisted and b ~= cur.bufnr and vim.fn.buflisted(b) ~= 1 then
       excluded[b] = true
       return false
     end
-
-    if opts.ignore_current_buffer and b == M.get().bufnr then
+    if opts.ignore_current_buffer and b == cur.bufnr then
       excluded[b] = true
       return false
     end
-
     if opts.current_tab_only and not curtab_bufnrs[b] then
       excluded[b] = true
       return false
     end
-
     if opts.no_term_buffers and QfbookmarkUtils.is_term_buffer(b) then
       excluded[b] = true
       return false
     end
-
     if opts.cwd_only and not QfbookmarkPathUtils.is_relative_to(name, cwd()) then
       excluded[b] = true
       return false
     end
-
     if opts.cwd and not QfbookmarkPathUtils.is_relative_to(name, opts.cwd) then
       excluded[b] = true
       return false
     end
-
-    if type(opts.filter) == "function" then
-      if not opts.filter(b) then
-        excluded[b] = true
-        return false
-      end
+    if type(opts.filter) == "function" and not opts.filter(b) then
+      excluded[b] = true
+      return false
     end
 
     max_bufnr = math.max(max_bufnr, b)
@@ -140,8 +132,11 @@ local function get_list_buffers(opts, bufnrs)
   bufnrs = vim.tbl_filter(function(b)
     return vim.api.nvim_buf_is_valid(b)
   end, bufnrs)
+
+  local cur = M.get()
+
   for _, bufnr in ipairs(bufnrs) do
-    local buf = getbuf(bufnr)
+    local buf = getbuf(bufnr, cur)
 
     -- Get the name for missing/quickfix/location list buffers
     -- NOTE: we get it here due to `gen_buffer_entry` called within a fast event

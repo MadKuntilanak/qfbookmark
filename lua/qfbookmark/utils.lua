@@ -677,7 +677,7 @@ end
 
 function M.is_buf_readonly(buf)
   buf = buf or 0
-  return not vim.bo[0].modifiable or vim.bo[0].readonly
+  return not vim.bo[buf].modifiable or vim.bo[buf].readonly
 end
 
 function M.tbl_isempty(T)
@@ -755,6 +755,7 @@ function M.is_term_buffer(bufnr)
   return vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].buftype == "terminal"
 end
 
+---@param selected integer | { bufnr: integer, info: table, flag: string, readonly: boolean, loaded: boolean }
 function M.buf_del(selected)
   if type(selected) == "number" then
     delete_bufnr(selected)
@@ -762,8 +763,14 @@ function M.buf_del(selected)
   end
 
   if type(selected) == "table" then
-    if selected.text then
-      local bufnr = vim.fn.bufnr(selected.text)
+    -- prefer bufnr directly; fall back to resolving from info.name
+    local bufnr = selected.bufnr
+    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+      local name = selected.info and selected.info.name
+      bufnr = name and vim.fn.bufnr(name) or nil
+    end
+
+    if bufnr and bufnr ~= -1 and vim.api.nvim_buf_is_valid(bufnr) then
       delete_bufnr(bufnr)
     end
   end
