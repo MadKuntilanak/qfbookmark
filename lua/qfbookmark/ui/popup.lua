@@ -191,7 +191,6 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
 
   if filename:match "^fugitive://" then
     local new_bufnr = vim.fn.bufnr(filename)
-
     if new_bufnr == -1 then
       new_bufnr = vim.fn.bufadd(filename)
     end
@@ -211,8 +210,8 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
           m.bufnr = new_bufnr
         end
       end
-      content = load_content(filename, bufnr)
     end
+
     content = load_content(filename, bufnr)
   elseif buffer_status == "alive" then
     content = load_content(filename, bufnr)
@@ -231,6 +230,7 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
     end
 
     local ft
+
     if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
       local ok, result = pcall(vim.filetype.match, { buf = bufnr })
       if ok then
@@ -238,13 +238,26 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
       end
     end
 
-    -- Fallback filetype for fugitive buffers
+    -- fallback: resolve filetype from filename when bufnr is invalid
+    -- (e.g. after `dM` deletes all buffers — status becomes "gone")
+    if not ft and filename then
+      local ok, result = pcall(vim.filetype.match, { filename = filename })
+      if ok then
+        ft = result
+      end
+    end
+
     if not ft and filename and filename:match "^fugitive://" then
       ft = bufnr and vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].filetype or "git"
     end
 
     if ft then
       vim.api.nvim_set_option_value("filetype", ft, { buf = buf })
+
+      -- Stop any existing highlighter before starting fresh,
+      -- avoids stale treesitter state when the previous source
+      -- buffer no longer exists
+      pcall(vim.treesitter.stop, buf)
       pcall(vim.treesitter.start, buf, ft)
 
       vim.api.nvim_set_option_value("foldenable", false, { win = win, scope = "local" })
@@ -255,22 +268,21 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
         "winhighlight",
         "FloatBorder:QFBookmarkPreviewFloatBorder,"
           .. "FloatTitle:QFBookmarkPreviewFloatTitle,"
-          -- .. "Cursor:QFBookmarkPreviewFloatCursor,"
           .. "CursorLine:QFBookmarkPreviewCursorline,"
           .. "CursorLineNr:QFBookmarkPreviewFloatCursorLineNr,",
-
         { win = win, scope = "local" }
       )
+    else
+      -- nothing resolved: clear stale highlighter so the preview
+      -- doesn't keep showing colors from the previous entry
+      pcall(vim.treesitter.stop, buf)
+      vim.api.nvim_set_option_value("filetype", "", { buf = buf })
     end
   else
-    -- Fallback if content cannot be loaded
     content = { "⚠ Unable to load this buffer or file" }
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, content)
+    pcall(vim.treesitter.stop, buf)
   end
-
-  local cfg = vim.api.nvim_win_get_config(win)
-  cfg.title = QfbookmarkUIUtils.format_title("🔍 " .. vim.fn.fnamemodify(filename, ":~:."))
-  vim.api.nvim_win_set_config(win, cfg)
 end
 
 --- Setup CursorMoved autocmd to update the preview window on navigation.
