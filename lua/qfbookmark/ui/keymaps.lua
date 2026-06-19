@@ -327,6 +327,13 @@ function Mapping.mark.move_item_to(is_prev)
   -- Swap
   entries[cur_idx], entries[target_idx] = entries[target_idx], entries[cur_idx]
 
+  -- Swap `inserted_at` too
+  local max_inserted = #entries
+  for i, e in ipairs(entries) do
+    local m = e.mark
+    m.inserted_at = max_inserted - i + 1
+  end
+
   -- Rebuild buffer (from data ONLY!)
   local lines = {}
 
