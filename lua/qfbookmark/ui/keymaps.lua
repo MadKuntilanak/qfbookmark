@@ -11,6 +11,11 @@ local M = {}
 
 local Mapping = {}
 
+Mapping.last_position = {
+  mark = nil,
+  buffer = nil,
+}
+
 local get_hval = function(content_map, cur_line_nr)
   local hval
   for _, x in pairs(content_map) do
@@ -30,6 +35,25 @@ local update_title_main_win = function(total, selected)
     or string.format("QFMarks (%d)", total)
   cfg.title = QfbookmarkUIUtils.format_title("🔗 " .. count_str)
   vim.api.nvim_win_set_config(Mapping.popup.win, cfg)
+end
+
+local update_last_position_cursor = function(provider)
+  local set_cursor_position
+
+  if Mapping.last_position[provider] then
+    set_cursor_position = Mapping.last_position[provider]
+  else
+    set_cursor_position = vim.api.nvim_buf_get_mark(0, '"')
+  end
+
+  if set_cursor_position then
+    local line_count = vim.api.nvim_buf_line_count(0)
+    if set_cursor_position and set_cursor_position[1] then
+      if set_cursor_position[1] > 0 and set_cursor_position[1] <= line_count then
+        pcall(vim.api.nvim_win_set_cursor, 0, set_cursor_position)
+      end
+    end
+  end
 end
 
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
@@ -57,9 +81,21 @@ end
 
 function Mapping.exit_close()
   if Mapping.is_buffers then
+    if Mapping.popup.win and vim.api.nvim_win_is_valid(Mapping.popup.win) then
+      local row = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
+      local col = vim.api.nvim_win_get_cursor(Mapping.popup.win)[2]
+      Mapping.last_position.buffer = { row, col }
+    end
+
     QfbookmarkUIUtils.close_win { Mapping.popup.win }
     QfbookmarkUIUtils.clean_up(Mapping.popup)
   elseif Mapping.is_harpoon then
+    if Mapping.popup.win and vim.api.nvim_win_is_valid(Mapping.popup.win) then
+      local row = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
+      local col = vim.api.nvim_win_get_cursor(Mapping.popup.win)[2]
+      Mapping.last_position.mark = { row, col }
+    end
+
     QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
 
     vim.schedule(function()
@@ -424,7 +460,8 @@ function Mapping.mark.select_bookmark_master()
   local reform = function(path, is_current)
     is_current = is_current or false
 
-    local basename = PUtils.basename(path)
+    local QfbookmarkPathUtils = require "qfbookmark.path.utils"
+    local basename = QfbookmarkPathUtils.basename(path)
 
     local parent = vim.fn.fnamemodify(path, ":h") -- /path/to/the
     local dir = vim.fn.fnamemodify(parent, ":t") -- the
@@ -457,8 +494,8 @@ function Mapping.mark.select_bookmark_master()
     prefix,
     -- vim.fn.shellescape(path_qf),
     path_qf,
-    "-d",
-    "2",
+    -- "-d",
+    -- "2",
     "-t",
     "f",
     "-e",
@@ -913,7 +950,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
 
   local _keys = M.build_keymaps(opts_popup, buf, cb)
 
-  mark_preview_fullscreen = false -- toggle resize preview win
+  update_last_position_cursor "mark"
 
   QfbookmarkKeymapUtils.append_active_keymaps({
     is_set = true,
@@ -1070,6 +1107,8 @@ function M.setup_keymap_buffers(opts_popup, buf)
   opts_popup.is_harpoon = false
   opts_popup.is_mark_annotation = false
   local _keys = M.build_keymaps(opts_popup, buf)
+
+  update_last_position_cursor "buffer"
 
   QfbookmarkKeymapUtils.append_active_keymaps({
     is_set = true,
