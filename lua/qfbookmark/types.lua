@@ -160,6 +160,7 @@
 ---@class QFBookWindowMark
 ---@field enabled boolean
 ---@field anchor string
+---@field actions { win_resized: boolean }
 
 ---@class QFBookItemOpenMode
 ---@field auto_close boolean
@@ -181,6 +182,7 @@
 
 ---@class QFBookWindowBuffers
 ---@field enabled boolean
+---@field actions { win_resized: boolean }
 
 ---@class QFBookmarkWindowCfg
 ---@field notify { enabled: boolean, mark: boolean, plugin: boolean }

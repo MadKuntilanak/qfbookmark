@@ -32,7 +32,7 @@ local M = {}
 --   vim.api.nvim_win_set_cursor(win, { line, col })
 -- end
 
----@param opts {filename: string, line: integer, col: integer, text?: string, mode_open?: OpenMode, is_force_jump: boolean}
+---@param opts {filename: string, line: integer, col: integer, text?: string, mode_open?: OpenMode, is_force_jump: boolean, win_resized: boolean?}
 function M.jump_to(opts)
   local buf = vim.api.nvim_get_current_buf()
   local current_file = vim.api.nvim_buf_get_name(buf)
@@ -110,6 +110,11 @@ function M.jump_to(opts)
     if ok and fold_start ~= -1 then
       vim.cmd "silent! foldopen!"
     end
+  end
+
+  --- resized
+  if opts.win_resized then
+    vim.cmd "wincmd ="
   end
 
   vim.schedule(function()

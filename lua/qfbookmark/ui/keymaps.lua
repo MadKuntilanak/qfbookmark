@@ -143,6 +143,7 @@ function Mapping.setup_open_key(open_mode)
           col = mark.col,
           line = mark.line,
           mode_open = open_mode,
+          win_resized = Mapping.is_harpoon and Config.window.mark.actions.win_resized or false,
         }
       end
     end
@@ -157,6 +158,7 @@ function Mapping.setup_open_key(open_mode)
           col = hval.info.col,
           line = hval.info.lnum,
           mode_open = open_mode,
+          win_resized = Mapping.is_buffers and Config.window.buffers.actions.win_resized or false,
         }
       end
     end
@@ -444,7 +446,7 @@ function Mapping.mark.toggle_selection()
   update_title_main_win(total, Mapping.selected)
 end
 
-function Mapping.mark.select_bookmark_master()
+function Mapping.mark.select_and_load_qfmasters()
   local path_qf = Config.save_dir
   local Path = require "qfbookmark.path"
   local PUtils = require "qfbookmark.path.utils"
@@ -456,33 +458,45 @@ function Mapping.mark.select_bookmark_master()
 
   ---@param path string
   ---@param is_current? boolean
+  ---@param padding? integer
   ---@return QFbookMasterOpts
-  local reform = function(path, is_current)
+  ---
+  local reform = function(path, is_current, padding)
     is_current = is_current or false
 
     local QfbookmarkPathUtils = require "qfbookmark.path.utils"
-    local basename = QfbookmarkPathUtils.basename(path)
+    local basename = QfbookmarkPathUtils.basename(path) -- "qfmark_master.lua"
 
-    local parent = vim.fn.fnamemodify(path, ":h") -- /path/to/the
-    local dir = vim.fn.fnamemodify(parent, ":t") -- the
+    local parent = vim.fn.fnamemodify(path, ":h") -- /path/to/dotfiles-e76759d5fc3b
+    local dir = vim.fn.fnamemodify(parent, ":t") -- "dotfiles-e76759d5fc3b"
 
-    local dir_master = vim.split(dir, "-")
-    local name_project = dir_master[1]
-    local hash_project = dir_master[2]
+    local dir_parts = vim.split(dir, "-")
+    local name_project = dir_parts[1] -- "dotfiles"
+    local hash_project = dir_parts[2] -- "e76759d5fc3b"
 
-    local branch_name = ""
-    local tag = ""
+    -- extract branch/tag/commit name from the filename itself:
+    --   qfmark_master.lua          → "master"
+    --   qfmark_no-branch.lua       → "no-branch"
+    --   qfmark_detached-85919cd.lua → "detached-85919cd"
+    local branch_name = basename:match "^qfmark_(.+)%.lua$" or ""
 
     local shorten = QfbookmarkUIUtils.shorten_text(hash_project, 20)
 
-    local text = is_current and "current" or name_project .. "-" .. shorten
+    local text
+    if is_current then
+      text = "current"
+    else
+      text =
+        string.format("%s-%-" .. tostring(padding - #name_project) .. "s · %s", name_project, shorten, branch_name)
+    end
+
     return {
       orig = path,
       dir = dir,
       basename = basename,
       project = name_project,
       branch = branch_name,
-      tag = tag,
+      tag = "",
       text = text,
     }
   end
@@ -514,8 +528,27 @@ function Mapping.mark.select_bookmark_master()
   qf_master[current_mark.text] = current_mark
   table.insert(select_files, "current")
 
+  --- Get the maximum padding from the lists
+  local get_padding = function()
+    local pad = 0
+    for _, f in ipairs(files) do
+      local parent = vim.fn.fnamemodify(f, ":h") -- /path/to/dotfiles-e76759d5fc3b
+      local dir = vim.fn.fnamemodify(parent, ":t") -- "dotfiles-e76759d5fc3b"
+      local txt_len = vim.fn.strdisplaywidth(dir)
+
+      if pad < txt_len then
+        pad = txt_len
+      end
+    end
+
+    return pad
+  end
+
+  local p = get_padding()
+  -- RUtils.info(p)
+
   for _, f in ipairs(files) do
-    local other_mark = reform(f)
+    local other_mark = reform(f, false, p)
 
     -- Do not include current project
     if other_mark.orig ~= current_mark.orig then
@@ -1050,7 +1083,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       {
         desc = "Qfmark: load qfmaster",
         func = function()
-          Mapping.mark.select_bookmark_master()
+          Mapping.mark.select_and_load_qfmasters()
           Mapping.exit_close()
         end,
         keys = Config.keymaps.mark and Config.keymaps.mark.load_all,

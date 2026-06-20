@@ -41,6 +41,9 @@ M.defaults = {
     },
     buffers = {
       enabled = true,
+      actions = {
+        win_resized = true,
+      },
     },
     note = {
       enabled = true,
@@ -58,6 +61,9 @@ M.defaults = {
     mark = {
       enabled = true,
       anchor = "SE", -- NW/SW --- SE/NE
+      actions = {
+        win_resized = true,
+      },
     },
   },
   keymaps = {
