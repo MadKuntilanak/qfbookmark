@@ -241,7 +241,7 @@ local __popup_opts_for = {
     setup_option_main_popup(win, buf)
 
     -- apply syntax highlights to all entries
-    QfbookmarkMarkVisual.apply_entry_buffer_highlights(buf)
+    QfbookmarkMarkVisual.apply_entry_buffer_highlights(buf, opts_popup.contents, opts_popup.buffer_selected)
 
     if not opts_popup.popup then
       opts_popup.popup = {}

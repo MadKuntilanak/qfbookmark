@@ -114,9 +114,14 @@ end
 ---@return string
 function M.shorten_path(path, max_len)
   local short = vim.fn.fnamemodify(path, ":~:.")
+
+  -- local TAB_WIDTH = 4
+  -- short = short:gsub("\t", string.rep(" ", TAB_WIDTH))
+
   if vim.fn.strdisplaywidth(short) <= max_len then
     return short
   end
+
   local parts = vim.split(short, "/", { plain = true })
   local result = parts[#parts]
   for i = #parts - 1, 1, -1 do
@@ -350,6 +355,42 @@ function M.build_entry_lines(idx, mark, path_width, symbol)
   local line3 = sym_part ~= "" and (indent .. sym_part) or nil
 
   return line1, line2, line3, mark.harpoon
+end
+
+---@param buf QFBookBufferItem
+---@param path_width integer
+---@return string line
+---@return QFBookBufferItem buffer_opts
+function M.build_entry_line_buffers(buf, path_width)
+  local flag = buf.flag or ""
+  local changed = buf.info.changed == 1
+  local hidden = buf.info.hidden == 1
+
+  local col0, col1
+
+  if #flag > 0 then
+    -- flag (% atau #): flag at col0, modified at col1
+    col0 = flag
+    col1 = changed and "+" or " "
+  elseif changed then
+    -- modified only: + at col0
+    col0 = "+"
+    col1 = " "
+  elseif hidden then
+    -- hidden: h at col0,
+    col0 = "h"
+    col1 = " "
+  else
+    col0 = " "
+    col1 = " "
+  end
+
+  local badge = col0 .. col1
+  local path = M.shorten_path(buf.info.name, path_width)
+  local lnum = string.format(":%d", buf.info.lnum)
+
+  local line = "   " .. badge .. "  " .. path .. " " .. lnum
+  return line, buf
 end
 
 --- Resolve symbol for a mark entry.

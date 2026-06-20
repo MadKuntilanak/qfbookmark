@@ -375,9 +375,15 @@ end
 
 ---Apply extmarks to each buffer list entry
 ---@param bufnr integer must popup buffer
-function M.apply_entry_buffer_highlights(bufnr)
+---@param list table[] list of buffer entries (same order as displayed lines)
+---@param selected table<integer, boolean>  keyed by bufnr
+function M.apply_entry_buffer_highlights(bufnr, list, selected)
+  selected = selected or {}
+
   local ns = vim.api.nvim_create_namespace "qfbookmark_popup_buffer_hl"
+  local ns_chk = vim.api.nvim_create_namespace "qfbookmark_popup_buffer_chk"
   vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+  vim.api.nvim_buf_clear_namespace(bufnr, ns_chk, 0, -1)
 
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
@@ -386,49 +392,73 @@ function M.apply_entry_buffer_highlights(bufnr)
       goto continue
     end
 
-    local col0 = line:sub(4, 4) -- 1-based pos 4 = 0-based col 3
-    local col1 = line:sub(5, 5) -- 1-based pos 5 = 0-based col 4
+    local entry = list[lnum]
+    local is_sel = entry and selected[entry.bufnr] == true
+
+    -- ── checkbox
+    local chk_text = is_sel and "✓" or "○"
+    local chk_hl = is_sel and "QFBookmarkEntrySelectedCheck" or "QFBookmarkEntryUnselectedCheck"
+
+    pcall(vim.api.nvim_buf_set_extmark, bufnr, ns_chk, lnum - 1, 0, {
+      virt_text = { { chk_text, chk_hl } },
+      virt_text_pos = "right_align",
+      priority = 200,
+    })
+
+    -- ── bg highlight
+    if is_sel then
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 0, {
+        end_row = lnum,
+        end_col = 0,
+        hl_group = "QFBookmarkEntrySelected",
+        hl_eol = true,
+        priority = 40,
+      })
+    end
+
+    -- ── existing flag/path/lnum highlights
+    local col0 = line:sub(4, 4)
+    local col1 = line:sub(5, 5)
 
     local is_flag = col0 == "%" or col0 == "#"
     local is_hidden = col0 == "h"
-    local is_modified_col0 = col0 == "+" -- modified only (no flag)
-    local is_modified_col1 = col1 == "+" -- modified with flag
+    local is_modified_col0 = col0 == "+"
+    local is_modified_col1 = col1 == "+"
 
-    -- col0 highlights
     if is_flag then
       pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 3, {
         end_col = 4,
         hl_group = "QFBookmarkEntryFlag",
+        priority = 60,
       })
     elseif is_hidden then
       pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 3, {
         end_col = 4,
         hl_group = "QFBookmarkEntryHiddenFlag",
+        priority = 60,
       })
     elseif is_modified_col0 then
-      -- "+" at col0 (no flag case)
       pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 3, {
         end_col = 4,
         hl_group = "QFBookmarkEntryModifiedFlag",
+        priority = 60,
       })
     end
 
-    -- col1: "+" red at col0
     if is_modified_col1 then
       pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 4, {
         end_col = 5,
         hl_group = "QFBookmarkEntryModifiedFlag",
+        priority = 60,
       })
     end
 
-    -- path: from col 7 to lnum, split into dir (dim) + basename (bright)
     local lnum_s = line:find ":%d+$"
     if lnum_s then
       local path_start = 7
-      local path_end = lnum_s - 2 -- exclusive end of path text
-
+      local path_end = lnum_s - 2
       local path_text = line:sub(path_start + 1, path_end)
-      -- find last "/" within path_text to split dir vs basename
+
       local last_slash = nil
       for i = #path_text, 1, -1 do
         if path_text:sub(i, i) == "/" then
@@ -438,27 +468,28 @@ function M.apply_entry_buffer_highlights(bufnr)
       end
 
       if last_slash then
-        -- dir part: dim
         pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, path_start, {
           end_col = path_start + last_slash,
           hl_group = "QFBookmarkEntryPath",
+          priority = 60,
         })
-        -- basename part: bright
         pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, path_start + last_slash, {
           end_col = path_end,
           hl_group = "QFBookmarkEntryBasename",
+          priority = 60,
         })
       else
-        -- no slash found, whole thing is basename
         pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, path_start, {
           end_col = path_end,
           hl_group = "QFBookmarkEntryBasename",
+          priority = 60,
         })
       end
 
       pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, lnum_s - 1, {
         end_col = #line,
         hl_group = "QFBookmarkEntryLnum",
+        priority = 60,
       })
     end
 

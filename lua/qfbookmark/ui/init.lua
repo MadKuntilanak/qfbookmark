@@ -4,42 +4,6 @@ local QfbookmarkUIView = require "qfbookmark.ui.view"
 
 ---@alias WinSizeCfg { row: integer, col: integer, height: integer, width: integer, title: string, title_pos: string, buf?: integer}
 
----@param buf QFBookBufferItem
----@param path_width integer
----@return string line
----@return QFBookBufferItem buffer_opts
-local function build_entry_line_buffers(buf, path_width)
-  local flag = buf.flag or ""
-  local changed = buf.info.changed == 1
-  local hidden = buf.info.hidden == 1
-
-  local col0, col1
-
-  if #flag > 0 then
-    -- flag (% atau #): flag at col0, modified at col1
-    col0 = flag
-    col1 = changed and "+" or " "
-  elseif changed then
-    -- modified only: + at col0
-    col0 = "+"
-    col1 = " "
-  elseif hidden then
-    -- hidden: h at col0,
-    col0 = "h"
-    col1 = " "
-  else
-    col0 = " "
-    col1 = " "
-  end
-
-  local badge = col0 .. col1
-  local path = QfbookmarkUIUtils.shorten_path(buf.info.name, path_width)
-  local lnum = string.format(":%d", buf.info.lnum)
-
-  local line = "   " .. badge .. "  " .. path .. " " .. lnum
-  return line, buf
-end
-
 --- Compute optimal path column width across all mark entries
 ---@param mark_lists QFbookBufferMarkEntry[] | QFBookBufferItem[]
 ---@param max_path? integer
@@ -293,6 +257,8 @@ local function place_mark_annotation(mark_lists, cb, load_chunk)
   QfbookmarkUIView.build_popup("mark_annotation", __opts, cb)
 end
 
+local buffer_selected = {}
+
 ---@param buffer_lists table
 local function buffers_popup(buffer_lists)
   local curbuf = vim.api.nvim_get_current_buf()
@@ -303,7 +269,7 @@ local function buffers_popup(buffer_lists)
   local path_width = calc_path_width(buffer_lists, true, 30)
 
   for idx, buffer in pairs(buffer_lists) do
-    local line, hval = build_entry_line_buffers(buffer, path_width)
+    local line, hval = QfbookmarkUIUtils.build_entry_line_buffers(buffer, path_width)
     display_lines[#display_lines + 1] = line
 
     local start_line = idx
@@ -356,8 +322,10 @@ local function buffers_popup(buffer_lists)
 
   local __opts = {
     contents = buffer_lists,
+    buffer_selected = buffer_selected,
     content_map = entries,
     display_lines = display_lines,
+    original_popup_buffer_width = path_width,
     win_opts = wincfg,
     last_buf = curbuf,
   }

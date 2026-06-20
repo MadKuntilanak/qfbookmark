@@ -117,6 +117,11 @@ local select_providers = {
     local results = marks_selected.get_selected_marks()
     val.cmd(results)
   end,
+  ["buffers"] = function(val)
+    local buffer_selected = require "qfbookmark.ui.keymaps"
+    local results = buffer_selected.get_selected_buffers()
+    val.cmd(results)
+  end,
 }
 
 ---@param tbl_cmdline_strings QFBookKeymapCustomIntegration

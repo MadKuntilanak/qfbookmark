@@ -545,7 +545,6 @@ function Mapping.mark.select_and_load_qfmasters()
   end
 
   local p = get_padding()
-  -- RUtils.info(p)
 
   for _, f in ipairs(files) do
     local other_mark = reform(f, false, p)
@@ -724,9 +723,65 @@ Mapping.buffer = {}
 
 function Mapping.buffer.item_del()
   local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
+
+  local selected_buffers = Mapping.buffer.get_selected()
+
   ---@type QFBookBufferItem
   local hval = get_hval(Mapping.content_map, cur_line_nr)
-  if hval then
+
+  if #selected_buffers > 0 then
+    local list = Mapping.buffer_list
+
+    for _, x in pairs(selected_buffers) do
+      for idx, entry in ipairs(list) do
+        if x.bufnr == entry.bufnr then
+          if Mapping.buffer_selected[entry.bufnr] then
+            Mapping.buffer_selected[entry.bufnr] = nil
+          end
+
+          if list[idx] then
+            table.remove(list, idx)
+          end
+
+          if vim.api.nvim_buf_is_valid(entry.bufnr) then
+            QfbookmarkUtils.buf_del(entry.bufnr)
+          end
+        end
+      end
+    end
+
+    Mapping.content_map = list
+
+    -- rebuild data again
+    local display_lines = {}
+    local __entries = {}
+
+    for idx, buffer in pairs(list) do
+      local line, _hval =
+        QfbookmarkUIUtils.build_entry_line_buffers(buffer, Mapping.opts_popup.original_popup_buffer_width)
+      display_lines[#display_lines + 1] = line
+
+      local start_line = idx
+
+      local entry = {
+        id = idx,
+        start_line = start_line,
+        hval = _hval,
+        line_count = 1,
+      }
+
+      __entries[idx] = entry
+    end
+
+    vim.api.nvim_buf_set_lines(Mapping.buf, 0, -1, false, display_lines)
+
+    local QfbookmarkMarkVisual = require "qfbookmark.visual"
+    QfbookmarkMarkVisual.apply_entry_buffer_highlights(Mapping.buf, __entries, Mapping.buffer_selected)
+
+    vim.schedule(function()
+      vim.cmd "redraw"
+    end)
+  elseif hval then
     local target_buf = hval.bufnr
     if vim.api.nvim_buf_is_valid(target_buf) then
       QfbookmarkUtils.buf_del(target_buf)
@@ -738,7 +793,6 @@ function Mapping.buffer.item_del()
   end
 end
 
---- Delete all currently listed buffers
 function Mapping.buffer.clear_all_items()
   local buffers = require "qfbookmark.buffers"
   local list = buffers.load_buffers()
@@ -767,6 +821,59 @@ function Mapping.buffer.clear_all_items()
   Mapping.exit_close()
 end
 
+function Mapping.buffer.toggle_selection()
+  local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
+
+  local list = Mapping.buffer_list -- list of { bufnr, flag, info, ... } sesuai urutan baris
+  local entry = list and list[cur_line_nr]
+  if not entry then
+    return
+  end
+
+  local bufnr = entry.bufnr
+  if Mapping.buffer_selected[bufnr] then
+    Mapping.buffer_selected[bufnr] = nil
+  else
+    Mapping.buffer_selected[bufnr] = true
+  end
+
+  local QfbookmarkMarkVisual = require "qfbookmark.visual"
+  QfbookmarkMarkVisual.apply_entry_buffer_highlights(Mapping.buf, list, Mapping.buffer_selected)
+
+  local total = #list
+  update_title_main_win(total, Mapping.buffer_selected)
+end
+
+---@return table[]
+function Mapping.buffer.get_selected()
+  local list = Mapping.buffer_list
+  local result = {}
+  for _, entry in ipairs(list or {}) do
+    if Mapping.buffer_selected[entry.bufnr] then
+      result[#result + 1] = entry
+    end
+  end
+  return result
+end
+
+function Mapping.buffer.deselect_all_buffers()
+  local sel_marks = Mapping.buffer.get_selected()
+  if #sel_marks == 0 then
+    return
+  end
+
+  local list = Mapping.buffer_list
+
+  for _, entry in ipairs(list) do
+    if Mapping.buffer_selected[entry.bufnr] then
+      Mapping.buffer_selected[entry.bufnr] = nil
+    end
+  end
+
+  local QfbookmarkMarkVisual = require "qfbookmark.visual"
+  QfbookmarkMarkVisual.apply_entry_buffer_highlights(Mapping.buf, list, Mapping.buffer_selected)
+end
+
 -- ├──────────────────────────────────┤ API ├───────────────────────────────┤
 
 function M.get_selected_marks()
@@ -782,6 +889,19 @@ function M.get_selected_marks()
   return { selected = sel_marks, data = data }
 end
 
+function M.get_selected_buffers()
+  local data = Mapping.content_map
+
+  local sel_buffers = Mapping.buffer.get_selected()
+
+  if #sel_buffers > 0 then
+    QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
+    QfbookmarkUIUtils.clean_up(Mapping.popup)
+  end
+
+  return { selected = sel_buffers, data = data }
+end
+
 ---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
 ---@param cb? function
@@ -793,8 +913,10 @@ local setup_popup_options = function(opts_popup, buf, cb)
   Mapping.popup = opts_popup.popup
   Mapping.mark_original_width = opts_popup.original_popup_mark_width and opts_popup.original_popup_mark_width or nil
   Mapping.popup.preview = opts_popup.popup.preview and opts_popup.popup.preview or nil
-  Mapping.wincfg = opts_popup.win_opts.wincfg
   Mapping.selected = opts_popup.selected
+  Mapping.buffer_selected = opts_popup.buffer_selected or {}
+  Mapping.wincfg = opts_popup.win_opts.wincfg
+  Mapping.buffer_list = opts_popup.contents
   Mapping.last_buf = opts_popup.last_buf
   Mapping.content_map = opts_popup.content_map
   Mapping.is_harpoon = opts_popup.is_harpoon and opts_popup.is_harpoon or false
@@ -1139,6 +1261,7 @@ function M.setup_keymap_buffers(opts_popup, buf)
   opts_popup.is_buffers = true
   opts_popup.is_harpoon = false
   opts_popup.is_mark_annotation = false
+
   local _keys = M.build_keymaps(opts_popup, buf)
 
   update_last_position_cursor "buffer"
@@ -1166,8 +1289,43 @@ function M.setup_keymap_buffers(opts_popup, buf)
         buffer = Mapping.buf,
         from_user = true,
       },
+      {
+        desc = "Qfmark: toggle select",
+        func = function()
+          Mapping.buffer.toggle_selection()
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.toggle_select,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
+        desc = "Qfmark: diselect all",
+        func = function()
+          Mapping.buffer.deselect_all_buffers()
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.diselect_all,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
     },
   }, _keys)
+
+  if Config.keymaps.buffers.integrations.custom.enabled then
+    local user_mark_cmds = Config.keymaps.buffers.integrations.custom
+    if not user_mark_cmds then
+      return
+    end
+
+    local user_keys = QfbookmarkKeymapUtils.set_user_mappings(user_mark_cmds, "buffers", Mapping.buf)
+
+    QfbookmarkKeymapUtils.append_active_keymaps({
+      is_set = Config.keymaps.buffers.integrations.custom.enabled,
+      keymaps = user_keys,
+    }, _keys)
+  end
 
   QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end

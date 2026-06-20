@@ -30,6 +30,7 @@
 --- content_map: table<integer, QFBookmarkEntry>,
 --- win_opts: WinCfg,
 --- original_popup_mark_width: integer,
+--- original_popup_buffer_width: integer,
 --- display_lines: string[],
 --- popup?: QFBookmarkUiPopup,
 --- is_harpoon?: boolean,
@@ -39,6 +40,8 @@
 --- active: string,
 --- save?: QFBookmarkUiSaveCfg,
 --- selected: table<string, boolean>,
+--- buffer_selected: table<integer, boolean>,
+--- last_buf: integer,
 --- data_annotation?: { chunk: QFbookBufferMarkEntry, load_chunk: boolean } }
 
 ---@alias QFBookmarkWinCfg {
@@ -233,6 +236,9 @@
 ---@field copyline? QFBookKeymapIntegrationSpec
 ---@field custom? QFBookKeymapCustomIntegration
 
+---@class QFBookKeymapCustomIntegrations
+---@field custom? QFBookKeymapCustomIntegration
+
 ---@class QFBookKeymapMarkHarpoon
 ---@field mark_1 string | string[],
 ---@field mark_2 string | string[],
@@ -265,6 +271,7 @@
 
 ---@class QFBookmarkBuffersKeymaps
 ---@field toggle_open string | string[]
+---@field integrations QFBookKeymapCustomIntegrations
 
 ---@class QFBookmarkKeymap
 ---@field disable_all boolean
