@@ -1,4 +1,9 @@
 local Config = require("qfbookmark.config").defaults
+
+if not Config.keymaps.quickfix.integrations.trouble.enabled then
+  return
+end
+
 local QfbookmarkUtils = require "qfbookmark.utils"
 
 local loaded = false
