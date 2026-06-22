@@ -380,6 +380,8 @@ error:
 
 ### Mark
 
+https://github.com/user-attachments/assets/6a8d277a-0e93-4c9c-90ed-5ee59753cbe6
+
 - Persistent bookmarks anywhere in your codebase, organized by type.
 - Fast navigation through a Harpoon-style popup.
 - Marks are automatically saved per Git branch or tag.
