@@ -353,10 +353,9 @@ local function register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, lnum
       id = id,
       note = note,
     }
-
-    insert_sign_and_extmark(mark_lists, id, mark_mode, bufnr, lnum, extmarkspec, note)
   end
 
+  insert_sign_and_extmark(mark_lists, id, mark_mode, bufnr, lnum, extmarkspec, note)
   return mark_lists
 end
 
