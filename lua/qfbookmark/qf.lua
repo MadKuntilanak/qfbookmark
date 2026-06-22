@@ -959,45 +959,51 @@ function M.toggle_open_loclist()
   toggle_list "loclist"
 end
 
-function M.open_item_qf()
+---@param open_mode OpenMode
+local function open_item_qf(open_mode)
   local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
   local is_center = Config.window.quickfix.actions.auto_center
   local is_ispanded = Config.window.quickfix.actions.auto_unfold
-  QfbookmarkNav.handle_open("default", is_center, is_ispanded)
+
+  local selected_qf = M.get_qf_selected()
+
+  local mode = vim.fn.mode(1) -- :h mode()
+  if mode == "v" or mode == "V" then
+    QfbookmarkNav.handle_open(open_mode, is_center, is_ispanded)
+  elseif #selected_qf > 0 and open_mode ~= "default" then
+    QfbookmarkUtils.warn(vim.inspect(selected_qf))
+
+    for _, hval in pairs(selected_qf) do
+      vim.cmd [[wincmd p]]
+      QfbookmarkNav.jump_to {
+        filename = hval.filename,
+        col = hval.col,
+        line = hval.lnum,
+        mode_open = open_mode,
+        win_resized = false,
+      }
+    end
+    vim.cmd [[wincmd =]]
+  else
+    QfbookmarkNav.handle_open(open_mode, is_center, is_ispanded)
+  end
 
   if Config.window.quickfix.actions.default.auto_close then
     toggle_list(list_type, true)
   end
 end
-function M.open_item_in_tab()
-  local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
-  local is_center = Config.window.quickfix.actions.auto_center
-  local is_ispanded = Config.window.quickfix.actions.auto_unfold
-  QfbookmarkNav.handle_open("tabnew", is_center, is_ispanded)
 
-  if Config.window.quickfix.actions.tab.auto_close then
-    toggle_list(list_type, true)
-  end
+function M.open_item_default()
+  open_item_qf "default"
+end
+function M.open_item_in_tab()
+  open_item_qf "tabnew"
 end
 function M.open_item_in_split()
-  local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
-  local is_center = Config.window.quickfix.actions.auto_center
-  local is_ispanded = Config.window.quickfix.actions.auto_unfold
-  QfbookmarkNav.handle_open("split", is_center, is_ispanded)
-
-  if Config.window.quickfix.actions.split.auto_close then
-    toggle_list(list_type, true)
-  end
+  open_item_qf "split"
 end
 function M.open_item_in_vsplit()
-  local list_type = QfbookmarkUtils.is_loclist() and "loclist" or "quickfix"
-  local is_center = Config.window.quickfix.actions.auto_center
-  local is_ispanded = Config.window.quickfix.actions.auto_unfold
-  QfbookmarkNav.handle_open("vsplit", is_center, is_ispanded)
-
-  if Config.window.quickfix.actions.vsplit.auto_close then
-    toggle_list(list_type, true)
-  end
+  open_item_qf "vsplit"
 end
 
 function M.next_item()

@@ -181,7 +181,7 @@ local function qf_keymaps()
     keymaps = {
       {
         desc = "Qfmark: open item",
-        func = "open_item_qf",
+        func = "open_item_default",
         keys = get_keymap(Config.keymaps, "actions", "default"),
         mode = "n",
       },

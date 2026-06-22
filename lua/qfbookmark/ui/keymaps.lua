@@ -134,8 +134,21 @@ function Mapping.setup_open_key(open_mode, jump_to_n)
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
 
     if Mapping.is_harpoon then
-      local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.content_map, cur_line_nr)
+      local selected_marks = Mapping.mark.get_selected_marks()
+      if #selected_marks > 0 and open_mode ~= "default" then
+        for _, m in pairs(selected_marks) do
+          QfbookmarkNav.jump_to {
+            filename = m.filename,
+            col = m.col,
+            line = m.line,
+            mode_open = open_mode,
+            win_resized = Mapping.is_harpoon and Config.window.mark.actions.win_resized or false,
+          }
+        end
+        return
+      end
 
+      local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.content_map, cur_line_nr)
       if entry and entry.mark then
         local mark = entry.mark
 
@@ -150,6 +163,19 @@ function Mapping.setup_open_key(open_mode, jump_to_n)
     end
 
     if Mapping.is_buffers then
+      local selected_buffers = Mapping.buffer.get_selected()
+      if #selected_buffers > 0 and open_mode ~= "default" then
+        for _, hval in pairs(selected_buffers) do
+          QfbookmarkNav.jump_to {
+            filename = hval.info.name,
+            col = hval.info.col,
+            line = hval.info.lnum,
+            mode_open = open_mode,
+            win_resized = Mapping.is_harpoon and Config.window.buffers.actions.win_resized or false,
+          }
+        end
+        return
+      end
       ---@type QFBookBufferItem
       local entry = QfbookmarkUIUtils.get_entry_at_line(Mapping.content_map, cur_line_nr)
       local hval = entry and entry["hval"]
