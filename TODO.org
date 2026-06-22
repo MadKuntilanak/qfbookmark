@@ -33,8 +33,8 @@
   - [X] support insert text
   - [X] support custom templates
 - [ ] fix extermark priority at mark menu
-- [-] Update README [1/4]
-  - [ ] Explain provider features
+- [-] Update README [2/4]
+  - [X] Explain provider features
   - [ ] Add demos for each feature
   - [ ] Add example integration scripts
   - [X] Add highlights

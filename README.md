@@ -4,10 +4,9 @@
   <img src="./assets/tqfbookmark.svg" alt="qfbookmark" />
 </p>
 
-[**QFBookmark**](https://github.com/MadKuntilanak/qfbookmark) is yet another bookmarking plugin for Neovim that combines marks, buffers, quickfix lists, and notes into a single workflow.
+[**QFBookmark**](https://github.com/MadKuntilanak/qfbookmark) is yet another bookmarking plugin for Neovim that combines **marks**, **buffers**, **quickfix lists**, and **capturing notes** into a single workflow.
 
-
-## Features
+## 🌟 Features
 
 - Mark lines with modes: `MARK`, `FIX`, `DEBUG`, `NOTE` (Mark Annotation)
 - Harpoon-style popup with preview, symbol context (function/class/struct/impl), and per-entry highlights
@@ -19,11 +18,11 @@
 - Fast navigation across all popup menus with jump shortcuts, plus optional number-based selection (similar to Harpoon) when `allow_number = true`
 - Seamless item sharing across providers (**Mark**, **Quickfix**, **Buffers**, **Note**): add entries from marks, buffers, or other lists into quickfix and other supported targets directly from popup menus, with configurable custom integrations via `integrations.custom` commands
 
-## Showcase
+## 📸 Showcase
 
 ![qfbookmark](./assets/qfbookmark.png)
 
-## Requirements
+## 📦 Requirements
 
 - Neovim >= 0.12
 - [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) (optional, for symbol context)
@@ -31,7 +30,7 @@
 - [fzf-lua](https://github.com/ibhagwan/fzf-lua) (optional)
 - [grug-far](https://github.com/MagicDuck/grug-far.nvim) (optional)
 
-## Installation
+## ⚙️ Installation
 
 **lazy.nvim**
 
@@ -54,15 +53,7 @@ use {
 }
 ```
 
-## Setup
-
-```lua
-require("qfbookmark").setup {
-  -- all options shown with their defaults
-}
-```
-
-## Configuration
+## 🛠️ Configuration
 
 <details>
 <summary>Default Configuration and Highlights</summary>
@@ -382,12 +373,16 @@ error:
 
 ---
 
-## Providers
+## 🧩 Providers
 
 <details>
 <summary><strong>Mark</strong></summary>
 
 ### Mark
+
+<video controls width="800">
+  <source src="./assets/mark-demos.mp4" type="video/mp4">
+</video>
 
 - Persistent bookmarks anywhere in your codebase, organized by type.
 - Fast navigation through a Harpoon-style popup.
@@ -626,9 +621,49 @@ note = {
 
 </details>
 
+## 🎨 Support statusline
+
+Example using [heirline](https://github.com/rebelot/heirline.nvim)
+
+![statusline](./assets/qfbookmark-statusline.png) 
+
+<details>
+<summary>Click to expand</summary>
+
+```lua
+
+local get_qfbookmark = function()
+  if not qfbookmark then
+    local ok, qfbook = pcall(require, "qfbookmark.qf")
+    if ok then
+      qfbookmark = qfbook
+    end
+  end
+  return qfbookmark
+end
+
+...
+
+M.QFbookmark = {
+  condition = function()
+    local qfbook = get_qfbookmark()
+    if qfbook and qfbook.status_mark() then
+      return true
+    end
+    return false
+  end,
+  {
+    provider = function()
+      return Cfg.icons.misc.flags .. " "
+    end,
+    hl = { fg = colors.diagnostic_err },
+  },
+}
+```
+</details>
 
 
-## FAQ
+## ❓ FAQ
 
 <details>
 <summary>Why another bookmark plugin?</summary>
@@ -655,7 +690,7 @@ Yes. All four types behave identically under the hood. You can map only `MARK` a
 Mark Note Annotation is the only type that supports inline annotations. You can attach text to it, which is also exposed in the mark popup and can be leveraged by external AI plugins or custom integrations for additional context.
 </details>
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
 - [Fzf-lua](https://github.com/ibhagwan/fzf-lua)  
   The picker that inspired me a lot. I borrowed a few ideas along the way and occasionally peeked at the code. 👀
@@ -667,6 +702,6 @@ Mark Note Annotation is the only type that supports inline annotations. You can 
   Creator of many incredible Neovim plugins. Basically one of the reasons my Neovim config keeps growing instead of getting smaller. 😅
 
 
-## License
+## 📄 License
 
 MIT
