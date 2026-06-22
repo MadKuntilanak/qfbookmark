@@ -1,5 +1,7 @@
 local QfbookmarkUtils = require "qfbookmark.utils"
 
+local QfbookmarkSelectedList = require "qfbookmark.selected_list"
+
 local M = {}
 
 ---@param entry table
@@ -106,20 +108,39 @@ local select_providers = {
     selected = qf.get_qf_selected()
 
     local results = {
-      selected = selected or {},
-      data = qf_result or {},
+      selected = QfbookmarkSelectedList.wrap(selected or {}),
+      data = QfbookmarkSelectedList.wrap(qf_result or {}),
+      type = "quickfix",
     }
 
     val.cmd(results)
   end,
   ["mark"] = function(val)
     local marks_selected = require "qfbookmark.ui.keymaps"
-    local results = marks_selected.get_selected_marks()
+    local opts = marks_selected.get_selected_marks()
+    if not opts then
+      return
+    end
+
+    local results = {
+      selected = QfbookmarkSelectedList.wrap(opts.selected or {}),
+      data = QfbookmarkSelectedList.wrap(opts.data or {}),
+      type = "mark",
+    }
     val.cmd(results)
   end,
   ["buffers"] = function(val)
     local buffer_selected = require "qfbookmark.ui.keymaps"
-    local results = buffer_selected.get_selected_buffers()
+    local opts = buffer_selected.get_selected_buffers()
+    if not opts then
+      return
+    end
+
+    local results = {
+      selected = QfbookmarkSelectedList.wrap(opts.selected or {}),
+      data = QfbookmarkSelectedList.wrap(opts.data or {}),
+      type = "buffers",
+    }
     val.cmd(results)
   end,
 }

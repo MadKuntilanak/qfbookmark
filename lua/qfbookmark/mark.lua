@@ -57,6 +57,7 @@ local function insert_sign_and_extmark(mark_lists, id, mark_mode, bufnr, lnum, e
         QfbookmarkMarkVisual.insert_extmark(id, mark_mode, bufnr, lnum, note_annotation)
       end
     else
+      -- insert sign like mark, debug, etc
       QfbookmarkMarkVisual.insert_sign(id, mark_mode, bufnr, lnum, extmarkspec)
     end
   end
@@ -537,6 +538,57 @@ function M.add_mark(mark_lists, mark_mode, extmarkspec, is_open_window)
     line_opts.text,
     is_open_window
   )
+end
+
+---@param bufnr integer
+---@param line integer
+---@param col integer
+---@param text string
+---@param mark_mode QFBookMarkMode
+function M.add_mark_at(bufnr, line, col, text, mark_mode)
+  local allow_mark_mode = { "MARK", "DEBUG", "FIX", "NOTE" }
+  assert(
+    vim.tbl_contains(allow_mark_mode, mark_mode),
+    string.format("invalid mark_mode '%s', expected one of: %s", mark_mode, table.concat(allow_mark_mode, ", "))
+  )
+
+  M.mark_dirty()
+
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+
+  local id = tonumber(line .. bufnr)
+
+  if not id then
+    QfbookmarkUtils.warn "Unexpected error while getting line number"
+    return
+  end
+
+  local extmarkspec = Config.extmarks.keywords[mark_mode]
+
+  local qf = require "qfbookmark.qf"
+  local mark_lists = qf.get_buffers()
+
+  -- Check whether any marks exist before registering a new one.
+  -- If this is the first mark, refresh the mark list so the new
+  -- entry is displayed immediately.
+  local had_marks = false
+
+  if mark_lists then
+    for _, marks in pairs(mark_lists) do
+      if next(marks) ~= nil then
+        had_marks = true
+        break
+      end
+    end
+  end
+
+  register_mark(mark_lists, mark_mode, extmarkspec, id, bufnr, line, col, text)
+
+  if not had_marks then
+    for _, mark in pairs(mark_lists[mark_mode]) do
+      qf.load_mark_lists({ mark }, true)
+    end
+  end
 end
 
 return M

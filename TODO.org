@@ -27,7 +27,16 @@
   - [X] bug: signs are not cleared when reloading an empty mark list
 - [X] buffer: invalid buffers cannot be deleted
 - [X] mark: update load mark master
-- [ ] update README
+- [X] add a wrapper function for providers
+- [X] note: add custom command [3/3]
+  - [X] fix padding float note window
+  - [X] support insert text
+  - [X] support custom templates
+- [ ] fix extermark priority at mark menu
+- [ ] Update README [0/3]
+  - [ ] Explain provider features
+  - [ ] Add demos for each feature
+  - [ ] Add example integration scripts
 - [ ] mark: more test for node treesitter [0/3]
   - [ ] for Go
   - [ ] for Rust

@@ -64,14 +64,16 @@ function M.get_position(anchor, width, height)
   local lines = vim.o.lines
   local cols = vim.o.columns
 
+  local padding = 4
+
   if anchor == "NW" then
-    return 0, 0
+    return 0 + (padding - 3), 0 + (padding - 2)
   elseif anchor == "NE" then
-    return 0, cols - width
+    return 0 + (padding - 3), cols - width - padding
   elseif anchor == "SW" then
-    return lines - height - 2, 0
+    return lines - height - padding, 0 + (padding - 2)
   elseif anchor == "SE" then
-    return lines - height - 2, cols - width
+    return lines - height - padding, cols - width - padding
   end
 end
 
@@ -357,11 +359,12 @@ function M.build_entry_lines(idx, mark, path_width, symbol)
   return line1, line2, line3, mark.harpoon
 end
 
+---@param idx integer
 ---@param buf QFBookBufferItem
 ---@param path_width integer
 ---@return string line
 ---@return QFBookBufferItem buffer_opts
-function M.build_entry_line_buffers(buf, path_width)
+function M.build_entry_line_buffers(idx, buf, path_width)
   local flag = buf.flag or ""
   local changed = buf.info.changed == 1
   local hidden = buf.info.hidden == 1
@@ -389,7 +392,10 @@ function M.build_entry_line_buffers(buf, path_width)
   local path = M.shorten_path(buf.info.name, path_width)
   local lnum = string.format(":%d", buf.info.lnum)
 
-  local line = "   " .. badge .. "  " .. path .. " " .. lnum
+  local pad_idx = #tostring(idx)
+  local pad_space = (" "):rep(4 - pad_idx)
+
+  local line = pad_space .. idx .. "   " .. badge .. "  " .. path .. " " .. lnum
   return line, buf
 end
 
@@ -417,11 +423,17 @@ end
 ---@param lnum integer
 function M.get_entry_at_line(entries, lnum)
   for _, entry in ipairs(entries) do
+    if not entry.start_line or not entry.line_count then
+      goto continue
+    end
+
     local last = entry.start_line + entry.line_count - 1
 
     if lnum >= entry.start_line and lnum <= last then
       return entry
     end
+
+    ::continue::
   end
 end
 

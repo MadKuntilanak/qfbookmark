@@ -168,7 +168,7 @@ local __popup_opts_for = {
         end_row = finish,
         hl_group = "QFBookmarkFloatCursorLine",
         hl_eol = true,
-        priority = 50,
+        priority = 10,
       })
 
       -- Rebuild all checkboxes with the correct cursor_hval
@@ -312,13 +312,23 @@ local __popup_opts_for = {
       opts_popup.popup.win = M.window.note.win
     end
 
-    local Config = require("qfbookmark.config").defaults
-    local filetype = Config.window.note and Config.window.note.filetype or ""
-    if #filetype > 0 then
-      vim.api.nvim_set_option_value("filetype", filetype, { buf = main_buf })
-    end
+    -- This line is works, but sometimes syntax highlighting is not applied yet
+    -- atm, commented:
+    -- local Config = require("qfbookmark.config").defaults
+    -- local filetype = Config.window.note and Config.window.note.filetype or ""
+    -- if #filetype > 0 then
+    --   vim.api.nvim_set_option_value("filetype", filetype, { buf = main_buf })
+    -- end
 
     QfbookmarkUIKeymaps.setup_keymap_note(opts_popup, main_buf)
+
+    vim.schedule(function()
+      if vim.api.nvim_win_is_valid(main_win) then
+        vim.api.nvim_win_call(main_win, function()
+          vim.cmd("edit " .. vim.fn.fnameescape(opts_popup.note_path))
+        end)
+      end
+    end)
   end,
   ---@param opts_popup QFBookmarkUiPopupCfg
   ---@param cb function

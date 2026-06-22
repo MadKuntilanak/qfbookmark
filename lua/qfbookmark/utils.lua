@@ -436,6 +436,23 @@ function M.windows_is_opened_by_name(filename, exclude_filetypes)
 end
 
 ---@param filename string
+---@return integer|nil
+function M.find_window_by_filename(filename)
+  local filename_normalized = vim.fs.normalize(filename)
+
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    local bufname = vim.api.nvim_buf_get_name(buf)
+
+    if vim.fs.normalize(bufname) == filename_normalized then
+      return win
+    end
+  end
+
+  return nil
+end
+
+---@param filename string
 ---@return integer | nil
 local function is_file_in_buffers(filename)
   return M.windows_is_opened_by_name(filename)
@@ -621,7 +638,7 @@ end
 ---@param name string
 ---@param opts? {sign_group: string}
 function M.create_augroup_name(name, opts)
-  opts = opts or { sign_group = "QFBookmark" }
+  opts = opts or { sign_group = "QFBook" }
   return vim.api.nvim_create_augroup(opts.sign_group .. name, { clear = true })
 end
 
@@ -629,6 +646,27 @@ end
 function M.clear_autocmd_group(augroup_name)
   pcall(vim.api.nvim_clear_autocmds, { group = augroup_name })
   pcall(vim.api.nvim_del_augroup_by_name, augroup_name)
+end
+
+--- | ---- | ------------------------------- |
+--- | `m`  | Remap keys (ikuti mapping)      |
+--- | `n`  | No remap                        |
+--- | `t`  | Handle sebagai typed input      |
+--- | `i`  | Insert di depan typeahead       |
+--- | `x`  | Execute sampai typeahead kosong |
+
+---@alias ModeFeedKey "m" | "n" | "t" | "x" | "mt"
+
+---@param key string
+---@param mode? ModeFeedKey
+local function feedkey(key, mode)
+  mode = mode or "n"
+  if mode == "" then
+    mode = "n"
+  end
+
+  local tc = vim.api.nvim_replace_termcodes(key, true, false, true)
+  vim.api.nvim_feedkeys(tc, mode, false)
 end
 
 ---@param contents QFBookmarkBufferMark
@@ -644,9 +682,115 @@ function M.save_table_to_file(contents, filename)
   end
 end
 
--- ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
--- ┃                      BUFFER UTILS                       ┃
--- ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+-- ╓─────────────────────────────────────────────────────────────────────────────╖
+-- ║                                 NOTES UTILS                                 ║
+-- ╙─────────────────────────────────────────────────────────────────────────────╜
+
+-- Adapted from fzf-lua: https://github.com/ibhagwan/fzf-lua/blob/6ee73fdf2a79bbd74ec56d980262e29993b46f2b/lua/fzf-lua/utils.lua#L434-L466
+-- this will exit visual mode
+-- use 'gv' to reselect the text
+---@param opts? { strict: boolean, exit_from_visual: boolean }
+---@return QFBookmarkLines | nil
+function M.get_visual_selection(opts)
+  opts = opts or {}
+
+  local _, csrow, cscol, cerow, cecol
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local filename = vim.api.nvim_buf_get_name(bufnr)
+
+  local mode = vim.fn.mode()
+
+  if opts.strict and not vim.endswith(string.lower(mode), "v") then
+    return
+  end
+
+  if mode == "v" or mode == "V" or mode == "" then
+    -- if we are in visual mode use the live position
+    _, csrow, cscol, _ = unpack(vim.fn.getpos ".")
+    _, cerow, cecol, _ = unpack(vim.fn.getpos "v")
+    if mode == "V" then
+      -- visual line doesn't provide columns
+      cscol, cecol = 0, 999
+    end
+    if not opts.exit_from_visual then
+      -- exit visual mode
+      feedkey "<Esc>"
+    end
+  else
+    -- otherwise, use the last known visual position
+    _, csrow, cscol, _ = unpack(vim.fn.getpos "'<")
+    _, cerow, cecol, _ = unpack(vim.fn.getpos "'>")
+  end
+
+  -- Swap vars if needed
+  if cerow < csrow then
+    csrow, cerow = cerow, csrow
+    cscol, cecol = cecol, cscol
+  elseif cerow == csrow and cecol < cscol then
+    cscol, cecol = cecol, cscol
+  end
+
+  local lines = vim.fn.getline(csrow, cerow)
+  assert(type(lines) == "table")
+  if vim.tbl_isempty(lines) then
+    return
+  end
+
+  -- When the whole line is selected via visual line mode ("V"), cscol / cecol
+  -- will be equal to "v:maxcol" for some odd reason. So change that to what
+  -- they should be here. See ':h getpos' for more info.
+  local maxcol = vim.api.nvim_get_vvar "maxcol"
+  if cscol == maxcol then
+    cscol = string.len(lines[1])
+  end
+  if cecol == maxcol then
+    cecol = string.len(lines[#lines])
+  end
+
+  ---@type string
+  local selection
+  local n = #lines
+  if n <= 0 then
+    selection = ""
+  elseif n == 1 then
+    selection = string.sub(lines[1], cscol, cecol)
+  elseif n == 2 then
+    selection = string.sub(lines[1], cscol) .. "\n" .. string.sub(lines[n], 1, cecol)
+  else
+    selection = string.sub(lines[1], cscol)
+      .. "\n"
+      .. table.concat(lines, "\n", 2, n - 1)
+      .. "\n"
+      .. string.sub(lines[n], 1, cecol)
+  end
+
+  return {
+    lines = lines,
+    selection = selection,
+    filename = filename,
+    csrow = csrow,
+    cscol = cscol,
+    cerow = cerow,
+    cecol = cecol,
+  }
+end
+
+--- Check whether the captured lines contain any non-whitespace content.
+---@param lines string[]
+---@return boolean
+function M.has_content(lines)
+  for _, line in ipairs(lines) do
+    if line:match "%S" then
+      return true
+    end
+  end
+  return false
+end
+
+-- ╓─────────────────────────────────────────────────────────────────────────────╖
+-- ║                                BUFFER UTILS                                 ║
+-- ╙─────────────────────────────────────────────────────────────────────────────╜
 
 ---@param filename string
 ---@return integer | nil

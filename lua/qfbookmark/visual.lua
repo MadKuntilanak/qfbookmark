@@ -273,9 +273,9 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
     pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, 0, {
       virt_text = { { chk_text, chk_hl } },
       virt_text_pos = "right_align",
-      hl_eol = false,
+      hl_eol = true,
       hl_mode = "replace",
-      priority = 100,
+      priority = 10,
     })
 
     if is_sel then
@@ -286,7 +286,8 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
           end_col = 0,
           hl_group = "QFBookmarkEntrySelected",
           hl_eol = true,
-          priority = 40,
+          hl_mode = "replace",
+          priority = 10,
         })
       end
       -- unplan: dont hl line path?
@@ -296,7 +297,7 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
         pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, path_s + 1, {
           end_col = #header,
           hl_group = "QFBookmarkEntrySelectedPath",
-          priority = 50,
+          priority = 10,
         })
       end
     end
@@ -394,31 +395,46 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
 
     local entry = list[lnum]
     local is_sel = entry and selected[entry.bufnr] == true
+    local row = lnum - 1
 
-    -- ── checkbox
-    local chk_text = is_sel and "✓" or "○"
-    local chk_hl = is_sel and "QFBookmarkEntrySelectedCheck" or "QFBookmarkEntryUnselectedCheck"
-
-    pcall(vim.api.nvim_buf_set_extmark, bufnr, ns_chk, lnum - 1, 0, {
-      virt_text = { { chk_text, chk_hl } },
-      virt_text_pos = "right_align",
-      priority = 200,
-    })
-
-    -- ── bg highlight
-    if is_sel then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 0, {
-        end_row = lnum,
-        end_col = 0,
-        hl_group = "QFBookmarkEntrySelected",
-        hl_eol = true,
-        priority = 40,
+    -- ── index: col 0-3 (4 char, right-aligned digit) ───────────────────
+    local idx_s, idx_e = line:find "%d+"
+    if idx_s and idx_e and idx_s <= 4 then
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, idx_s - 1, {
+        end_col = idx_e,
+        hl_group = "QFBookmarkEntryIdx",
+        priority = 10,
       })
     end
 
-    -- ── existing flag/path/lnum highlights
-    local col0 = line:sub(4, 4)
-    local col1 = line:sub(5, 5)
+    -- ── checkbox ─────────────────────────────────────────────────────
+    local chk_text = is_sel and "✓" or "○"
+    local chk_hl = is_sel and "QFBookmarkEntrySelectedCheck" or "QFBookmarkEntryUnselectedCheck"
+
+    pcall(vim.api.nvim_buf_set_extmark, bufnr, ns_chk, row, 0, {
+      virt_text = { { chk_text, chk_hl } },
+      virt_text_pos = "right_align",
+      priority = 20,
+    })
+
+    -- ── selected background ──────────────────────────────────────────
+    if is_sel then
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, 0, {
+        end_row = row + 1,
+        end_col = 0,
+        hl_group = "QFBookmarkEntrySelected",
+        hl_eol = true,
+        priority = 20,
+      })
+    end
+
+    -- ── flag/badge: col 7-8 (after "{idx:4}   ") ────────────────────────
+    -- format: "{idx pad to 4}   {col0}{col1}  {path} {lnum}"
+    local BADGE_COL0 = 7 -- 0-based
+    local BADGE_COL1 = 8
+
+    local col0 = line:sub(BADGE_COL0 + 1, BADGE_COL0 + 1)
+    local col1 = line:sub(BADGE_COL1 + 1, BADGE_COL1 + 1)
 
     local is_flag = col0 == "%" or col0 == "#"
     local is_hidden = col0 == "h"
@@ -426,40 +442,41 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
     local is_modified_col1 = col1 == "+"
 
     if is_flag then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 3, {
-        end_col = 4,
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, BADGE_COL0, {
+        end_col = BADGE_COL0 + 1,
         hl_group = "QFBookmarkEntryFlag",
-        priority = 60,
+        priority = 10,
       })
     elseif is_hidden then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 3, {
-        end_col = 4,
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, BADGE_COL0, {
+        end_col = BADGE_COL0 + 1,
         hl_group = "QFBookmarkEntryHiddenFlag",
-        priority = 60,
+        priority = 10,
       })
     elseif is_modified_col0 then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 3, {
-        end_col = 4,
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, BADGE_COL0, {
+        end_col = BADGE_COL0 + 1,
         hl_group = "QFBookmarkEntryModifiedFlag",
-        priority = 60,
+        priority = 10,
       })
     end
 
     if is_modified_col1 then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 4, {
-        end_col = 5,
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, BADGE_COL1, {
+        end_col = BADGE_COL1 + 1,
         hl_group = "QFBookmarkEntryModifiedFlag",
-        priority = 60,
+        priority = 10,
       })
     end
 
+    -- ── path + line number: path starts at col 11 ──────────────────────
     local lnum_s = line:find ":%d+$"
     if lnum_s then
-      local path_start = 7
+      local path_start = 11 -- 0-based: after "{idx:4}   {badge:2}  "
       local path_end = lnum_s - 2
       local path_text = line:sub(path_start + 1, path_end)
 
-      local last_slash = nil
+      local last_slash
       for i = #path_text, 1, -1 do
         if path_text:sub(i, i) == "/" then
           last_slash = i
@@ -468,28 +485,28 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
       end
 
       if last_slash then
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, path_start, {
+        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, path_start, {
           end_col = path_start + last_slash,
           hl_group = "QFBookmarkEntryPath",
-          priority = 60,
+          priority = 10,
         })
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, path_start + last_slash, {
+        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, path_start + last_slash, {
           end_col = path_end,
           hl_group = "QFBookmarkEntryBasename",
-          priority = 60,
+          priority = 10,
         })
       else
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, path_start, {
+        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, path_start, {
           end_col = path_end,
           hl_group = "QFBookmarkEntryBasename",
-          priority = 60,
+          priority = 10,
         })
       end
 
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, lnum_s - 1, {
+      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, lnum_s - 1, {
         end_col = #line,
         hl_group = "QFBookmarkEntryLnum",
-        priority = 60,
+        priority = 10,
       })
     end
 
@@ -561,7 +578,7 @@ function M.apply_qf_selection_highlights(qf_selected, is_loc)
         end_col = 0,
         hl_group = "QFBookmarkEntrySelected",
         hl_eol = true,
-        priority = 40,
+        priority = 10,
       })
     end
   end

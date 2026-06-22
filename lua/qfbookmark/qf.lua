@@ -100,20 +100,12 @@ local function exclude_buf(bufnr)
   return true
 end
 
-local call_once = false
-
 local function recall_augroup()
   QfbookmarkBookmark.setup_mark_autocmds(M.buffers, true)
 
   if not status_autocmd_enabled then
     return
   end
-
-  if call_once then
-    return
-  end
-
-  call_once = true
 
   QfbookmarkUtils.clear_autocmd_group(Config.sign_group .. "SaveMark")
   local save_group = QfbookmarkUtils.create_augroup_name "SaveMark"
@@ -169,14 +161,13 @@ local function recall_augroup()
 end
 
 local function remove_augroup()
-  if status_autocmd_enabled then
+  if not status_autocmd_enabled then
     if M.buffers and #M.buffers == 0 then
       local list_augroups = { "RefreshMark", "SaveMark", "BranchWatch" }
       for _, au_group in pairs(list_augroups) do
         QfbookmarkUtils.clear_autocmd_group(Config.sign_group .. au_group)
       end
     end
-    status_autocmd_enabled = false
   end
 end
 
@@ -247,6 +238,7 @@ local function sync_marks_harpoon()
     status_autocmd_enabled = true
     recall_augroup()
   else
+    status_autocmd_enabled = false
     remove_augroup()
   end
 end
@@ -810,6 +802,12 @@ function M.get_qf_selected()
       result[#result + 1] = item
     end
   end
+
+  if #result == 0 then
+    local cur_line_nr = vim.api.nvim_win_get_cursor(0)[1]
+    result = { qf_result.items[cur_line_nr] }
+  end
+
   return result
 end
 
@@ -1210,27 +1208,49 @@ end
 -- ╏                                    NOTE                                     ╏
 -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
-local is_open_global_note
 local window_command
 
-local function __note()
+local function __note(is_global, is_add_to)
+  is_global = is_global or false
+  is_add_to = is_add_to or false
+
   local note = require "qfbookmark.note"
   local cfg_note = Config.window.note
-  note.handle_open(is_open_global_note, window_command, cfg_note)
-end
-function M.toggle_open_note_global()
-  if not window_command and type(Config.window.note.open_cmd) ~= "table" then
+
+  if not window_command and cfg_note.mode ~= "float" then
     window_command = QfbookmarkWindow.get_size_note_window(Config.window.note)
   end
 
-  is_open_global_note = true
-  __note()
+  local is_insert_to = false
+  if is_add_to then
+    is_insert_to = true
+    note.add_to_note "todo"
+  end
+
+  note.handle_open(is_global, cfg_note, is_insert_to, window_command)
+end
+function M.add_note_to_global()
+  if not Config.window.note.enabled then
+    return
+  end
+  __note(true, true)
+end
+function M.add_note_to_local()
+  if not Config.window.note.enabled then
+    return
+  end
+  __note(false, true)
+end
+function M.toggle_open_note_global()
+  if not Config.window.note.enabled then
+    return
+  end
+  __note(true)
 end
 function M.toggle_open_note_local()
-  if not window_command and type(Config.window.note.open_cmd) ~= "table" then
-    window_command = QfbookmarkWindow.get_size_note_window(Config.window.note)
+  if not Config.window.note.enabled then
+    return
   end
-  is_open_global_note = false
   __note()
 end
 
@@ -1256,7 +1276,11 @@ function M.move_layout_qf_down()
 end
 
 function M.toggle_rotate_note_window()
-  if type(Config.window.note.open_cmd) == "table" and Config.window.note.open_cmd.mode == "float" then
+  if not Config.window.note.enabled then
+    return
+  end
+
+  if Config.window.note.mode == "float" then
     QfbookmarkUtils.warn "This action is cancelled because a floating note window is in use"
     return
   end
@@ -1264,6 +1288,7 @@ function M.toggle_rotate_note_window()
   local next_win_layout = QfbookmarkWindow.get_next_rotate_note_window()
 
   window_command = next_win_layout
+
   __note()
 end
 

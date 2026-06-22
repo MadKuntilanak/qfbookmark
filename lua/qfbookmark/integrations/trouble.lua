@@ -1,5 +1,4 @@
 local Config = require("qfbookmark.config").defaults
-
 if not Config.keymaps.quickfix.integrations.trouble.enabled then
   return
 end
@@ -86,10 +85,7 @@ local function qf_to_trouble_items(qf_entries, origin_mode)
       end
 
       if not bufnr then
-        bufnr = vim.fn.bufadd(fname)
-      end
-      if bufnr and not vim.api.nvim_buf_is_loaded(bufnr) then
-        vim.fn.bufload(bufnr)
+        bufnr = QfbookmarkUtils.resolve_bufnr(fname)
       end
 
       if is_lsp_mode then

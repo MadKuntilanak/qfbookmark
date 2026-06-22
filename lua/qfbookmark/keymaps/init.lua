@@ -57,7 +57,7 @@ local function mark_keymaps()
       {
         desc = "Qfmark: open mark window",
         func = "open_mark_harpoon_window",
-        keys = get_keymap(Config.keymaps, "mark", "open_popup"),
+        keys = get_keymap(Config.keymaps, "mark", "toggle_open"),
         mode = "n",
       },
 
@@ -284,6 +284,38 @@ local function qf_keymaps()
     },
   }, keys_ft)
 
+  -- if Config.window.quickfix.allow_number then
+  --   local QfbookmarkUtils = require "qfbookmark.utils"
+  --   local qf_result
+  --
+  --   if QfbookmarkUtils.is_loclist() then
+  --     local data = QfbookmarkUtils.get_data_qf(true)
+  --     qf_result = data.location
+  --   else
+  --     local data = QfbookmarkUtils.get_data_qf()
+  --     qf_result = data.quickfix
+  --   end
+  --
+  --   for i = 1, #qf_result do
+  --     QfbookmarkKeymapUtils.append_active_keymaps({
+  --       is_set = Config.window.quickfix.allow_number,
+  --       keymaps = {
+  --         {
+  --           desc = "Qfmark: jump to {" .. i .. "}",
+  --           func = function()
+  --             local curline = qf_result[i]
+  --             RUtils.info(curline)
+  --             -- Mapping.setup_open_key("default", curline.start_line)
+  --           end,
+  --           keys = tostring(i),
+  --           mode = "n",
+  --           from_user = true,
+  --         },
+  --       },
+  --     }, keys_ft)
+  --   end
+  -- end
+
   QfbookmarkKeymapUtils.append_active_keymaps({
     is_set = Config.keymaps.quickfix.integrations.trouble.enabled,
     keymaps = {
@@ -331,20 +363,33 @@ local function note_keymaps()
   end
 
   QfbookmarkKeymapUtils.append_active_keymaps({
-    is_set = true,
+    is_set = Config.window.note.enabled,
     keymaps = {
       -- NOTE LOCAL OR GLOBAL
       {
         desc = "Qfmark: toggle global note project",
         func = "toggle_open_note_global",
-        keys = get_keymap(Config.keymaps, "note", "open_toggle_global"),
+        keys = get_keymap(Config.keymaps, "note", "toggle_open_global"),
         mode = "n",
       },
       {
         desc = "Qfmark: toggle local note project",
         func = "toggle_open_note_local",
-        keys = get_keymap(Config.keymaps, "note", "open_toggle_local"),
+        keys = get_keymap(Config.keymaps, "note", "toggle_open_local"),
         mode = "n",
+      },
+
+      {
+        desc = "Qfmark: add to note global",
+        func = "add_note_to_global",
+        keys = get_keymap(Config.keymaps, "note", "toggle_open_global"),
+        mode = "v",
+      },
+      {
+        desc = "Qfmark: add to note local",
+        func = "add_note_to_local",
+        keys = get_keymap(Config.keymaps, "note", "toggle_open_local"),
+        mode = "v",
       },
 
       {

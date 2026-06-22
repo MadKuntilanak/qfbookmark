@@ -269,7 +269,7 @@ local function buffers_popup(buffer_lists)
   local path_width = calc_path_width(buffer_lists, true, 30)
 
   for idx, buffer in pairs(buffer_lists) do
-    local line, hval = QfbookmarkUIUtils.build_entry_line_buffers(buffer, path_width)
+    local line, hval = QfbookmarkUIUtils.build_entry_line_buffers(idx, buffer, path_width)
     display_lines[#display_lines + 1] = line
 
     local start_line = idx
@@ -287,7 +287,7 @@ local function buffers_popup(buffer_lists)
   local editor = QfbookmarkUIUtils.get_editor_size()
 
   local height = math.max(2, #buffer_lists) + 1
-  local width = calc_popup_width(buffer_lists) + 5
+  local width = calc_popup_width(display_lines) + 10
 
   local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
 
@@ -341,11 +341,13 @@ local function open_note_in_float(note_path, cfg_note, is_global)
 
   local editor = QfbookmarkUIUtils.get_editor_size()
 
-  local resnum = tonumber(cfg_note.size:match "%d+") or 60
-  local width = math.floor(editor.width * resnum / 100)
-  local height = editor.height
+  local cfg_width = cfg_note.width * 100
+  local cfg_height = cfg_note.height * 100
 
-  local row, col = QfbookmarkUIUtils.get_position(cfg_note.open_cmd.anchor, width, height)
+  local width = math.floor(editor.width * cfg_width / 100)
+  local height = math.floor(editor.height * cfg_height / 100)
+
+  local row, col = QfbookmarkUIUtils.get_position(cfg_note.anchor, width, height)
 
   local shorten_path = QfbookmarkUIUtils.shorten_path(note_path, 40)
   local title_str = "📝 " .. (is_global and "Global " or "") .. "Note: " .. shorten_path
@@ -374,12 +376,11 @@ local function open_note_in_float(note_path, cfg_note, is_global)
   local __opts = {
     contents = {},
     win_opts = wincfg,
+    note_path = note_path,
     is_note = true,
   }
 
   QfbookmarkUIView.build_popup("note", __opts)
-
-  vim.cmd("edit " .. vim.fn.fnameescape(note_path))
 end
 
 return {

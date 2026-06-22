@@ -16,11 +16,11 @@ function M.move_to(direction, fn)
 
   if QfbookmarkUtils.is_loclist() then
     cmd_open = direction == "above" and "aboveleft lopen" or "belowright lopen"
-    Config.window.quickfix.lopen = cmd_open
+    Config.window.quickfix.actions.lopen = cmd_open
     list_type = "loclist"
   else
     cmd_open = direction == "above" and "aboveleft copen" or "belowright copen"
-    Config.window.quickfix.copen = cmd_open
+    Config.window.quickfix.actions.copen = cmd_open
     list_type = "quickfix"
   end
 
@@ -68,8 +68,8 @@ end
 
 ---@param cfg_note QFBookWindowNotes
 function M.get_size_note_window(cfg_note)
-  if type(cfg_note.open_cmd) == "table" then
-    QfbookmarkUtils.warn "Invalid configuration: `open_cmd` should be something like 'botright vsplit'"
+  if cfg_note.mode == "float" then
+    QfbookmarkUtils.warn "Invalid configuration: `mode` should be something like 'botright vsplit'"
     return
   end
 
@@ -82,8 +82,10 @@ function M.get_size_note_window(cfg_note)
 
   local win_split_wsize, win_vsplit_wsize
 
-  local open_cmd = tostring(cfg_note.open_cmd)
-  local str_win_cmd = vim.split(open_cmd, " ")
+  local cmd = tostring(cfg_note.mode)
+
+  -- Extract string cmd
+  local str_win_cmd = vim.split(cmd, " ")
   local str_first = str_win_cmd[1]
 
   local str_second = ""

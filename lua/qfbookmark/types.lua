@@ -1,7 +1,7 @@
 ---@alias KeyMode "n" | "x" | "i" | "t" | "o"
 ---@alias QFBookCurrentState "Local" | "Global"
 ---@alias QFBookListType "loclist" | "quickfix" | "none" | "trouble_mode" | "trouble_source"
----@alias QFBookListProviders "buffers" | "mark" | "quickfix" | "note"
+---@alias QFBookListProviders "buffers" | "mark" | "quickfix" | "loclist" | "note"
 ---@alias QFBookMarkMode "MARK" | "DEBUG" | "NOTE" | "FIX"
 ---@alias QFBookState "Save Qflist" | "Save Loclist" | "Load"
 
@@ -73,7 +73,6 @@
 ---@class QFBookSpec
 ---@field icon string
 ---@field hl_group string
----@field alt string
 
 ---@class QFBookKeywords
 ---@field MARK QFBookSpec
@@ -110,7 +109,7 @@
 ---@field move_item_down string | string[]
 ---@field load_all string | string[]
 ---@field zoom string | string[]
----@field open_popup string | string[]
+---@field toggle_open string | string[]
 ---@field del_mark string | string[]
 ---@field del_mark_buffer string | string[]
 ---@field harpoon QFBookKeymapMarkHarpoon
@@ -147,11 +146,23 @@
 ---@field tag string,
 ---@field text string,
 
+---@class QFBookmarkLines
+---@field lines string[]
+---@field selection string
+---@field csrow integer
+---@field cscol integer
+---@field cerow integer
+---@field cecol integer
+
 ---@class QFBookWindowNotes
 ---@field enabled boolean
----@field open_cmd string | { mode: string, anchor: string }
----@field size string
+---@field width integer
+---@field height integer
+---@field mode string
+---@field anchor string
 ---@field filetype string
+---@field wrap boolean
+---@field insert_to_note {enabled: boolean, line_placeholder: string, templates: table<string, QFBookNoteIntegrationsTemplates>}
 ---@field current_project { enabled: boolean, filename: string }
 
 ---@class QFBookWindowMarkAnnotationKeymaps
@@ -163,6 +174,7 @@
 ---@class QFBookWindowMark
 ---@field enabled boolean
 ---@field anchor string
+---@field allow_number boolean
 ---@field actions { win_resized: boolean }
 
 ---@class QFBookItemOpenMode
@@ -180,11 +192,13 @@
 
 ---@class QFBookWindowQuickfix
 ---@field enabled boolean
+---@field allow_number boolean
 ---@field theme { enabled: boolean, maxheight: integer, limit: integer, highlight: boolean  }
 ---@field actions  QFBookWindowQuickfixActions
 
 ---@class QFBookWindowBuffers
 ---@field enabled boolean
+---@field allow_number boolean
 ---@field actions { win_resized: boolean }
 
 ---@class QFBookmarkWindowCfg
@@ -223,8 +237,8 @@
 ---@field commands QFBookKeymapCMDPattern[]
 
 ---@class QFBookmarkNoteKeymaps
----@field open_toggle_global string | string[]
----@field open_toggle_local string | string[]
+---@field toggle_open_global string | string[]
+---@field toggle_open_local string | string[]
 ---@field layout_rotate string | string[]
 
 ---@class QFBookKeymapMarkOpenItem
@@ -235,6 +249,11 @@
 ---@field grugfar? QFBookKeymapIntegrationSpec
 ---@field copyline? QFBookKeymapIntegrationSpec
 ---@field custom? QFBookKeymapCustomIntegration
+
+---@class QFBookNoteIntegrationsTemplates
+---@field target string
+---@field description string
+---@field templates string | function
 
 ---@class QFBookKeymapCustomIntegrations
 ---@field custom? QFBookKeymapCustomIntegration

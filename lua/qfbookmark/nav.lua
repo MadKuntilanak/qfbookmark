@@ -60,14 +60,10 @@ function M.jump_to(opts)
     if not ok then
       if err and err:match "E37" then
         -- buffer modified: use nvim_win_set_buf instead to avoid E37
-        local target_buf = vim.fn.bufnr(filename)
-        if target_buf == -1 then
-          target_buf = vim.fn.bufadd(filename)
+        local target_buf = QfbookmarkUtils.resolve_bufnr(filename)
+        if target_buf then
+          vim.api.nvim_win_set_buf(0, target_buf)
         end
-        if not vim.api.nvim_buf_is_loaded(target_buf) then
-          vim.fn.bufload(target_buf)
-        end
-        vim.api.nvim_win_set_buf(0, target_buf)
       else
         ---@diagnostic disable-next-line: param-type-mismatch
         pcall(vim.cmd, "edit " .. vim.fn.fnameescape(filename))
@@ -77,14 +73,13 @@ function M.jump_to(opts)
     ---@diagnostic disable-next-line: param-type-mismatch
     local ok, err = pcall(vim.cmd, "edit " .. vim.fn.fnameescape(filename))
     if not ok and err and err:match "E37" then
-      local target_buf = vim.fn.bufnr(filename)
-      if target_buf == -1 then
-        target_buf = vim.fn.bufadd(filename)
+      local target_buf = QfbookmarkUtils.resolve_bufnr(filename)
+      if target_buf then
+        if not vim.api.nvim_buf_is_loaded(target_buf) then
+          vim.fn.bufload(target_buf)
+        end
+        vim.api.nvim_win_set_buf(0, target_buf)
       end
-      if not vim.api.nvim_buf_is_loaded(target_buf) then
-        vim.fn.bufload(target_buf)
-      end
-      vim.api.nvim_win_set_buf(0, target_buf)
     end
   end
 

@@ -5,23 +5,24 @@ M.defaults = {
   save_dir = vim.fn.stdpath "data" .. "/qfbookmark",
   picker = "default", -- fzf-lua
   extmarks = {
-    priority = 20,
+    priority = 15,
     excluded = {
       buftypes = {},
       filetypes = {},
     },
     throttle = 200,
     keywords = {
-      MARK = { icon = "📌", hl_group = "QFBookMark", alt = " -> " },
-      FIX = { icon = "🔧", hl_group = "QFBookFix", alt = " -> " },
-      DEBUG = { icon = "🚧", hl_group = "QFBookDebug", alt = " -> " },
-      NOTE = { icon = "📝", hl_group = "QFBookNote", alt = " -> " },
+      MARK = { icon = "📌", hl_group = "QFbookmarkBadgeMark" },
+      FIX = { icon = "🔧", hl_group = "QFbookmarkBadgeFix" },
+      DEBUG = { icon = "🚧", hl_group = "QFbookmarkBadgeDebug" },
+      NOTE = { icon = "📝", hl_group = "QFbookmarkBadgeNote" },
     },
   },
   window = {
     notify = { mark = true, plugin = true },
     quickfix = {
       enabled = true,
+      allow_number = true,
       theme = {
         enabled = true,
         limit = 50,
@@ -41,28 +42,79 @@ M.defaults = {
     },
     buffers = {
       enabled = true,
+      allow_number = true,
       actions = {
         win_resized = true,
-      },
-    },
-    note = {
-      enabled = true,
-      open_cmd = {
-        mode = "float",
-        anchor = "SE",
-      },
-      size = "40%",
-      filetype = "org",
-      current_project = {
-        enabled = true,
-        filename = "TODO.org",
       },
     },
     mark = {
       enabled = true,
       anchor = "SE", -- NW/SW --- SE/NE
+      allow_number = true,
       actions = {
-        win_resized = true,
+        win_resized = false,
+      },
+    },
+    note = {
+      enabled = true,
+      mode = "float",
+      wrap = true,
+      anchor = "SE",
+      width = 0.45,
+      height = 0.80,
+      filetype = "org",
+      current_project = {
+        enabled = true,
+        filename = "TODO.org",
+      },
+      insert_to_note = {
+        enabled = true,
+        line_placeholder = "<TEXT_HERE>",
+        templates = {
+          notice = {
+            target = "global", -- "global" | "local" | "target path"
+            description = "Quick notice / reminder",
+            templates = string.format(
+              [[
+date: %s
+notice:
+<TEXT_HERE>
+]],
+              os.date "%Y-%m-%d %H:%M"
+            ),
+          },
+
+          error = {
+            target = "local",
+            description = "Capture an error / bug for this project",
+            templates = string.format(
+              [[
+date: %s
+error:
+<TEXT_HERE>
+]],
+              os.date "%Y-%m-%d %H:%M"
+            ),
+          },
+
+          todo = {
+            target = "local",
+            description = "TODO item with source reference",
+            templates = function()
+              return string.format(
+                [[
+  - [ ] error ..
+
+    #+begin_src %s
+    <TEXT_HERE>
+    #+end_src
+
+      ]],
+                vim.bo.filetype
+              )
+            end,
+          },
+        },
       },
     },
   },
@@ -96,14 +148,13 @@ M.defaults = {
     },
 
     mark = {
+      -- Create marks
       add_mark = "<Leader>qq",
       add_fix = "<Leader>qf",
       add_debug = "<Leader>qd",
       add_mark_annotation = "<Leader>qn",
 
-      open_popup = "gl",
-
-      -- debug = "<Leader>q?",
+      toggle_open = "gl",
 
       save_annotation = "<C-s>",
 
@@ -120,6 +171,7 @@ M.defaults = {
 
       load_all = "<C-a>",
 
+      -- Jump directly to harpoon slot N
       harpoon = {
         mark_1 = "<a-1>",
         mark_2 = "<a-2>",
@@ -162,11 +214,14 @@ M.defaults = {
 
     buffers = {
       toggle_open = "gb",
+      integrations = {
+        custom = { enabled = false, commands = {} },
+      },
     },
 
     note = {
-      open_toggle_global = "<Leader>fn",
-      open_toggle_local = "<Leader>fN",
+      toggle_open_global = "<Leader>fn",
+      toggle_open_local = "<Leader>fN",
       layout_rotate = "<a-=>",
     },
   },
