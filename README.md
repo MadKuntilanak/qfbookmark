@@ -4,7 +4,7 @@
   <img src="./assets/tqfbookmark.svg" alt="qfbookmark" />
 </p>
 
-[**QFBookmark**](https://github.com/MadKuntilanak/qfbookmark) is a bookmarking plugin for Neovim that combines marks, buffers, quickfix lists, and notes into a single workflow.
+[**QFBookmark**](https://github.com/MadKuntilanak/qfbookmark) is a *'another'* bookmarking plugin for Neovim that combines marks, buffers, quickfix lists, and notes into a single workflow.
 
 
 ## Features
@@ -487,6 +487,18 @@ Yes. All four types behave identically under the hood. You can map only `MARK` a
 
 Mark Note Annotation is the only type that supports inline annotations. You can attach text to it, which is also exposed in the mark popup and can be leveraged by external AI plugins or custom integrations for additional context.
 </details>
+
+
+## Acknowledgements
+
+- [Fzf-lua](https://github.com/ibhagwan/fzf-lua)  
+  The picker that inspired me a lot. Many ideas and some logic patterns in QFBookmark were heavily influenced by it. Yes, I peeked at the code. 👀
+
+- [quicker.nvim](https://github.com/stevearc/quicker.nvim)  
+  Helped me make quickfix look nicer and taught me that quickfix doesn't have to look like a 1990s terminal output.
+
+- [folke](https://github.com/folke)  
+  Creator of many incredible Neovim plugins. Basically one of the reasons my Neovim config keeps growing instead of getting smaller. 😅
 
 
 ## License
