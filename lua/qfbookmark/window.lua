@@ -30,6 +30,7 @@ end
 
 local note_window_layouts
 local window_open_vim_cmds = { "botright", "aboveleft", "belowright", "topleft" }
+local window_float_anchor = { "NW", "SW", "SE", "NE" }
 
 ---@return table
 local function get_wins_note_layouts()
@@ -39,9 +40,18 @@ local function get_wins_note_layouts()
 
   local wins_layouts = {}
 
-  for _, win_cmd in pairs(window_open_vim_cmds) do
-    wins_layouts[#wins_layouts + 1] = win_cmd .. " split"
-    wins_layouts[#wins_layouts + 1] = win_cmd .. " vsplit"
+  local is_float = Config.window.note.mode == "float"
+
+  local remap_window
+  if is_float then
+    remap_window = window_float_anchor
+  else
+    remap_window = window_open_vim_cmds
+  end
+
+  for _, win_cmd in pairs(remap_window) do
+    wins_layouts[#wins_layouts + 1] = is_float and win_cmd or win_cmd .. " split"
+    wins_layouts[#wins_layouts + 1] = is_float and win_cmd or win_cmd .. " vsplit"
   end
 
   if #wins_layouts > 0 then

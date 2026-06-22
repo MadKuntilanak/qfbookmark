@@ -62,7 +62,8 @@ function SelectedList:add_to(target)
     for _, item in ipairs(self) do
       local filename = item.filename or (item.info and item.info.name)
       local bufnr = item.bufnr or (item.filename and QfbookmarkUtils.resolve_bufnr(item.filename))
-      if not bufnr then
+      if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+        QfbookmarkUtils.warn "Invalid bufnr. skipped"
         goto continue
       end
 
@@ -107,7 +108,7 @@ function SelectedList:add_to(target)
     for _, item in ipairs(self) do
       local filename = item.filename or (item.info and item.info.name)
       local bufnr = item.bufnr or (item.filename and QfbookmarkUtils.resolve_bufnr(item.filename))
-      if not bufnr then
+      if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
         goto continue
       end
 

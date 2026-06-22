@@ -143,13 +143,14 @@ local function toggle_note(note_path, cfg_note, is_global, is_insert_to, window_
           local editor = QfbookmarkUiUtils.get_editor_size()
 
           local cfg_width = cfg_note.width * 100
-          local cfg_height = cfg_note.height * 100
-
           local width = math.floor(editor.width * cfg_width / 100)
-          local height = math.floor(editor.height * cfg_height / 100)
-
           vim.api.nvim_win_set_width(win, width)
-          vim.api.nvim_win_set_height(win, height)
+
+          if vim.tbl_contains({ "topleft split", "belowright split", "aboveleft split" }, window_command) then
+            local cfg_height = cfg_note.height * 100
+            local height = math.floor(editor.height * cfg_height / 100)
+            vim.api.nvim_win_set_height(win, height)
+          end
 
           vim.api.nvim_set_option_value("winfixheight", true, { scope = "local", win = win })
         end)

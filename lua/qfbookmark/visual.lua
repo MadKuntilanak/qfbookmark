@@ -60,7 +60,9 @@ end
 ---@param bufnr? number
 function M.delete_sign(id, bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  vim.fn.sign_unplace(Config.sign_group, { buffer = bufnr, id = id })
+  if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+    vim.fn.sign_unplace(Config.sign_group, { buffer = bufnr, id = id })
+  end
 end
 
 ---@param id number

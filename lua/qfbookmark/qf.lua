@@ -1270,16 +1270,15 @@ function M.toggle_rotate_note_window()
     return
   end
 
-  if Config.window.note.mode == "float" then
-    QfbookmarkUtils.warn "This action is cancelled because a floating note window is in use"
-    return
-  end
+  __note()
 
   local next_win_layout = QfbookmarkWindow.get_next_rotate_note_window()
 
-  window_command = next_win_layout
-
-  __note()
+  if Config.window.note.mode == "float" then
+    Config.window.note.anchor = next_win_layout
+  else
+    window_command = next_win_layout
+  end
 end
 
 return M
