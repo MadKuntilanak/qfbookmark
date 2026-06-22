@@ -380,10 +380,6 @@ error:
 
 ### Mark
 
-<video controls width="800">
-  <source src="./assets/mark-demos.mp4" type="video/mp4">
-</video>
-
 - Persistent bookmarks anywhere in your codebase, organized by type.
 - Fast navigation through a Harpoon-style popup.
 - Marks are automatically saved per Git branch or tag.
@@ -391,7 +387,8 @@ error:
 - Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
 - Clear selections with `keymaps.actions.diselect_all`.
 - In the popup menu, jump directly to entries by number when `allow_number = true`.
-- Zoom the preview window when you need more space.
+- Toggle zoom the preview window when you need more space.
+- Show current buffer mark indicators with a green bullet `●` (`QFBookmarkEntryCurrentFile` highlight).
 
 > ⚠️
 > Inside the mark popup, the delete keymaps live under `keymaps.actions.del_item`

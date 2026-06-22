@@ -971,8 +971,6 @@ local function open_item_qf(open_mode)
   if mode == "v" or mode == "V" then
     QfbookmarkNav.handle_open(open_mode, is_center, is_ispanded)
   elseif #selected_qf > 0 and open_mode ~= "default" then
-    QfbookmarkUtils.warn(vim.inspect(selected_qf))
-
     for _, hval in pairs(selected_qf) do
       vim.cmd [[wincmd p]]
       QfbookmarkNav.jump_to {
@@ -1035,16 +1033,18 @@ function M.prev_hist_qf()
 end
 
 local function clear_all_items_qflist()
+  M.diselect_all()
+
   QfbookmarkUtils.info "✅ The item list has been cleared"
   vim.fn.setqflist {}
   vim.cmd.cclose()
-  M.diselect_all()
 end
 local function clear_all_items_loclist()
+  M.diselect_all()
+
   QfbookmarkUtils.info "✅ The item list has been cleared"
   vim.fn.setloclist(0, {}, "r")
   vim.cmd.lclose()
-  M.diselect_all()
 end
 
 function M.delete_all_items()

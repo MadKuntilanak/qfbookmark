@@ -33,9 +33,10 @@
   - [X] support insert text
   - [X] support custom templates
 - [ ] fix extermark priority at mark menu
-- [-] Update README [2/4]
+- [-] Update README [3/5]
   - [X] Explain provider features
   - [ ] Add demos for each feature
+  - [X] Add statusline helper
   - [ ] Add example integration scripts
   - [X] Add highlights
 - [ ] mark: more test for node treesitter [0/3]
