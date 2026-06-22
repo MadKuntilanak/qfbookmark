@@ -99,7 +99,6 @@ require("qfbookmark").setup {
     notify = { mark = true, plugin = true },
     quickfix = {
       enabled = true,
-      allow_number = true,
       theme = {
         enabled = true,
         limit = 50,
@@ -477,6 +476,21 @@ error:
 
 ### Quickfix
 
+- Quickfix and LocList integration with custom formatter.
+- Navigate quickfix history with `next_hist` and `prev_hist`.
+- Add the current line under cursor to quickfix  `add_item_to_qf` or loclist `add_item_to_loc`.
+- Uses a default theme, which can be disabled via `window.quickfix.theme.enabled = false`.
+- Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
+- Clear selections with `keymaps.actions.diselect_all`.
+- Save and load quickfix/loclist lists when needed `save_or_load`.
+- Rename quickfix/loclist titles with `rename_title`.
+- Move quickfix window layout using `layout_up` and `layout_down`.
+- Delete items using `keymaps.actions.del_item` and `keymaps.actions.del_item_all`.
+- Optional integrations support for `trouble.nvim`, `grug-far.nvim`, and custom commands.
+- Disable unused integrations through the `integrations` config.
+
+> If you don't need this feature, you can disable it via `window.quickfix.enabled = false`.
+
 
 #### Default Keymaps
 
@@ -520,6 +534,17 @@ error:
 <summary><strong>Buffers</strong></summary>
 
 ### Buffers
+
+- Buffer management with a simple popup interface.
+- Quickly browse and switch between open buffers.
+- Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
+- Clear selections with `keymaps.actions.diselect_all`.
+- Optional custom integrations through the `integrations` config.
+- In the popup menu, jump directly to entries by number when `allow_number = true`.
+- Support custom basic commands for buffer actions (vsplit, split, open in tab)
+
+> If you don't need this feature, you can disable it via `window.buffers.enabled = false`.
+
 
 #### Default Keymaps
 

@@ -22,7 +22,6 @@ M.defaults = {
     notify = { mark = true, plugin = true },
     quickfix = {
       enabled = true,
-      allow_number = true,
       theme = {
         enabled = true,
         limit = 50,

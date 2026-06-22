@@ -192,7 +192,6 @@
 
 ---@class QFBookWindowQuickfix
 ---@field enabled boolean
----@field allow_number boolean
 ---@field theme { enabled: boolean, maxheight: integer, limit: integer, highlight: boolean  }
 ---@field actions  QFBookWindowQuickfixActions
 
