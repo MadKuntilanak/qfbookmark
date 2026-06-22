@@ -9,9 +9,9 @@ Table of Contents                               *qfbookmark-table-of-contents*
   - Showcase                           |qfbookmark-qfbookmark-(wip-)-showcase|
   - Requirements                   |qfbookmark-qfbookmark-(wip-)-requirements|
   - Installation                   |qfbookmark-qfbookmark-(wip-)-installation|
-  - Setup                                 |qfbookmark-qfbookmark-(wip-)-setup|
   - Configuration                 |qfbookmark-qfbookmark-(wip-)-configuration|
   - Providers                         |qfbookmark-qfbookmark-(wip-)-providers|
+  - Support statusline       |qfbookmark-qfbookmark-(wip-)-support-statusline|
   - FAQ                                     |qfbookmark-qfbookmark-(wip-)-faq|
   - Acknowledgements           |qfbookmark-qfbookmark-(wip-)-acknowledgements|
   - License                             |qfbookmark-qfbookmark-(wip-)-license|
@@ -21,8 +21,8 @@ Table of Contents                               *qfbookmark-table-of-contents*
 1. QFbookmark (WIP )                            *qfbookmark-qfbookmark-(wip-)*
 
 **QFBookmark** <https://github.com/MadKuntilanak/qfbookmark> is yet another
-bookmarking plugin for Neovim that combines marks, buffers, quickfix lists, and
-notes into a single workflow.
+bookmarking plugin for Neovim that combines **marks**, **buffers**, **quickfix
+lists**, and **capturing notes** into a single workflow.
 
 
 FEATURES                               *qfbookmark-qfbookmark-(wip-)-features*
@@ -74,15 +74,6 @@ INSTALLATION                       *qfbookmark-qfbookmark-(wip-)-installation*
 <
 
 
-SETUP                                     *qfbookmark-qfbookmark-(wip-)-setup*
-
->lua
-    require("qfbookmark").setup {
-      -- all options shown with their defaults
-    }
-<
-
-
 CONFIGURATION                     *qfbookmark-qfbookmark-(wip-)-configuration*
 
 Default Configuration and Highlights ~
@@ -120,7 +111,6 @@ DEFAULT CONFIGS ~
         notify = { mark = true, plugin = true },
         quickfix = {
           enabled = true,
-          allow_number = true,
           theme = {
             enabled = true,
             limit = 50,
@@ -323,7 +313,7 @@ DEFAULT CONFIGS ~
           integrations = {
             trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
             grugfar = { enabled = true, toggle = "<Localleader>gg" },
-            copyline = { enabled = true, toggle = "<Leader>qc" },
+            copyline = { enabled = true, toggle = "<Leader>cc" },
             custom = { enabled = false, commands = {} },
           },
         },
@@ -500,7 +490,8 @@ MARK ~
 - Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
 - Clear selections with `keymaps.actions.diselect_all`.
 - In the popup menu, jump directly to entries by number when `allow_number = true`.
-- Zoom the preview window when you need more space.
+- Toggle zoom the preview window when you need more space.
+- Show current buffer mark indicators with a green bullet `●` (`QFBookmarkEntryCurrentFile` highlight).
 
 
   Insidethe mark popup, the delete keymaps live under `keymaps.actions.del_item`
@@ -576,6 +567,22 @@ Quickfix ~
 
 QUICKFIX ~
 
+- Quickfix and LocList integration with custom formatter.
+- Navigate quickfix history with `next_hist` and `prev_hist`.
+- Add the current line under cursor to quickfix `add_item_to_qf` or loclist `add_item_to_loc`.
+- Uses a default theme, which can be disabled via `window.quickfix.theme.enabled = false`.
+- Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
+- Clear selections with `keymaps.actions.diselect_all`.
+- Save and load quickfix/loclist lists when needed `save_or_load`.
+- Rename quickfix/loclist titles with `rename_title`.
+- Move quickfix window layout using `layout_up` and `layout_down`.
+- Delete items using `keymaps.actions.del_item` and `keymaps.actions.del_item_all`.
+- Optional integrations support for `trouble.nvim`, `grug-far.nvim`, and custom commands.
+- Disable unused integrations through the `integrations` config.
+
+
+  If you don’t need this feature, you can disable it via
+  `window.quickfix.enabled = false`.
 
 DEFAULT KEYMAPS
 
@@ -601,7 +608,7 @@ DEFAULT KEYMAPS
           integrations = {
             trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
             grugfar = { enabled = true, toggle = "<Localleader>gg" },
-            copyline = { enabled = true, toggle = "<Leader>qc" },
+            copyline = { enabled = true, toggle = "<Leader>cc" },
             custom = { enabled = false, commands = {} },
           },
         },
@@ -617,6 +624,17 @@ Buffers ~
 
 BUFFERS ~
 
+- Buffer management with a simple popup interface.
+- Quickly browse and switch between open buffers.
+- Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
+- Clear selections with `keymaps.actions.diselect_all`.
+- Optional custom integrations through the `integrations` config.
+- In the popup menu, jump directly to entries by number when `allow_number = true`.
+- Support custom basic commands for buffer actions (vsplit, split, open in tab)
+
+
+  If you don’t need this feature, you can disable it via
+  `window.buffers.enabled = false`.
 
 DEFAULT KEYMAPS
 
@@ -697,6 +715,44 @@ EXAMPLES
 ??
 
 
+SUPPORT STATUSLINE           *qfbookmark-qfbookmark-(wip-)-support-statusline*
+
+Example using heirline <https://github.com/rebelot/heirline.nvim>
+
+Click to expand ~
+
+>lua
+    
+    local get_qfbookmark = function()
+      if not qfbookmark then
+        local ok, qfbook = pcall(require, "qfbookmark.qf")
+        if ok then
+          qfbookmark = qfbook
+        end
+      end
+      return qfbookmark
+    end
+    
+    ...
+    
+    M.QFbookmark = {
+      condition = function()
+        local qfbook = get_qfbookmark()
+        if qfbook and qfbook.status_mark() then
+          return true
+        end
+        return false
+      end,
+      {
+        provider = function()
+          return Cfg.icons.misc.flags .. " "
+        end,
+        hl = { fg = colors.diagnostic_err },
+      },
+    }
+<
+
+
 FAQ                                         *qfbookmark-qfbookmark-(wip-)-faq*
 
 Why another bookmark plugin? ~
@@ -736,6 +792,7 @@ MIT
 2. Links                                                    *qfbookmark-links*
 
 1. *qfbookmark*: ./assets/qfbookmark.png
+2. *statusline*: ./assets/qfbookmark-statusline.png
 
 Generated by panvimdoc <https://github.com/kdheepak/panvimdoc>
 
