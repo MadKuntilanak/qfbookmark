@@ -1,67 +1,56 @@
 *qfbookmark.txt*
-                                  For NVIM v0.8.0    Last change: 2026 June 17
+                                  For NVIM v0.8.0    Last change: 2026 June 22
 
 ==============================================================================
 Table of Contents                               *qfbookmark-table-of-contents*
 
-1. QFbookmark                                          |qfbookmark-qfbookmark|
-  - Features                                  |qfbookmark-qfbookmark-features|
-  - Showcasse                                |qfbookmark-qfbookmark-showcasse|
-  - Requirements                          |qfbookmark-qfbookmark-requirements|
-  - Installation                          |qfbookmark-qfbookmark-installation|
-  - Setup                                        |qfbookmark-qfbookmark-setup|
-  - Configuration                        |qfbookmark-qfbookmark-configuration|
-  - Mark Popup                              |qfbookmark-qfbookmark-mark-popup|
-  - Default Bookmark Types      |qfbookmark-qfbookmark-default-bookmark-types|
-  - Default Keymaps                    |qfbookmark-qfbookmark-default-keymaps|
-  - Disable All Default Keymaps|qfbookmark-qfbookmark-disable-all-default-keymaps|
-  - Integrations                          |qfbookmark-qfbookmark-integrations|
-  - FAQ                                            |qfbookmark-qfbookmark-faq|
-  - License                                    |qfbookmark-qfbookmark-license|
+1. QFbookmark (WIP )                            |qfbookmark-qfbookmark-(wip-)|
+  - Features                           |qfbookmark-qfbookmark-(wip-)-features|
+  - Showcase                           |qfbookmark-qfbookmark-(wip-)-showcase|
+  - Requirements                   |qfbookmark-qfbookmark-(wip-)-requirements|
+  - Installation                   |qfbookmark-qfbookmark-(wip-)-installation|
+  - Setup                                 |qfbookmark-qfbookmark-(wip-)-setup|
+  - Configuration                 |qfbookmark-qfbookmark-(wip-)-configuration|
+  - Providers                         |qfbookmark-qfbookmark-(wip-)-providers|
+  - FAQ                                     |qfbookmark-qfbookmark-(wip-)-faq|
+  - Acknowledgements           |qfbookmark-qfbookmark-(wip-)-acknowledgements|
+  - License                             |qfbookmark-qfbookmark-(wip-)-license|
 2. Links                                                    |qfbookmark-links|
 
 ==============================================================================
-1. QFbookmark                                          *qfbookmark-qfbookmark*
+1. QFbookmark (WIP )                            *qfbookmark-qfbookmark-(wip-)*
 
-**qfbookmark** <https://github.com/MadKuntilanak/qfbookmark> was built around
-my own coding workflow. I often found myself placing marks in different files
-and later forgetting the context around them especially which function, method,
-or code section the mark referred to. This plugin extends the idea of
-traditional marks by combining them with quickfix lists, notes, and contextual
-navigation, making it easier to revisit and organize important locations across
-a project.
+**QFBookmark** <https://github.com/MadKuntilanak/qfbookmark> is a
+_‘another’_ bookmarking plugin for Neovim that combines marks, buffers,
+quickfix lists, and notes into a single workflow.
 
 
-  **Note**
+FEATURES                               *qfbookmark-qfbookmark-(wip-)-features*
 
-  WORK IN PROGRESS
-  Thisplugin is actively developed and some features may not be fully polished
-  yet. You may occasionally encounter bugs, breaking changes, or incomplete
-  integrations as new functionality is added.
-  Please report issues if you find any problems.
-
-FEATURES                                      *qfbookmark-qfbookmark-features*
-
-- Mark lines with modes: `MARK`, `FIX`, `DEBUG`, `NOTE`
+- Mark lines with modes: `MARK`, `FIX`, `DEBUG`, `NOTE` (Mark Annotation)
 - Harpoon-style popup with preview, symbol context (function/class/struct/impl), and per-entry highlights
-- Treesitter-powered symbol resolution — shows enclosing function, class, struct, impl, or table context
-- Persistent marks saved to disk per project
-- QuickFix and LocList integration with custom formatter
+- Treesitter-powered symbol resolution, shows enclosing function, class, struct, impl, or table context
+- Persistent marks saved to disk per project, automatically separated and restored for each Git branch or tag, with support for merging marks across branches and tags
+- Quickfix and location list integration with custom formatting, supporting both project-local and global save/load workflows
 - Notes per project or globally (using external filetype definitions like org, norg, md, txt, etc.)
-- Quickfix integrations: works with trouble.nvim, grug-far.nvim, and fzf-lua
+- Built-in quickfix integrations with trouble.nvim, grug-far.nvim, and fzf-lua (enabled by default, optional to disable)
+- Fast navigation across all popup menus with jump shortcuts, plus optional number-based selection (similar to Harpoon) when `allow_number = true`
+- Seamless item sharing across providers (**Mark**, **Quickfix**, **Buffers**, **Note**): add entries from marks, buffers, or other lists into quickfix and other supported targets directly from popup menus, with configurable custom integrations via `integrations.custom` commands
 
 
-SHOWCASSE                                    *qfbookmark-qfbookmark-showcasse*
+SHOWCASE                               *qfbookmark-qfbookmark-(wip-)-showcase*
 
 
-REQUIREMENTS                              *qfbookmark-qfbookmark-requirements*
+REQUIREMENTS                       *qfbookmark-qfbookmark-(wip-)-requirements*
 
-- Neovim >= 0.10
+- Neovim >= 0.12
 - nvim-treesitter <https://github.com/nvim-treesitter/nvim-treesitter> (optional, for symbol context)
+- trouble <https://github.com/folke/trouble.nvim> (optional)
 - fzf-lua <https://github.com/ibhagwan/fzf-lua> (optional)
+- grug-far <https://github.com/MagicDuck/grug-far.nvim> (optional)
 
 
-INSTALLATION                              *qfbookmark-qfbookmark-installation*
+INSTALLATION                       *qfbookmark-qfbookmark-(wip-)-installation*
 
 **lazy.nvim**
 
@@ -85,7 +74,7 @@ INSTALLATION                              *qfbookmark-qfbookmark-installation*
 <
 
 
-SETUP                                            *qfbookmark-qfbookmark-setup*
+SETUP                                     *qfbookmark-qfbookmark-(wip-)-setup*
 
 >lua
     require("qfbookmark").setup {
@@ -93,9 +82,8 @@ SETUP                                            *qfbookmark-qfbookmark-setup*
     }
 <
 
-------------------------------------------------------------------------------
 
-CONFIGURATION                            *qfbookmark-qfbookmark-configuration*
+CONFIGURATION                     *qfbookmark-qfbookmark-(wip-)-configuration*
 
 Default configuration, click to expand ~
 
@@ -104,10 +92,10 @@ Default configuration, click to expand ~
       save_dir = vim.fn.stdpath "data" .. "/qfbookmark",
     
       -- Picker backend. "default" uses the built-in popup.
-      -- "fzf-lua" uses fzf-lua for fuzzy search.
-      picker = "default",
+      picker = "default", --  or "fzf-lua"
+    
       extmarks = {
-        priority = 20,
+        priority = 15,
     
         -- Exclude certain buffer or file types from showing extmarks
         excluded = {
@@ -119,16 +107,17 @@ Default configuration, click to expand ~
     
         -- Mark mode definitions: icon, highlight group, and sign text
         keywords = {
-          MARK = { icon = "📌", hl_group = "QFBookMark", alt = " -> " },
-          FIX = { icon = "🔧", hl_group = "QFBookFix", alt = " -> " },
-          DEBUG = { icon = "🚧", hl_group = "QFBookDebug", alt = " -> " },
-          NOTE = { icon = "📝", hl_group = "QFBookNote", alt = " -> " },
+          MARK = { icon = "📌", hl_group = "QFbookmarkBadgeMark" },
+          FIX = { icon = "🔧", hl_group = "QFbookmarkBadgeFix" },
+          DEBUG = { icon = "🚧", hl_group = "QFbookmarkBadgeDebug" },
+          NOTE = { icon = "📝", hl_group = "QFbookmarkBadgeNote" },
         },
       },
       window = {
         notify = { mark = true, plugin = true },
         quickfix = {
           enabled = true,
+          allow_number = true,
           theme = {
             enabled = true,
             limit = 50,
@@ -148,31 +137,32 @@ Default configuration, click to expand ~
         },
         buffers = {
           enabled = true,
+          allow_number = true,
+          actions = {
+            win_resized = true,
+          },
+        },
+        mark = {
+          enabled = true,
+          anchor = "SE", -- NW/SW --- SE/NE
+          allow_number = true,
+          actions = {
+            win_resized = false,
+          },
         },
         note = {
-          enabled = true,
-    
-          -- Auto-save behavior:
-          -- Changes are automatically saved when opening, closing, or toggling the note window.
-          -- You don't need to manually save (no :w required),
-          -- but you can still do it if you want to.
-    
           -- Cursor state:
           -- The last cursor position is saved automatically.
           -- When reopening the note, the cursor will be restored
           -- to its previous location, so you don't need to scroll
           -- through long notes again.
+          enabled = true,
     
-          -- `open_cmd` can be either:
-          --   string: Vim command used to open the note (e.g. "botright vsplit")
-          --   table : floating window configuration
-          --           { mode = "float", anchor = "NW|NE|SW|SE" }
-          open_cmd = {
-            mode = "float",
-            anchor = "SE",
-          },
-    
-          size = "40%",
+          mode = "float", -- or "belowright split"
+          wrap = true,
+          anchor = "SE", -- "NW|NE|SW|SE"
+          width = 0.45, -- relative size (0.1 to 1)
+          height = 0.80,
     
           -- Syntax highlighting is not provided by this plugin,
           -- it relies on nvim built-in filetypes or external plugins :D
@@ -186,12 +176,57 @@ Default configuration, click to expand ~
           -- and are shared across all projects/workspaces.
           current_project = {
             enabled = true,
-            filename = "TODO.org",
+            filename = "TODO.org", -- or /path/to/mytodo.md
           },
-        },
-        mark = {
-          enabled = true,
-          anchor = "SE", -- NW/SW --- SE/NE
+          insert_to_note = {
+            enabled = true,
+            line_placeholder = "<TEXT_HERE>",
+            templates = {
+              notice = {
+                target = "global", -- "global" | "local" | "target path"
+                description = "Quick notice / reminder",
+                templates = string.format(
+                  [[
+    date: %s
+    notice:
+    <TEXT_HERE>
+    ]],
+                  os.date "%Y-%m-%d %H:%M"
+                ),
+              },
+    
+              error = {
+                target = "local",
+                description = "Capture an error / bug for this project",
+                templates = string.format(
+                  [[
+    date: %s
+    error:
+    <TEXT_HERE>
+    ]],
+                  os.date "%Y-%m-%d %H:%M"
+                ),
+              },
+    
+              todo = {
+                target = "local",
+                description = "TODO item with source reference",
+                templates = function()
+                  return string.format(
+                    [[
+      - [ ] error ..
+    
+        #+begin_src %s
+        <TEXT_HERE>
+        #+end_src
+    
+          ]],
+                    vim.bo.filetype
+                  )
+                end,
+              },
+            },
+          },
         },
       },
       keymaps = {
@@ -231,7 +266,7 @@ Default configuration, click to expand ~
           add_debug = "<Leader>qd",
           add_mark_annotation = "<Leader>qn",
     
-          open_popup = "gl",
+          toggle_open = "gl",
     
           save_annotation = "<C-s>",
     
@@ -291,158 +326,178 @@ Default configuration, click to expand ~
     
         buffers = {
           toggle_open = "gb",
+          integrations = {
+            custom = { enabled = false, commands = {} },
+          },
         },
     
         note = {
-          open_toggle_global = "<Leader>fn",
-          open_toggle_local = "<Leader>fN",
+          toggle_open_global = "<Leader>fn",
+          toggle_open_local = "<Leader>fN",
           layout_rotate = "<a-=>",
         },
       },
     }
 <
 
-
-MARK POPUP                                  *qfbookmark-qfbookmark-mark-popup*
-
-Open the mark popup with `gp` (default). Each entry shows:
-
->
-     1  MARK  ui/init.lua ●
-              :92  local path_width = calc…
-              ƒ mark_harpoon_popup
-    
-     2  FIX   system_dbs.rs
-              :12  DbType::Mysql => Se…
-               SystemDb > ƒ is_system_db
-<
-
 ------------------------------------------------------------------------------
 
-DEFAULT BOOKMARK TYPES          *qfbookmark-qfbookmark-default-bookmark-types*
+PROVIDERS                             *qfbookmark-qfbookmark-(wip-)-providers*
+
+Mark ~
+
+
+DEFAULT BOOKMARK TYPES
 
   Type    Purpose
   ------- -----------------------------
   MARK    General bookmark
   FIX     Something that needs fixing
   DEBUG   Debugging location
-  NOTE    Note location
-------------------------------------------------------------------------------
+  NOTE    Mark Note Annotation
 
-DEFAULT KEYMAPS                        *qfbookmark-qfbookmark-default-keymaps*
-
-
-BOOKMARK ACTIONS ~
-
-  Key   Action
-  ----- ----------------------------------------
-  qq    Add MARK
-  qf    Add FIX
-  qd    Add DEBUG
-  qn    Add NOTE
-  dm    Delete bookmark
-  dM    Delete all bookmarks in current buffer
-
-QUICKFIX ~
-
-  Key   Action
-  ----- ----------------------
-  qj    Toggle quickfix
-  tt    Add item to quickfix
-
-LOCATION LIST ~
-
-  Key   Action
-  ----- ---------------------------
-  ql    Toggle location list
-  ty    Add item to location list
-
-NOTES ~
-
-  Key   Action
-  ----- --------------------
-  fn    Toggle local note
-  fN    Toggle global note
-
-NAVIGATION ~
-
-  Key   Action
-  ----- -----------------------
-  gj    Next bookmark
-  gk    Previous bookmark
-  gl    Next list history
-  gh    Previous list history
-------------------------------------------------------------------------------
-
-DISABLE ALL DEFAULT KEYMAPS*qfbookmark-qfbookmark-disable-all-default-keymaps*
+DEFAULT KEYMAPS
 
 >lua
-    require("qfbookmark").setup {
-      keymaps = {
-        disable_all = true,
-      },
-    }
+    
+        mark = {
+          -- Create marks
+          add_mark = "<Leader>qq",
+          add_fix = "<Leader>qf",
+          add_debug = "<Leader>qd",
+          add_mark_annotation = "<Leader>qn",
+    
+          toggle_open = "gl",
+    
+          save_annotation = "<C-s>",
+    
+          del_mark = "dm",
+          del_mark_buffer = "dM",
+    
+          next_mark = "gn",
+          prev_mark = "gp",
+    
+          move_item_down = "<a-n>",
+          move_item_up = "<a-p>",
+    
+          zoom = "<C-z>",
+    
+          load_all = "<C-a>",
+    
+          -- Jump directly to harpoon slot N
+          harpoon = {
+            mark_1 = "<a-1>",
+            mark_2 = "<a-2>",
+            mark_3 = "<a-3>",
+            mark_4 = "<a-4>",
+            mark_5 = "<a-5>",
+            mark_6 = "<a-6>",
+            mark_7 = "<a-7>",
+            mark_8 = "<a-8>",
+            mark_9 = "<a-9>",
+          },
+          integrations = {
+            custom = { enabled = false, commands = {} },
+          },
+        },
 <
 
-Then define only the mappings you want.
+Quickfix ~
 
 
-INTEGRATIONS                              *qfbookmark-qfbookmark-integrations*
-
-
-TROUBLE ~
+DEFAULT KEYMAPS
 
 >lua
-    integrations = {
-      tbbuble = {
-        enabled = true,
-        toggle_qflist = "Q",
-        toggle_loclist = "L",
-      },
-    }
+    
+        quickfix = {
+          next_hist = "gl",
+          prev_hist = "gh",
+    
+          rename_title = "<Localleader>qR",
+    
+          add_item_to_qf = "tt",
+          add_item_to_loc = "ty",
+    
+          open_toggle_qf = "<Leader>qj",
+          open_toggle_loc = "<Leader>ql",
+    
+          save_or_load = "<Leader>qy",
+    
+          layout_up = "<c-k>",
+          layout_down = "<c-j>",
+    
+          integrations = {
+            trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
+            grugfar = { enabled = true, toggle = "<Localleader>gg" },
+            copyline = { enabled = true, toggle = "<Leader>qc" },
+            custom = { enabled = false, commands = {} },
+          },
+        },
 <
 
+Buffers ~
 
-GRUG FAR ~
+
+DEFAULT KEYMAPS
 
 >lua
-    integrations = {
-      grugfar = {
-        enabled = true,
-        toggle = "<Localleader>gg",
-      },
-    }
+    
+        buffers = {
+          toggle_open = "gb",
+          integrations = {
+            custom = { enabled = false, commands = {} },
+          },
+        },
+<
+
+Note ~
+
+
+DEFAULT KEYMAPS
+
+>lua
+    
+        note = {
+          toggle_open_global = "<Leader>fn",
+          toggle_open_local = "<Leader>fN",
+          layout_rotate = "<a-=>",
+        },
 <
 
 
-FZF-LUA ~
+FAQ                                         *qfbookmark-qfbookmark-(wip-)-faq*
 
-Set `picker = "fzf-lua"` to use fzf-lua for fuzzy searching marks.
+Why another bookmark plugin? ~
+
+**QFBookmark** <https://github.com/MadKuntilanak/qfbookmark> was built around
+my own coding workflow. I often found myself placing marks in different files
+and later forgetting the context around them especially which function, method,
+or code section the mark referred to. This plugin extends the idea of
+traditional marks by combining them with quickfix lists, notes, and contextual
+navigation, making it easier to revisit and organize important locations across
+a project.
+
+Why 4 mark types instead of one? ~
+
+The four types (MARK, FIX, DEBUG, NOTE) don’t change how marks work internally — they exist purely for visual clarity. When you have many marks across multiple files, being able to tell at a glance "this is a debugging point" vs "this needs fixing" vs "this is just a reference" makes navigation significantly faster. Think of them as colored sticky notes.Can I use only one type and ignore the rest? ~
+
+Yes. All four types behave identically under the hood. You can map only `MARK` and never touch the others.What’s Mark Note Annotation different from the others? ~
+
+Mark Note Annotation is the only type that supports inline annotations. You can attach text to it, which is also exposed in the mark popup and can be leveraged by external AI plugins or custom integrations for additional context.
+ACKNOWLEDGEMENTS               *qfbookmark-qfbookmark-(wip-)-acknowledgements*
+
+- Fzf-lua <https://github.com/ibhagwan/fzf-lua> The picker that inspired me a
+    lot. Many ideas and some logic patterns in QFBookmark were heavily influenced
+    by it. Yes, I peeked at the code.
+- quicker.nvim <https://github.com/stevearc/quicker.nvim> Helpedme make quickfix
+    look nicer and taught me that quickfix doesn’t have to look like a 1990s
+    terminal output.
+- folke <https://github.com/folke> Creator of many incredible Neovim plugins.
+    Basically one of the reasons my Neovim config keeps growing instead of getting
+    smaller.
 
 
-FAQ                                                *qfbookmark-qfbookmark-faq*
-
-**Why 4 mark types instead of one?**
-
-The four types (MARK, FIX, DEBUG, NOTE) don’t change how marks work
-internally — they exist purely for visual clarity. When you have many marks
-across multiple files, being able to tell at a glance "this is a debugging
-point" vs "this needs fixing" vs "this is just a reference" makes navigation
-significantly faster. Think of them as colored sticky notes.
-
-**Can I use only one type and ignore the rest?**
-
-Yes. All four types behave identically under the hood. You can map only `MARK`
-and never touch the others.
-
-**What’s NOTE different from the others?**
-
-NOTE is the only type that supports inline annotations, you can attach text to
-it, which is also exposed to the mark popup and can be sent to AI plugins for
-context.
-
-
-LICENSE                                        *qfbookmark-qfbookmark-license*
+LICENSE                                 *qfbookmark-qfbookmark-(wip-)-license*
 
 MIT
 
