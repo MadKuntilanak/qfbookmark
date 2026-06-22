@@ -62,9 +62,6 @@ require("qfbookmark").setup {
 }
 ```
 
-
----
-
 ## Configuration
 
 <details>
@@ -390,8 +387,6 @@ error:
 
 </details>
 
----
-
 
 <details>
 <summary>Quickfix</summary>
@@ -430,7 +425,6 @@ error:
 
 </details>
 
----
 
 <details>
 <summary>Buffers</summary>
@@ -449,8 +443,6 @@ error:
 ```
 </details>
 
----
-
 <details>
 <summary>Note</summary>
 
@@ -467,8 +459,6 @@ error:
 ```
 
 </details>
-
----
 
 
 ## FAQ
