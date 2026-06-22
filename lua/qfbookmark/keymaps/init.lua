@@ -341,12 +341,12 @@ local function qf_keymaps()
   }, keys_ft)
 
   if Config.keymaps.quickfix.integrations.custom.enabled then
-    local mapping_cmdline = Config.keymaps.quickfix.integrations.custom
-    if not mapping_cmdline then
+    local mapping_qf = Config.keymaps.quickfix.integrations.custom
+    if not mapping_qf then
       return
     end
 
-    local user_keys = QfbookmarkKeymapUtils.set_user_mappings(mapping_cmdline, "quickfix")
+    local user_keys = QfbookmarkKeymapUtils.set_user_mappings(mapping_qf, "quickfix")
 
     QfbookmarkKeymapUtils.append_active_keymaps({
       is_set = Config.keymaps.quickfix.integrations.custom.enabled,
@@ -379,18 +379,18 @@ local function note_keymaps()
         mode = "n",
       },
 
-      {
-        desc = "Qfmark: add to note global",
-        func = "add_note_to_global",
-        keys = get_keymap(Config.keymaps, "note", "toggle_open_global"),
-        mode = "v",
-      },
-      {
-        desc = "Qfmark: add to note local",
-        func = "add_note_to_local",
-        keys = get_keymap(Config.keymaps, "note", "toggle_open_local"),
-        mode = "v",
-      },
+      -- {
+      --   desc = "Qfmark: add to note global",
+      --   func = "add_note_to_global",
+      --   keys = get_keymap(Config.keymaps, "note", "toggle_open_global"),
+      --   mode = "v",
+      -- },
+      -- {
+      --   desc = "Qfmark: add to note local",
+      --   func = "add_note_to_local",
+      --   keys = get_keymap(Config.keymaps, "note", "toggle_open_local"),
+      --   mode = "v",
+      -- },
 
       {
         desc = "Qfmark: rotate note window",
@@ -400,6 +400,20 @@ local function note_keymaps()
       },
     },
   }, keys)
+
+  if Config.keymaps.note.integrations.custom.enabled then
+    local mapping_note = Config.keymaps.note.integrations.custom
+    if not mapping_note then
+      return
+    end
+
+    local user_keys = QfbookmarkKeymapUtils.set_user_mappings(mapping_note, "note")
+
+    QfbookmarkKeymapUtils.append_active_keymaps({
+      is_set = Config.keymaps.note.integrations.custom.enabled,
+      keymaps = user_keys,
+    }, keys)
+  end
 end
 
 local function buffers_keymaps()

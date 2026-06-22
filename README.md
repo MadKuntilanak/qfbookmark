@@ -317,6 +317,9 @@ error:
       toggle_open_global = "<Leader>fn",
       toggle_open_local = "<Leader>fN",
       layout_rotate = "<a-=>",
+      integrations = {
+        custom = { enabled = false, commands = {} },
+      },
     },
   },
 }

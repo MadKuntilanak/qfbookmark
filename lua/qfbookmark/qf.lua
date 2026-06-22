@@ -1210,9 +1210,8 @@ end
 
 local window_command
 
-local function __note(is_global, is_add_to)
+local function __note(is_global)
   is_global = is_global or false
-  is_add_to = is_add_to or false
 
   local note = require "qfbookmark.note"
   local cfg_note = Config.window.note
@@ -1222,24 +1221,7 @@ local function __note(is_global, is_add_to)
   end
 
   local is_insert_to = false
-  if is_add_to then
-    is_insert_to = true
-    note.add_to_note "todo"
-  end
-
   note.handle_open(is_global, cfg_note, is_insert_to, window_command)
-end
-function M.add_note_to_global()
-  if not Config.window.note.enabled then
-    return
-  end
-  __note(true, true)
-end
-function M.add_note_to_local()
-  if not Config.window.note.enabled then
-    return
-  end
-  __note(false, true)
 end
 function M.toggle_open_note_global()
   if not Config.window.note.enabled then

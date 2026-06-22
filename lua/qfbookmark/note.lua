@@ -301,9 +301,16 @@ function M.add_to_note(template_name)
   end
 
   local ok = append_to_note(note_path, rendered)
-  if ok then
-    QfbookmarkUtils.info(string.format("Added to %s note (template: %s)", template.target, template_name))
+  if not ok then
+    return
   end
+
+  QfbookmarkUtils.info(string.format("Added to %s note (template: %s)", template.target, template_name))
+
+  local cfg_note = Config.window.note
+  local is_insert_to = true
+
+  toggle_note(note_path, cfg_note, false, is_insert_to, "")
 end
 
 return M

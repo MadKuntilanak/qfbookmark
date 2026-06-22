@@ -12,9 +12,8 @@ function SelectedList.wrap(items)
 end
 
 ---@param target QFBookListProviders
----@param template_name? string  required when target == "note": the name of the template defined in
-function SelectedList:add_to(target, template_name)
-  local valid_targets = { "buffers", "mark", "debug", "fix", "note", "quickfix", "loclist", "note", "debug" }
+function SelectedList:add_to(target)
+  local valid_targets = { "buffers", "mark", "debug", "fix", "note", "quickfix", "loclist" }
 
   assert(
     vim.tbl_contains(valid_targets, target),
@@ -22,19 +21,6 @@ function SelectedList:add_to(target, template_name)
   )
 
   if #self == 0 then
-    return
-  end
-
-  if target == "note" then
-    -- "note" operates on the captured cursor/visual selection rather
-    -- than on the selected[] items list — those are orthogonal features.
-    -- add_to("note", name) is valid even when #self == 0.
-    if not template_name then
-      QfbookmarkUtils.warn 'add_to("note", template_name) requires a template name.'
-      return
-    end
-    local QfbookmarkNote = require "qfbookmark.note"
-    QfbookmarkNote.add_to_note(template_name)
     return
   end
 
@@ -104,6 +90,26 @@ function SelectedList:add_to(target, template_name)
     end
     QfbookmarkUtils.info(string.format("Added %d item(s) to %s", #self, target))
   end
+end
+
+---@param template_name string  required when target == "note": the name of the template defined in
+function SelectedList:add_note_to(template_name)
+  if not template_name then
+    QfbookmarkUtils.error "add_to(template_name) requires a template name."
+    return
+  end
+
+  local Config = require("qfbookmark.config").defaults
+
+  local TEMPLATES = vim.tbl_keys(Config.window.note.insert_to_note.templates) -- { mark, debug, note .. }
+
+  assert(
+    vim.tbl_contains(TEMPLATES, template_name),
+    string.format("invalid template_name '%s', expected one of: %s", template_name, table.concat(TEMPLATES, ", "))
+  )
+
+  local QfbookmarkNote = require "qfbookmark.note"
+  QfbookmarkNote.add_to_note(template_name)
 end
 
 --- Return the plain underlying array (in case caller needs to strip

@@ -143,6 +143,10 @@ local select_providers = {
     }
     val.cmd(results)
   end,
+  ["note"] = function(val)
+    local selected = QfbookmarkSelectedList.wrap {}
+    val.cmd(selected)
+  end,
 }
 
 ---@param tbl_cmdline_strings QFBookKeymapCustomIntegration

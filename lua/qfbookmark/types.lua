@@ -240,6 +240,7 @@
 ---@field toggle_open_global string | string[]
 ---@field toggle_open_local string | string[]
 ---@field layout_rotate string | string[]
+---@field integrations QFBookKeymapCustomIntegrations
 
 ---@class QFBookKeymapMarkOpenItem
 ---@field default string | string[]
