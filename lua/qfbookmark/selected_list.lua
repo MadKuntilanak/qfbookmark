@@ -1,5 +1,32 @@
 local QfbookmarkUtils = require "qfbookmark.utils"
 
+local function tbl_count(tbl)
+  local count = 0
+  for _ in pairs(tbl) do
+    count = count + 1
+  end
+  return count
+end
+
+local notify = function(success_add, already_add)
+  local added = tbl_count(success_add)
+  local skipped = tbl_count(already_add)
+
+  local parts = {}
+
+  if added > 0 then
+    parts[#parts + 1] = string.format("added %d", added)
+  end
+
+  if skipped > 0 then
+    parts[#parts + 1] = string.format("skipped %d", skipped)
+  end
+
+  if #parts > 0 then
+    QfbookmarkUtils.info(string.format("Added %d item(s); skipped %d item(s) already present.", added, skipped))
+  end
+end
+
 ---@class QFBookSelectedList
 local SelectedList = {}
 SelectedList.__index = SelectedList
@@ -29,6 +56,9 @@ function SelectedList:add_to(target)
 
     local mark_mode = target:upper()
 
+    local already_add = {}
+    local success_add = {}
+
     for _, item in ipairs(self) do
       local filename = item.filename or (item.info and item.info.name)
       local bufnr = item.bufnr or (item.filename and QfbookmarkUtils.resolve_bufnr(item.filename))
@@ -56,12 +86,22 @@ function SelectedList:add_to(target)
       end
 
       if filename then
-        QfbookmarkBookmark.add_mark_at(bufnr, line, col, text, mark_mode)
+        local ok = QfbookmarkBookmark.add_mark_at(bufnr, line, col, text, mark_mode)
+        local id = tonumber(line .. bufnr)
+        if not id then
+          goto continue
+        end
+
+        if not ok then
+          already_add[id] = true
+        else
+          success_add[id] = true
+        end
       end
       ::continue::
     end
 
-    QfbookmarkUtils.info(string.format("Added %d item(s) to marks", #self))
+    notify(success_add, already_add)
   elseif target == "quickfix" or target == "loclist" then
     local qf_items = {}
     for _, item in ipairs(self) do
@@ -83,17 +123,28 @@ function SelectedList:add_to(target)
       }
       ::continue::
     end
+
     if target == "quickfix" then
       vim.fn.setqflist(qf_items, "a")
     else
       vim.fn.setloclist(0, qf_items, "a")
     end
+
     QfbookmarkUtils.info(string.format("Added %d item(s) to %s", #self, target))
+
+    vim.schedule(function()
+      local qf = require "qfbookmark.qf"
+      local list_type = target == "quickfix" and "quickfix" or "loclist"
+      qf.toggle_list(list_type)
+    end)
   end
 end
 
 ---@param template_name string  required when target == "note": the name of the template defined in
 function SelectedList:add_note_to(template_name)
+  ---@diagnostic disable-next-line: undefined-field
+  assert(self.type == "note", "This method is only available for the note provider.")
+
   if not template_name then
     QfbookmarkUtils.error "add_to(template_name) requires a template name."
     return

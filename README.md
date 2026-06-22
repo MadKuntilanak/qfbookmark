@@ -4,7 +4,7 @@
   <img src="./assets/tqfbookmark.svg" alt="qfbookmark" />
 </p>
 
-[**QFBookmark**](https://github.com/MadKuntilanak/qfbookmark) is a *'another'* bookmarking plugin for Neovim that combines marks, buffers, quickfix lists, and notes into a single workflow.
+[**QFBookmark**](https://github.com/MadKuntilanak/qfbookmark) is yet another bookmarking plugin for Neovim that combines marks, buffers, quickfix lists, and notes into a single workflow.
 
 
 ## Features
@@ -156,6 +156,7 @@ require("qfbookmark").setup {
 
       -- Global notes are always stored separately in `save_dir`,
       -- and are shared across all projects/workspaces.
+
       current_project = {
         enabled = true,
         filename = "TODO.org", -- or /path/to/mytodo.md
@@ -385,7 +386,27 @@ error:
 ## Providers
 
 <details>
-<summary>Mark</summary>
+<summary><strong>Mark</strong></summary>
+
+### Mark
+
+- Persistent bookmarks anywhere in your codebase, organized by type.
+- Fast navigation through a Harpoon-style popup.
+- Marks are automatically saved per Git branch or tag.
+- Load and merge marks from master files, other branches, or projects.
+- Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
+- Clear selections with `keymaps.actions.diselect_all`.
+- In the popup menu, jump directly to entries by number when `allow_number = true`.
+- Zoom the preview window when you need more space.
+
+> ⚠️
+> Inside the mark popup, the delete keymaps live under `keymaps.actions.del_item`
+> (delete current entry) and `keymaps.actions.del_item_all` (delete all entries),
+> these are separate from `del_mark` / `del_mark_buffer` below, which operate
+> directly on a buffer rather than inside the popup.
+
+
+> If you don't need this feature, you can disable it via `window.mark.enabled = false`.
 
 
 #### Default Bookmark Types
@@ -444,11 +465,17 @@ error:
 
 ```
 
+#### Examples
+
+??
+
 </details>
 
 
 <details>
-<summary>Quickfix</summary>
+<summary><strong>Quickfix</strong></summary>
+
+### Quickfix
 
 
 #### Default Keymaps
@@ -482,11 +509,17 @@ error:
 
 ```
 
+#### Examples
+
+??
+
 </details>
 
 
 <details>
-<summary>Buffers</summary>
+<summary><strong>Buffers</strong></summary>
+
+### Buffers
 
 #### Default Keymaps
 
@@ -500,24 +533,74 @@ error:
     },
 
 ```
+
+#### Examples
+
+??
+
 </details>
 
 <details>
-<summary>Note</summary>
+<summary><strong>Note</strong></summary>
+
+### Note
+
+The note provider is just a way to capture text you'll want to check out
+later. Enable it via `keymaps.note.integrations.custom`, and it'll insert
+the captured text using whichever `templates` you've defined under
+`insert_to_note`. You can also wire this up to integrate with your favorite
+note-taking plugin (I personally use `orgmode`).
+
+> If you don't need this feature, you can disable it via `window.note.enabled = false`.
+
+```lua
+insert_to_note = {
+  enabled = true,
+  -- the placeholder that gets replaced with the captured text
+  line_placeholder = "<TEXT_HERE>",
+  templates = {
+    notice = {
+      target = "global", -- "global", "local", or a custom file path (e.g. "your/path/file.txt")
+      description = "Quick notice / reminder",
+      templates = string.format(
+        [[
+     date: %s
+     notice: I must check this later
+     <TEXT_HERE>
+     ]],
+        os.date "%Y-%m-%d %H:%M"
+      ),
+    },
+  },
+}
+```
+
+> **Note:** `templates` can be defined as either a string or a function.
+> Use a function when you need the template to be evaluated at runtime —
+> for example, when it depends on values like `vim.bo.filetype` that should
+> be read from the current buffer at insert time, rather than once when the
+> config is first loaded.
+
 
 #### Default Keymaps
 
 ```lua
-
-    note = {
-      toggle_open_global = "<Leader>fn",
-      toggle_open_local = "<Leader>fN",
-      layout_rotate = "<a-=>",
-    },
-
+note = {
+  toggle_open_global = "<Leader>fn",
+  toggle_open_local = "<Leader>fN",
+  layout_rotate = "<a-=>", -- only works in non-float mode
+  integrations = {
+    custom = { enabled = false, commands = {} },
+  },
+},
 ```
 
+#### Examples
+
+??
+
 </details>
+
 
 
 ## FAQ
@@ -550,7 +633,7 @@ Mark Note Annotation is the only type that supports inline annotations. You can 
 ## Acknowledgements
 
 - [Fzf-lua](https://github.com/ibhagwan/fzf-lua)  
-  The picker that inspired me a lot. Many ideas and some logic patterns in QFBookmark were heavily influenced by it. Yes, I peeked at the code. 👀
+  The picker that inspired me a lot. I borrowed a few ideas along the way and occasionally peeked at the code. 👀
 
 - [quicker.nvim](https://github.com/stevearc/quicker.nvim)  
   Helped me make quickfix look nicer and taught me that quickfix doesn't have to look like a 1990s terminal output.

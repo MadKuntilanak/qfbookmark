@@ -144,7 +144,7 @@ local select_providers = {
     val.cmd(results)
   end,
   ["note"] = function(val)
-    local selected = QfbookmarkSelectedList.wrap {}
+    local selected = QfbookmarkSelectedList.wrap { type = "note" }
     val.cmd(selected)
   end,
 }

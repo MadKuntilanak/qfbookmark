@@ -950,6 +950,8 @@ local function toggle_list(list_type, force_close)
   end
 end
 
+M.toggle_list = toggle_list
+
 function M.toggle_open_qflist()
   toggle_list "quickfix"
 end
