@@ -33,10 +33,11 @@
   - [X] support insert text
   - [X] support custom templates
 - [ ] fix extermark priority at mark menu
-- [ ] Update README [0/3]
+- [-] Update README [1/4]
   - [ ] Explain provider features
   - [ ] Add demos for each feature
   - [ ] Add example integration scripts
+  - [X] Add highlights
 - [ ] mark: more test for node treesitter [0/3]
   - [ ] for Go
   - [ ] for Rust

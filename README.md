@@ -65,7 +65,9 @@ require("qfbookmark").setup {
 ## Configuration
 
 <details>
-<summary>Default configuration, click to expand</summary>
+<summary>Default Configuration and Highlights</summary>
+
+### Default configs
 
 ```lua
 require("qfbookmark").setup {
@@ -319,6 +321,60 @@ error:
   },
 }
 ```
+
+### Highlights
+
+| Highlight Group | Description |
+|---|---|
+| `QFBookmarkQfLineNr` | Line number column in the quickfix/loclist window |
+| `QFBookmarkQfFileBasename` | Basename of the file shown in quickfix entries |
+| `QFBookmarkQfWarn` | Quickfix entries marked as warnings |
+| `QFBookmarkQfText` | Default text of a quickfix entry |
+| `QFBookmarkQfSep` | Separator between filename, line number, and text in quickfix entries |
+| `QFBookmarkQfFile` | Filename/path shown in quickfix entries |
+| `QFBookmarkQfError` | Quickfix entries marked as errors |
+| `QFBookmarkQfHint` | Quickfix entries marked as hints |
+| `QFBookmarkQfInfo` | Quickfix entries marked as info |
+| `QFBookmarkEntrySelectedCheck` | Checkbox icon (`✓`) for a selected entry |
+| `QFBookmarkEntryUnselectedCheck` | Checkbox icon (`○`) for an unselected entry |
+| `QFBookmarkFloatBorder` | Border of the main popup window |
+| `QFBookmarkPreviewFloatBorder` | Border of the preview popup window |
+| `QFBookmarkPreviewCursorline` | Cursorline inside the preview window |
+| `QFBookmarkPreviewFloatCursorLineNr` | Cursorline number inside the preview window |
+| `QFBookmarkPreviewFloatTitle` | Title text of the preview window |
+| `QFBookmarkFloatTitle` | Title text of the main popup window |
+| `QFBookmarkPreviewFloatCursor` | Cursor highlight inside the preview window |
+| `QFBookmarkPreviewFooter` | Footer text of the preview window |
+| `QFBookmarkFloatFooter` | Footer text of the main popup window |
+| `QFBookmarkFloatCursorLine` | Cursorline highlight across the entry currently under the cursor |
+| `QFBookmarkEntryIdx` | Index number shown at the start of each entry |
+| `QFBookmarkEntryHiddenFlag` | `h` flag for hidden buffers in the buffer list |
+| `QFBookmarkEntryModifiedFlag` | `+` flag for modified (unsaved) buffers |
+| `QFBookmarkEntryFlag` | `%`/`#` flag for the current/alternate buffer |
+| `QFBookmarkNoteExtmarkNote` | Inline note virtual text for `NOTE`-mode marks |
+| `QFBookmarkEntryPath` | Directory portion of a file path in an entry |
+| `QFBookmarkNoteExtmarkNoteEx` | Inline note virtual text shown in the detail line preview |
+| `QFBookmarkNoteExtmarkDebug` | Inline note virtual text for `DEBUG`-mode marks |
+| `QFBookmarkNoteExtmarkFix` | Inline note virtual text for `FIX`-mode marks |
+| `QFBookmarkNoteExtmarkMark` | Inline note virtual text for `MARK`-mode marks |
+| `QFBookmarkEntryUnselectedCheckCursor` | Checkbox icon (`○`) for an unselected entry under the cursor |
+| `QFBookmarkEntrySelectedCheckCursor` | Checkbox icon (`✓`) for a selected entry under the cursor |
+| `QFBookmarkNormalFloat` | Default background/foreground of all popup windows |
+| `QFBookmarkEntrySelected` | Background highlight for a selected entry's lines |
+| `QFBookmarkEntrySymbolType` | Symbol kind icon/text (class, struct, interface, table) in the symbol line |
+| `QFBookmarkEntryFnName` | Function/method name in the symbol line |
+| `QFBookmarkEntryNote` | Note text attached to a mark |
+| `QFBookmarkEntryDetail` | Preview text on an entry's detail line |
+| `QFBookmarkBadgeDebug` | Mode badge for `DEBUG` marks |
+| `QFBookmarkBadgeNote` | Mode badge for `NOTE` marks |
+| `QFBookmarkBadgeFix` | Mode badge for `FIX` marks |
+| `QFBookmarkBadgeMark` | Mode badge for `MARK` marks |
+| `QFBookmarkEntrySelectTo` | Indicator shown when forwarding selected entries to another target |
+| `QFBookmarkEntryBasename` | Filename (basename) portion of a path in an entry |
+| `QFBookmarkEntryDirectory` | Directory value shown in the save-to-file footer |
+| `QFBookmarkEntryLnum` | Line number (`:N`) shown in an entry's detail line |
+| `QFBookmarkEntryCurrentFile` | Current-file indicator (`●`) next to an entry's path |
+
 </details>
 
 ---
@@ -487,7 +543,6 @@ Yes. All four types behave identically under the hood. You can map only `MARK` a
 
 Mark Note Annotation is the only type that supports inline annotations. You can attach text to it, which is also exposed in the mark popup and can be leveraged by external AI plugins or custom integrations for additional context.
 </details>
-
 
 ## Acknowledgements
 
