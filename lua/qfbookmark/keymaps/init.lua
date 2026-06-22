@@ -469,12 +469,17 @@ local function copyline_keymaps()
     return
   end
 
-  keys[#keys + 1] = {
-    desc = "Qfmark: open copyline",
-    func = "integrations_copyline",
-    keys = get_keymap(Config.keymaps, "integrations", "copyline", "toggle"),
-    mode = "n",
-  }
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = Config.keymaps.quickfix.integrations.copyline.enabled,
+    keymaps = {
+      {
+        desc = "Qfmark: open copyline",
+        func = "integrations_copyline",
+        keys = get_keymap(Config.keymaps, "quickfix", "integrations", "copyline", "toggle"),
+        mode = "n",
+      },
+    },
+  }, keys)
 end
 
 function M.setup()

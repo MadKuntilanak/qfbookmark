@@ -207,7 +207,7 @@ error:
       integrations = {
         trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
         grugfar = { enabled = true, toggle = "<Localleader>gg" },
-        copyline = { enabled = true, toggle = "<Leader>qc" },
+        copyline = { enabled = true, toggle = "<Leader>cc" },
         custom = { enabled = false, commands = {} },
       },
     },
