@@ -20,9 +20,9 @@ Table of Contents                               *qfbookmark-table-of-contents*
 ==============================================================================
 1. QFbookmark (WIP )                            *qfbookmark-qfbookmark-(wip-)*
 
-**QFBookmark** <https://github.com/MadKuntilanak/qfbookmark> is a
-_‘another’_ bookmarking plugin for Neovim that combines marks, buffers,
-quickfix lists, and notes into a single workflow.
+**QFBookmark** <https://github.com/MadKuntilanak/qfbookmark> is yet another
+bookmarking plugin for Neovim that combines marks, buffers, quickfix lists, and
+notes into a single workflow.
 
 
 FEATURES                               *qfbookmark-qfbookmark-(wip-)-features*
@@ -85,7 +85,10 @@ SETUP                                     *qfbookmark-qfbookmark-(wip-)-setup*
 
 CONFIGURATION                     *qfbookmark-qfbookmark-(wip-)-configuration*
 
-Default configuration, click to expand ~
+Default Configuration and Highlights ~
+
+
+DEFAULT CONFIGS ~
 
 >lua
     require("qfbookmark").setup {
@@ -174,6 +177,7 @@ Default configuration, click to expand ~
     
           -- Global notes are always stored separately in `save_dir`,
           -- and are shared across all projects/workspaces.
+    
           current_project = {
             enabled = true,
             filename = "TODO.org", -- or /path/to/mytodo.md
@@ -335,17 +339,177 @@ Default configuration, click to expand ~
           toggle_open_global = "<Leader>fn",
           toggle_open_local = "<Leader>fN",
           layout_rotate = "<a-=>",
+          integrations = {
+            custom = { enabled = false, commands = {} },
+          },
         },
       },
     }
 <
 
+
+HIGHLIGHTS ~
+
+  --------------------------------------------------------------------------
+  Highlight Group                        Description
+  -------------------------------------- -----------------------------------
+  QFBookmarkQfLineNr                     Line number column in the
+                                         quickfix/loclist window
+
+  QFBookmarkQfFileBasename               Basename of the file shown in
+                                         quickfix entries
+
+  QFBookmarkQfWarn                       Quickfix entries marked as warnings
+
+  QFBookmarkQfText                       Default text of a quickfix entry
+
+  QFBookmarkQfSep                        Separator between filename, line
+                                         number, and text in quickfix
+                                         entries
+
+  QFBookmarkQfFile                       Filename/path shown in quickfix
+                                         entries
+
+  QFBookmarkQfError                      Quickfix entries marked as errors
+
+  QFBookmarkQfHint                       Quickfix entries marked as hints
+
+  QFBookmarkQfInfo                       Quickfix entries marked as info
+
+  QFBookmarkEntrySelectedCheck           Checkbox icon (✓) for a selected
+                                         entry
+
+  QFBookmarkEntryUnselectedCheck         Checkbox icon (○) for an unselected
+                                         entry
+
+  QFBookmarkFloatBorder                  Border of the main popup window
+
+  QFBookmarkPreviewFloatBorder           Border of the preview popup window
+
+  QFBookmarkPreviewCursorline            Cursorline inside the preview
+                                         window
+
+  QFBookmarkPreviewFloatCursorLineNr     Cursorline number inside the
+                                         preview window
+
+  QFBookmarkPreviewFloatTitle            Title text of the preview window
+
+  QFBookmarkFloatTitle                   Title text of the main popup window
+
+  QFBookmarkPreviewFloatCursor           Cursor highlight inside the preview
+                                         window
+
+  QFBookmarkPreviewFooter                Footer text of the preview window
+
+  QFBookmarkFloatFooter                  Footer text of the main popup
+                                         window
+
+  QFBookmarkFloatCursorLine              Cursorline highlight across the
+                                         entry currently under the cursor
+
+  QFBookmarkEntryIdx                     Index number shown at the start of
+                                         each entry
+
+  QFBookmarkEntryHiddenFlag              h flag for hidden buffers in the
+                                         buffer list
+
+  QFBookmarkEntryModifiedFlag            + flag for modified (unsaved)
+                                         buffers
+
+  QFBookmarkEntryFlag                    %/# flag for the current/alternate
+                                         buffer
+
+  QFBookmarkNoteExtmarkNote              Inline note virtual text for
+                                         NOTE-mode marks
+
+  QFBookmarkEntryPath                    Directory portion of a file path in
+                                         an entry
+
+  QFBookmarkNoteExtmarkNoteEx            Inline note virtual text shown in
+                                         the detail line preview
+
+  QFBookmarkNoteExtmarkDebug             Inline note virtual text for
+                                         DEBUG-mode marks
+
+  QFBookmarkNoteExtmarkFix               Inline note virtual text for
+                                         FIX-mode marks
+
+  QFBookmarkNoteExtmarkMark              Inline note virtual text for
+                                         MARK-mode marks
+
+  QFBookmarkEntryUnselectedCheckCursor   Checkbox icon (○) for an unselected
+                                         entry under the cursor
+
+  QFBookmarkEntrySelectedCheckCursor     Checkbox icon (✓) for a selected
+                                         entry under the cursor
+
+  QFBookmarkNormalFloat                  Default background/foreground of
+                                         all popup windows
+
+  QFBookmarkEntrySelected                Background highlight for a selected
+                                         entry’s lines
+
+  QFBookmarkEntrySymbolType              Symbol kind icon/text (class,
+                                         struct, interface, table) in the
+                                         symbol line
+
+  QFBookmarkEntryFnName                  Function/method name in the symbol
+                                         line
+
+  QFBookmarkEntryNote                    Note text attached to a mark
+
+  QFBookmarkEntryDetail                  Preview text on an entry’s detail
+                                         line
+
+  QFBookmarkBadgeDebug                   Mode badge for DEBUG marks
+
+  QFBookmarkBadgeNote                    Mode badge for NOTE marks
+
+  QFBookmarkBadgeFix                     Mode badge for FIX marks
+
+  QFBookmarkBadgeMark                    Mode badge for MARK marks
+
+  QFBookmarkEntrySelectTo                Indicator shown when forwarding
+                                         selected entries to another target
+
+  QFBookmarkEntryBasename                Filename (basename) portion of a
+                                         path in an entry
+
+  QFBookmarkEntryDirectory               Directory value shown in the
+                                         save-to-file footer
+
+  QFBookmarkEntryLnum                    Line number (:N) shown in an
+                                         entry’s detail line
+
+  QFBookmarkEntryCurrentFile             Current-file indicator (●) next to
+                                         an entry’s path
+  --------------------------------------------------------------------------
 ------------------------------------------------------------------------------
 
 PROVIDERS                             *qfbookmark-qfbookmark-(wip-)-providers*
 
 Mark ~
 
+
+MARK ~
+
+- Persistent bookmarks anywhere in your codebase, organized by type.
+- Fast navigation through a Harpoon-style popup.
+- Marks are automatically saved per Git branch or tag.
+- Load and merge marks from master files, other branches, or projects.
+- Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
+- Clear selections with `keymaps.actions.diselect_all`.
+- In the popup menu, jump directly to entries by number when `allow_number = true`.
+- Zoom the preview window when you need more space.
+
+
+  Insidethe mark popup, the delete keymaps live under `keymaps.actions.del_item`
+  (delete current entry) and `keymaps.actions.del_item_all` (delete all entries),
+  these are separate from `del_mark` / `del_mark_buffer` below, which operate
+  directly on a buffer rather than inside the popup.
+
+  If you don’t need this feature, you can disable it via `window.mark.enabled =
+  false`.
 
 DEFAULT BOOKMARK TYPES
 
@@ -402,7 +566,15 @@ DEFAULT KEYMAPS
         },
 <
 
+
+EXAMPLES
+
+??
+
 Quickfix ~
+
+
+QUICKFIX ~
 
 
 DEFAULT KEYMAPS
@@ -435,7 +607,15 @@ DEFAULT KEYMAPS
         },
 <
 
+
+EXAMPLES
+
+??
+
 Buffers ~
+
+
+BUFFERS ~
 
 
 DEFAULT KEYMAPS
@@ -450,19 +630,71 @@ DEFAULT KEYMAPS
         },
 <
 
+
+EXAMPLES
+
+??
+
 Note ~
 
+
+NOTE ~
+
+The note provider is just a way to capture text you’ll want to check out
+later. Enable it via `keymaps.note.integrations.custom`, and it’ll insert the
+captured text using whichever `templates` you’ve defined under
+`insert_to_note`. You can also wire this up to integrate with your favorite
+note-taking plugin (I personally use `orgmode`).
+
+
+  If you don’t need this feature, you can disable it via `window.note.enabled =
+  false`.
+>lua
+    insert_to_note = {
+      enabled = true,
+      -- the placeholder that gets replaced with the captured text
+      line_placeholder = "<TEXT_HERE>",
+      templates = {
+        notice = {
+          target = "global", -- "global", "local", or a custom file path (e.g. "your/path/file.txt")
+          description = "Quick notice / reminder",
+          templates = string.format(
+            [[
+         date: %s
+         notice: I must check this later
+         <TEXT_HERE>
+         ]],
+            os.date "%Y-%m-%d %H:%M"
+          ),
+        },
+      },
+    }
+<
+
+
+  **Note:** `templates` can be defined as either a string or a function. Use a
+  function when you need the template to be evaluated at runtime — for example,
+  when it depends on values like `vim.bo.filetype` that should be read from the
+  current buffer at insert time, rather than once when the config is first
+  loaded.
 
 DEFAULT KEYMAPS
 
 >lua
-    
-        note = {
-          toggle_open_global = "<Leader>fn",
-          toggle_open_local = "<Leader>fN",
-          layout_rotate = "<a-=>",
-        },
+    note = {
+      toggle_open_global = "<Leader>fn",
+      toggle_open_local = "<Leader>fN",
+      layout_rotate = "<a-=>", -- only works in non-float mode
+      integrations = {
+        custom = { enabled = false, commands = {} },
+      },
+    },
 <
+
+
+EXAMPLES
+
+??
 
 
 FAQ                                         *qfbookmark-qfbookmark-(wip-)-faq*
@@ -487,8 +719,7 @@ Mark Note Annotation is the only type that supports inline annotations. You can 
 ACKNOWLEDGEMENTS               *qfbookmark-qfbookmark-(wip-)-acknowledgements*
 
 - Fzf-lua <https://github.com/ibhagwan/fzf-lua> The picker that inspired me a
-    lot. Many ideas and some logic patterns in QFBookmark were heavily influenced
-    by it. Yes, I peeked at the code.
+    lot. I borrowed a few ideas along the way and occasionally peeked at the code.
 - quicker.nvim <https://github.com/stevearc/quicker.nvim> Helpedme make quickfix
     look nicer and taught me that quickfix doesn’t have to look like a 1990s
     terminal output.
