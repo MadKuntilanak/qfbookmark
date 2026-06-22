@@ -567,6 +567,9 @@ Quickfix ~
 
 QUICKFIX ~
 
+
+https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
+
 - Quickfix and LocList integration with custom formatter.
 - Navigate quickfix history with `next_hist` and `prev_hist`.
 - Add the current line under cursor to quickfix `add_item_to_qf` or loclist `add_item_to_loc`.
