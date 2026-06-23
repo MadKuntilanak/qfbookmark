@@ -50,8 +50,19 @@ M.defaults = {
       enabled = true,
       anchor = "SE", -- NW/SW --- SE/NE
       allow_number = true,
-      actions = {
-        win_resized = false,
+      actions = { win_resized = false },
+      mark_annotation = {
+        enabled = true,
+        label = {
+          comment = {
+            target = "local",
+            description = "",
+            templates = string.format [[
+Comment:
+
+              ]],
+          },
+        },
       },
     },
     note = {
@@ -61,7 +72,6 @@ M.defaults = {
       anchor = "SE",
       width = 0.45,
       height = 0.80,
-      filetype = "org",
       current_project = {
         enabled = true,
         filename = "TODO.org",
@@ -156,6 +166,9 @@ error:
       toggle_open = "gl",
 
       save_annotation = "<C-s>",
+
+      debug = "<Leader>qu",
+      debug_t = "<Leader>qU",
 
       del_mark = "dm",
       del_mark_buffer = "dM",

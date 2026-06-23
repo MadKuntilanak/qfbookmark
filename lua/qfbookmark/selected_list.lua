@@ -62,9 +62,8 @@ function SelectedList:add_to(target)
     for _, item in ipairs(self) do
       local filename = item.filename or (item.info and item.info.name)
       local bufnr = item.bufnr or (item.filename and QfbookmarkUtils.resolve_bufnr(item.filename))
-      if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
-        QfbookmarkUtils.warn "Invalid bufnr. skipped"
-        goto continue
+      if not QfbookmarkUtils.is_valid(bufnr) then
+        bufnr = QfbookmarkUtils.resolve_bufnr(filename)
       end
 
       local line = item.line or item.lnum or (item.info and item.info.lnum)
@@ -77,6 +76,7 @@ function SelectedList:add_to(target)
 
       local col = item.col or (item.info and item.info.col)
 
+      ---@cast bufnr integer
       local text = item.text
         or vim.api.nvim_buf_get_lines(bufnr, (line == 0 and line or line - 1), line + 1, false)[1]
         or ""
@@ -108,8 +108,8 @@ function SelectedList:add_to(target)
     for _, item in ipairs(self) do
       local filename = item.filename or (item.info and item.info.name)
       local bufnr = item.bufnr or (item.filename and QfbookmarkUtils.resolve_bufnr(item.filename))
-      if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
-        goto continue
+      if not QfbookmarkUtils.is_valid(bufnr) then
+        bufnr = QfbookmarkUtils.resolve_bufnr(filename)
       end
 
       local line = item.line or item.lnum or (item.info and item.info.lnum)
@@ -122,7 +122,6 @@ function SelectedList:add_to(target)
         col = col,
         text = text,
       }
-      ::continue::
     end
 
     if target == "quickfix" then

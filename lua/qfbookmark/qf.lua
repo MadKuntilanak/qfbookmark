@@ -93,7 +93,7 @@ local function exclude_buf(bufnr)
   end
 
   local win = vim.api.nvim_get_current_win()
-  if not QfbookmarkUtils._valid(win, bufnr) then
+  if not QfbookmarkUtils._valid(win, bufnr, true) then
     return false
   end
 
@@ -183,6 +183,170 @@ end
 -- ╏                                    MARK                                     ╏
 -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
 
+local ns = vim.api.nvim_create_namespace "qfbookmark_annotations"
+local extmark_id_ = nil
+
+local function visual_range()
+  local start_line = vim.fn.line "v"
+  local end_line = vim.fn.line "."
+
+  if start_line == 0 or end_line == 0 then
+    start_line = vim.fn.getpos("'<")[2]
+    end_line = vim.fn.getpos("'>")[2]
+  end
+
+  return start_line, end_line
+end
+
+local function clamp_range(bufnr, start_line, end_line)
+  local line_count = vim.api.nvim_buf_line_count(bufnr)
+  if line_count < 1 then
+    line_count = 1
+  end
+
+  start_line = math.max(1, math.min(start_line, line_count))
+  end_line = math.max(1, math.min(end_line, line_count))
+
+  return math.min(start_line, end_line), math.max(start_line, end_line)
+end
+
+---@param text string
+local function create_annotation(text)
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  local start_line, end_line = visual_range()
+
+  local target = {
+    bufnr = vim.api.nvim_get_current_buf(),
+    cwd = vim.fn.getcwd(),
+    start_line = math.min(start_line, end_line),
+    end_line = math.max(start_line, end_line),
+  }
+
+  target.start_line, target.end_line = clamp_range(target.bufnr, target.start_line, target.end_line)
+
+  local line_count = vim.api.nvim_buf_line_count(target.bufnr)
+  if line_count < 1 then
+    return
+  end
+
+  local hl_map = {
+    MARK = "QFbookmarkNoteExtmarkMark",
+    FIX = "QFbookmarkNoteExtmarkFix",
+    DEBUG = "QFbookmarkNoteExtmarkDebug",
+    NOTE = "QFbookmarkNoteExtmarkNote",
+  }
+  local hl = hl_map[MARK_MODE] or "QFbookmarkNoteExtmarkMark"
+  local icon = vim.tbl_keys(Config.extmarks.keywords)[2]
+
+  local MAX_NOTE_LEN = 25
+  local display = vim.fn.strdisplaywidth(text) > MAX_NOTE_LEN and vim.fn.strcharpart(text, 0, MAX_NOTE_LEN) .. "…"
+    or text
+
+  -- local id = vim.api.nvim_buf_set_extmark(bufnr, ns, line, 0, { virt_text = { { icon .. " " .. display, hl } } })
+  -- {
+  --   end_row = target.end_line - 1,
+  --   end_col = 0,
+  --   virt_text = { { icon .. " " .. display, hl } },
+  -- }
+
+  local id = vim.api.nvim_buf_set_extmark(bufnr, ns, target.start_line - 1, 0, {
+    end_row = target.end_line - 1,
+    end_col = 0,
+    virt_text = { { icon .. " " .. display, hl } },
+  })
+
+  return {
+    bufnr = bufnr,
+    extmark_id = id,
+    text = text,
+  }
+end
+
+function M.test_create_mark_visual_annotation()
+  local text = [[hello there]]
+  local j = create_annotation(text)
+  if not j then
+    return
+  end
+
+  if not extmark_id_ then
+    RUtils.info "set init extmark_id_"
+    extmark_id_ = j.extmark_id
+  end
+
+  local cs = M.get_annotation_range(j.bufnr, j.extmark_id)
+  if not cs then
+    return
+  end
+  -- RUtils.info(vim.inspect(cs))
+
+  -- Saya mau print isi dari cs sini
+  local lines = vim.api.nvim_buf_get_lines(j.bufnr, cs.start_row, cs.end_row + 1, false)
+  if not lines then
+    return
+  end
+
+  print(table.concat(lines, "\n"))
+end
+
+---@param bufnr integer
+---@param extmark_id integer
+function M.get_annotation_range(bufnr, extmark_id)
+  local mark = vim.api.nvim_buf_get_extmark_by_id(bufnr, ns, extmark_id, {
+    details = true,
+  })
+
+  if not mark or vim.tbl_isempty(mark) then
+    return nil
+  end
+
+  local row = mark[1]
+  local col = mark[2]
+
+  local details = mark[3]
+
+  if not details then
+    return
+  end
+
+  return {
+    start_row = row,
+    start_col = col,
+
+    end_row = details.end_row,
+    end_col = details.end_col,
+  }
+end
+
+function M.get_annotation_range_test()
+  if not extmark_id_ then
+    RUtils.info "ini udah ditambah"
+    RUtils.info "waduh"
+    return
+  end
+  local bufnr = vim.api.nvim_get_current_buf()
+
+  local cs = M.get_annotation_range(bufnr, extmark_id_)
+
+  -- RUtils.info(vim.inspect(cs))
+
+  if not cs then
+    RUtils.info "test get annotation range test"
+    return
+  end
+  -- RUtils.info(vim.inspect(cs))
+
+  -- Saya mau print isi dari cs sini
+  local lines = vim.api.nvim_buf_get_lines(bufnr, cs.start_row, cs.end_row + 1, false)
+  if not lines then
+    RUtils.info "failed?"
+    return
+  end
+
+  print(table.concat(lines, "\n"))
+end
+
 local function reset_harpoon_list()
   local mark_entry_lists = get_lists_marks()
 
@@ -264,7 +428,7 @@ function M.__remove_all_signs()
   local mark_lists_master = M.get_buffers()
 
   for _, bufnr in ipairs(vim.api.nvim_list_bufs()) do
-    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+    if not QfbookmarkUtils.is_valid(bufnr) then
       goto continue
     end
 
@@ -678,7 +842,7 @@ function M.open_mark_harpoon_window()
               goto continue
             end
 
-            if not m.bufnr or not vim.api.nvim_buf_is_valid(m.bufnr) then
+            if not QfbookmarkUtils.is_valid(m.bufnr) then
               QfbookmarkBookmark.delete_mark(mark_lists, m.mark_mode, m.id, m.bufnr)
               goto continue
             end

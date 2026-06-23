@@ -206,22 +206,24 @@ local function place_mark_annotation(mark_lists, cb, load_chunk)
   local height = math.floor(editor.height / 5)
   local width = math.floor(editor.width / 2)
 
-  local col, row = QfbookmarkUIUtils.get_center_col_row(height, width)
+  -- local col, row = QfbookmarkUIUtils.get_center_col_row(height, width)
+  -- local cursor = vim.api.nvim_win_get_cursor(0)
 
-  row = row + 10
-
+  -- row = row + 10
   local title_str = "📝 " .. "Mark Annotation"
+
+  local row = QfbookmarkUIUtils.get_row_cursor_relative(height, 2)
 
   local win_buf = vim.api.nvim_create_buf(false, true)
   local wincfg = {
     buf = win_buf,
     enter = true,
     wincfg = {
-      relative = "editor",
+      relative = "cursor",
       width = width,
       height = height,
       row = row,
-      col = col,
+      col = 0,
       style = "minimal",
       border = "rounded",
       title = QfbookmarkUIUtils.format_title(title_str),

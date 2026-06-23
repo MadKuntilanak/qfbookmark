@@ -2,37 +2,35 @@ local M = {}
 
 -- ├─────────────────────────────────┤ NOTIFY ├─────────────────────────────────┤
 
----@param title? string
-local function get_prefix_notify_title(title)
-  if not title or (title == "") then
-    title = "QFBookmark"
+---@param module_or_message string
+---@param message? string
+local function notify(hl, module_or_message, message)
+  local module
+
+  if message == nil then
+    message = module_or_message
+  else
+    module = module_or_message
   end
-  return title
+
+  local prefix = module and ("QFBookmark." .. module) or "QFBookmark"
+
+  vim.api.nvim_echo({
+    { ("(%s) "):format(prefix), hl },
+    { message },
+  }, true, {})
 end
 
----@param msg string|table
----@param title? string
-function M.info(msg, title)
-  title = get_prefix_notify_title(title)
-  if type(msg) == "table" then
-    vim.api.nvim_echo(msg, false, {})
-    return
-  end
-  vim.notify(msg, vim.log.levels.INFO, { title = title })
+function M.info(module_or_message, message)
+  notify("Directory", module_or_message, message)
 end
 
----@param msg string
----@param title? string
-function M.warn(msg, title)
-  title = get_prefix_notify_title(title)
-  vim.notify(msg, vim.log.levels.WARN, { title = title })
+function M.warn(module_or_message, message)
+  notify("WarningMsg", module_or_message, message)
 end
 
----@param msg string
----@param title? string
-function M.error(msg, title)
-  title = get_prefix_notify_title(title)
-  vim.notify(msg, vim.log.levels.WARN, { title = title })
+function M.error(module_or_message, message)
+  notify("ErrorMsg", module_or_message, message)
 end
 
 ---@param msg? string
@@ -409,6 +407,14 @@ function M.windows_is_opened(filetypes, is_tab, is_more_guard)
   }
 end
 
+function M.normalize_path(path)
+  if not vim.startswith(path, "/") then
+    path = vim.fn.fnamemodify(path, ":p")
+  end
+
+  return vim.fs.normalize(path)
+end
+
 ---@param exclude_filetypes? string[]
 ---@return integer | nil
 function M.windows_is_opened_by_name(filename, exclude_filetypes)
@@ -424,8 +430,8 @@ function M.windows_is_opened_by_name(filename, exclude_filetypes)
     -- end
     local bufname = vim.api.nvim_buf_get_name(buf)
 
-    local bufname_normalize = vim.fs.normalize(bufname)
-    local filename_normalize = vim.fs.normalize(filename)
+    local bufname_normalize = M.normalize_path(bufname)
+    local filename_normalize = M.normalize_path(filename)
 
     if bufname_normalize == filename_normalize then
       _buf = buf
@@ -438,13 +444,13 @@ end
 ---@param filename string
 ---@return integer|nil
 function M.find_window_by_filename(filename)
-  local filename_normalized = vim.fs.normalize(filename)
+  local filename_normalized = M.normalize_path(filename)
 
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     local buf = vim.api.nvim_win_get_buf(win)
     local bufname = vim.api.nvim_buf_get_name(buf)
 
-    if vim.fs.normalize(bufname) == filename_normalized then
+    if M.normalize_path(bufname) == filename_normalized then
       return win
     end
   end
@@ -547,8 +553,11 @@ end
 
 ---@param win integer
 ---@param buf integer
+---@param check_float? boolean
 ---@return boolean
-function M._valid(win, buf)
+function M._valid(win, buf, check_float)
+  check_float = check_float or false
+
   if not win or not buf then
     return false
   end
@@ -558,8 +567,23 @@ function M._valid(win, buf)
   if vim.api.nvim_win_get_buf(win) ~= buf then
     return false
   end
-  if vim.api.nvim_win_get_config(win).relative ~= "" then
+  if check_float and (vim.api.nvim_win_get_config(win).relative ~= "") then
     return false
+  end
+
+  return true
+end
+
+---@param buf? integer
+---@param win? integer
+---@return boolean
+function M.is_valid(buf, win)
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then
+    return false
+  end
+
+  if win and buf then
+    return M._valid(win, buf)
   end
 
   return true
@@ -589,7 +613,7 @@ function M.find_win_ls(opts)
 
   for _, winid in ipairs(wins) do
     local buf = vim.api.nvim_win_get_buf(winid)
-    if not M._valid(winid, buf) then
+    if not M._valid(winid, buf, true) then
       goto continue
     end
 
@@ -834,7 +858,7 @@ end
 ---@return string?
 function M.nvim_buf_get_name(bufnr, bufinfo)
   assert(not vim.in_fast_event())
-  if not vim.api.nvim_buf_is_valid(bufnr) then
+  if not M.is_valid(bufnr) then
     return
   end
   if bufinfo and bufinfo.name and #bufinfo.name > 0 then
@@ -863,7 +887,7 @@ function M.getbufinfo(bufnr)
 
   ---@cast info BufInfoEx
 
-  if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+  if not M.is_valid(bufnr) then
     return info
   end
 
@@ -875,6 +899,7 @@ function M.getbufinfo(bufnr)
     info.lnum = pos[1]
     info.col = pos[2]
   else
+    ---@cast bufnr integer
     local mark = vim.api.nvim_buf_get_mark(bufnr, '"')
 
     if mark[1] > 0 then
@@ -896,7 +921,10 @@ end
 ---@param bufnr integer
 ---@return boolean
 function M.is_term_buffer(bufnr)
-  return vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].buftype == "terminal"
+  if M.is_valid(bufnr) then
+    return vim.bo[bufnr].buftype == "terminal"
+  end
+  return false
 end
 
 ---@param selected integer | { bufnr: integer, info: table, flag: string, readonly: boolean, loaded: boolean }
@@ -909,12 +937,16 @@ function M.buf_del(selected)
   if type(selected) == "table" then
     -- prefer bufnr directly; fall back to resolving from info.name
     local bufnr = selected.bufnr
-    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
-      local name = selected.info and selected.info.name
-      bufnr = name and vim.fn.bufnr(name) or nil
+    if not M.is_valid(bufnr) then
+      local filename = selected.info and selected.info.name
+      local buf = M.resolve_bufnr(filename)
+      if not buf then
+        ---@cast buf integer
+        bufnr = buf
+      end
     end
 
-    if bufnr and bufnr ~= -1 and vim.api.nvim_buf_is_valid(bufnr) then
+    if M.is_valid(bufnr) then
       delete_bufnr(bufnr)
     end
   end

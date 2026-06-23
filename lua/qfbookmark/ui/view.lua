@@ -2,6 +2,7 @@ local QfbookmarkUIUtils = require "qfbookmark.ui.utils"
 local QfbookmarkUIKeymaps = require "qfbookmark.ui.keymaps"
 local QfbookmarkUIPopup = require "qfbookmark.ui.popup"
 local QfbookmarkMarkVisual = require "qfbookmark.visual"
+local QfbookmarkUtils = require "qfbookmark.utils"
 
 ---@alias WinCfg { buf: integer, enter: boolean, wincfg: vim.api.keyset.win_config }
 
@@ -20,6 +21,7 @@ M.window = {
     augroup = "WinMarkSaveFooter",
     win = nil,
     buf = nil,
+    namespace = "qfbookmark_popup_footer",
   },
   mark = {
     augroup = "WinMarkPopup",
@@ -86,11 +88,7 @@ local __popup_opts_for = {
   ---@param cb function
   ["mark"] = function(opts_popup, cb)
     local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
-
-    if not main_win or not vim.api.nvim_win_is_valid(main_win) then
-      return
-    end
-    if not main_buf or not vim.api.nvim_buf_is_valid(main_buf) then
+    if not QfbookmarkUtils.is_valid(main_buf, main_win) then
       return
     end
 
@@ -133,11 +131,7 @@ local __popup_opts_for = {
       local cursorline_ns = vim.api.nvim_create_namespace "qfbookmark_cursorline"
       vim.api.nvim_buf_clear_namespace(main_buf, cursorline_ns, 0, -1)
 
-      if not main_buf or not vim.api.nvim_buf_is_valid(main_buf) then
-        return
-      end
-
-      if not main_win or not vim.api.nvim_win_is_valid(main_win) then
+      if not QfbookmarkUtils.is_valid(main_buf, main_win) then
         return
       end
 
@@ -228,10 +222,8 @@ local __popup_opts_for = {
   ---@param opts_popup QFBookmarkUiPopupCfg
   ["buffer"] = function(opts_popup)
     local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
-    if not win or not vim.api.nvim_win_is_valid(win) then
-      return
-    end
-    if not buf or not vim.api.nvim_buf_is_valid(buf) then
+
+    if not QfbookmarkUtils.is_valid(buf, win) then
       return
     end
 
@@ -254,10 +246,8 @@ local __popup_opts_for = {
   ---@param opts_popup QFBookmarkUiPopupCfg
   ["save"] = function(opts_popup, cb)
     local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
-    if not win or not vim.api.nvim_win_is_valid(win) then
-      return
-    end
-    if not buf or not vim.api.nvim_buf_is_valid(buf) then
+
+    if not QfbookmarkUtils.is_valid(buf, win) then
       return
     end
 
@@ -288,6 +278,7 @@ local __popup_opts_for = {
         opts_popup.popup.preview = {}
         opts_popup.popup.preview.buf = M.window.save_footer.buf
         opts_popup.popup.preview.win = M.window.save_footer.win
+        opts_popup.popup.preview.namespace = M.window.save_footer.namespace
       end
     end
 
@@ -296,10 +287,8 @@ local __popup_opts_for = {
   end,
   ["note"] = function(opts_popup)
     local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
-    if not main_win or not vim.api.nvim_win_is_valid(main_win) then
-      return
-    end
-    if not main_buf or not vim.api.nvim_buf_is_valid(main_buf) then
+
+    if not QfbookmarkUtils.is_valid(main_buf, main_win) then
       return
     end
 
@@ -334,10 +323,8 @@ local __popup_opts_for = {
   ---@param cb function
   ["mark_annotation"] = function(opts_popup, cb)
     local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
-    if not main_win or not vim.api.nvim_win_is_valid(main_win) then
-      return
-    end
-    if not main_buf or not vim.api.nvim_buf_is_valid(main_buf) then
+
+    if not QfbookmarkUtils.is_valid(main_buf, main_win) then
       return
     end
 
@@ -350,24 +337,24 @@ local __popup_opts_for = {
       opts_popup.popup.buf = M.window.mark_annotation.buf
     end
 
-    local main_win_cfg = vim.api.nvim_win_get_config(main_win)
-
-    local buf_preview, win_preview = QfbookmarkUIPopup.mark_note_preview(main_win_cfg, opts_popup.win_opts.wincfg.width)
-    if not win_preview or not buf_preview then
-      return
-    end
-
-    M.window.mark_annotation_preview.buf = buf_preview
-    M.window.mark_annotation_preview.win = win_preview
-
-    if not opts_popup.popup.preview then
-      opts_popup.popup.preview = {}
-      opts_popup.popup.preview.buf = M.window.mark_annotation_preview.buf
-      opts_popup.popup.preview.win = M.window.mark_annotation_preview.win
-    end
-
-    -- Wire up CursorMoved preview with the new harpoon_map
-    QfbookmarkUIPopup.setup_mark_preview_contents(opts_popup, main_buf, win_preview, buf_preview, true)
+    -- local main_win_cfg = vim.api.nvim_win_get_config(main_win)
+    --
+    -- local buf_preview, win_preview = QfbookmarkUIPopup.mark_note_preview(main_win_cfg, opts_popup.win_opts.wincfg.width)
+    -- if not win_preview or not buf_preview then
+    --   return
+    -- end
+    --
+    -- M.window.mark_annotation_preview.buf = buf_preview
+    -- M.window.mark_annotation_preview.win = win_preview
+    --
+    -- if not opts_popup.popup.preview then
+    --   opts_popup.popup.preview = {}
+    --   opts_popup.popup.preview.buf = M.window.mark_annotation_preview.buf
+    --   opts_popup.popup.preview.win = M.window.mark_annotation_preview.win
+    -- end
+    --
+    -- -- Wire up CursorMoved preview with the new harpoon_map
+    -- QfbookmarkUIPopup.setup_mark_preview_contents(opts_popup, main_buf, win_preview, buf_preview, true)
 
     QfbookmarkUIKeymaps.setup_keymap_mark_annotation(opts_popup, main_buf, cb)
 

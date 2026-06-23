@@ -78,7 +78,7 @@ end
 ---@param fname string|nil
 ---@return {sc:integer, ec:integer, hl:string}[]
 local function ts_from_string(text, bufnr, fname)
-  local ft = (bufnr and bufnr > 0 and vim.api.nvim_buf_is_valid(bufnr)) and vim.bo[bufnr].filetype or ""
+  local ft = (bufnr and bufnr > 0 and QfbookmarkUtils.is_valid(bufnr)) and vim.bo[bufnr].filetype or ""
   if ft == "" then
     ft = vim.filetype.match { buf = bufnr, filename = fname } or ""
   end
@@ -373,7 +373,7 @@ end
 -- | Apply to whole qf buffer                                                    |
 -- +-----------------------------------------------------------------------------+
 local function apply(qf_buf)
-  if not vim.api.nvim_buf_is_valid(qf_buf) then
+  if not QfbookmarkUtils.is_valid(qf_buf) then
     return
   end
 
@@ -415,7 +415,7 @@ function M.setup()
 
   local function schedule_apply(buf)
     vim.schedule(function()
-      if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "quickfix" then
+      if QfbookmarkUtils.is_valid(buf) and vim.bo[buf].buftype == "quickfix" then
         apply(buf)
       end
     end)

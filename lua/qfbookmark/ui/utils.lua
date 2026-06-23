@@ -77,6 +77,26 @@ function M.get_position(anchor, width, height)
   end
 end
 
+---@param height integer
+---@param padding? integer
+function M.get_row_cursor_relative(height, padding)
+  padding = padding or 1
+
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  local screen_row = cursor[1] - M.get_editor_size().height
+
+  local row
+
+  if screen_row > height + padding then
+    -- Show above cursor
+    row = -(height + padding)
+  else
+    -- Show below cursor
+    row = padding
+  end
+  return row
+end
+
 ---@param height_editor integer
 ---@param width_editor integer
 function M.get_center_col_row(height_editor, width_editor)
@@ -266,7 +286,7 @@ end
 function M.close_buf(bufs)
   if type(bufs) == "table" then
     for _, b in pairs(bufs) do
-      if vim.api.nvim_buf_is_valid(b) then
+      if QfbookmarkUtils.is_valid(b) then
         QfbookmarkUtils.buf_del(b)
       end
     end
@@ -274,7 +294,7 @@ function M.close_buf(bufs)
   end
 
   if type(bufs) == "number" then
-    if vim.api.nvim_buf_is_valid(bufs) then
+    if QfbookmarkUtils.is_valid(bufs) then
       QfbookmarkUtils.buf_del(bufs)
     end
   end
@@ -301,7 +321,7 @@ end
 ---@param bufnr integer
 ---@return "gone" | "alive" | "hidden"
 function M.get_buffer_status(bufnr)
-  if not vim.api.nvim_buf_is_valid(bufnr) then
+  if not QfbookmarkUtils.is_valid(bufnr) then
     return "gone"
   end
 
@@ -406,7 +426,7 @@ end
 function M.resolve_fn_name(mark)
   local status = M.get_buffer_status(mark.bufnr)
 
-  if (status == "alive" or status == "hidden") and vim.api.nvim_buf_is_valid(mark.bufnr) then
+  if (status == "alive" or status == "hidden") and QfbookmarkUtils.is_valid(mark.bufnr) then
     local result = QfbookmarkTreesitter.resolve_symbol(mark.bufnr, mark.line, mark.col or 0)
     return result
   end

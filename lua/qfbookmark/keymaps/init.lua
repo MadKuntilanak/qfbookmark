@@ -105,12 +105,19 @@ local function mark_keymaps()
       },
 
       -- NOTE: Remove this keybinding before release
-      -- { -- Debug only
-      --   desc = "Qfmark: debug",
-      --   func = "debug_qf",
-      --   keys = get_keymap(Config.keymaps, "mark", "debug"),
-      --   mode = { "n" },
-      -- },
+      { -- Debug only
+        desc = "Qfmark: debug",
+        func = "test_create_mark_visual_annotation",
+        keys = get_keymap(Config.keymaps, "mark", "debug"),
+        mode = { "x", "v" },
+      },
+
+      { -- Debug only
+        desc = "Qfmark: debug",
+        func = "get_annotation_range_test",
+        keys = get_keymap(Config.keymaps, "mark", "debug_t"),
+        mode = { "x", "v", "n" },
+      },
     },
   }, keys)
 

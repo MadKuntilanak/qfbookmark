@@ -40,7 +40,7 @@ end
 
 ---@param b integer
 local function is_valid_buf(b)
-  return vim.api.nvim_buf_is_valid(b)
+  return QfbookmarkUtils.is_valid(b)
     and vim.bo[b].buftype ~= "nofile"
     and vim.bo[b].buftype ~= "prompt"
     and vim.bo[b].buftype ~= "terminal"
@@ -130,7 +130,7 @@ local function get_list_buffers(opts, bufnrs)
   local buffers = {}
   -- Filter invalid buffers (#2519)
   bufnrs = vim.tbl_filter(function(b)
-    return vim.api.nvim_buf_is_valid(b)
+    return QfbookmarkUtils.is_valid(b)
   end, bufnrs)
 
   local cur = M.get()

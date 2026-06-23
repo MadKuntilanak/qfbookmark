@@ -8,8 +8,8 @@
 ---@alias QFBookmarkBufferMarkGroup table<string, QFbookBufferMarkEntry>
 ---@alias QFBookmarkBufferMark table<QFBookMarkMode, QFBookmarkBufferMarkGroup>
 
----@alias QFBookmarkUiPreview { win?: integer, buf?: integer, wincfg?: table }
----@alias QFBookmarkUiPopup { win?: integer, buf?: integer, preview?: QFBookmarkUiPreview }
+---@alias QFBookmarkUiPreview { win: integer, buf: integer, wincfg?: table, namespace: string }
+---@alias QFBookmarkUiPopup { win: integer, buf: integer, preview?: QFBookmarkUiPreview, namespace: string}
 
 ---@alias QFBookmarkUiSaveCfg {
 --- title: string,
@@ -160,7 +160,6 @@
 ---@field height integer
 ---@field mode string
 ---@field anchor string
----@field filetype string
 ---@field wrap boolean
 ---@field insert_to_note {enabled: boolean, line_placeholder: string, templates: table<string, QFBookNoteIntegrationsTemplates>}
 ---@field current_project { enabled: boolean, filename: string }
@@ -321,6 +320,7 @@
 ---@field win integer?
 ---@field buf integer?
 ---@field augroup string?
+---@field namespace string?
 
 ---@class QFBookHighlightCfg
 ---@field higroup? { fromTo: string, attr: "fg"|"bg"}

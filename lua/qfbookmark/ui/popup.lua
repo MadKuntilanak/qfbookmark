@@ -2,16 +2,22 @@ local Config = require("qfbookmark.config").defaults
 
 local QFbookmarkPathUtils = require "qfbookmark.path.utils"
 local QfbookmarkUIUtils = require "qfbookmark.ui.utils"
+local QfbookmarkUtils = require "qfbookmark.utils"
 local QfbookmarkMarkVisual = require "qfbookmark.visual"
 
 local M = {}
 
----@param main_buf integer
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf_preview integer
----@param target_path string
----@param is_loc? boolean
-local function update_save_footer(main_buf, buf_preview, target_path, is_loc)
-  is_loc = is_loc or false
+local function update_save_footer(opts_popup, buf_preview)
+  local is_loc = opts_popup.save.is_loc
+  local target_path = opts_popup.save.target_path
+  local main_buf = opts_popup.popup.buf
+
+  if not QfbookmarkUtils.is_valid(main_buf) then
+    return
+  end
+
   local getlines = vim.api.nvim_buf_get_lines(main_buf, 0, -1, false)
 
   if not target_path then
@@ -39,7 +45,13 @@ local function update_save_footer(main_buf, buf_preview, target_path, is_loc)
   }
   vim.api.nvim_buf_set_lines(buf_preview, 0, -1, false, footer_text)
 
-  QfbookmarkMarkVisual.apply_save_highlights(buf_preview, fn_opts, type_label, dir_display)
+  QfbookmarkMarkVisual.apply_save_highlights(
+    buf_preview,
+    fn_opts,
+    type_label,
+    dir_display,
+    opts_popup.popup.preview.namespace
+  )
 end
 
 ---@param win_opts WinCfg
@@ -80,7 +92,7 @@ end
 local function load_content(filename, bufnr)
   -- Handle fugitive virtual buffers
   if filename and filename:match "^fugitive://" then
-    if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+    if not QfbookmarkUtils.is_valid(bufnr) then
       return { "⚠ Unable to load fugitive buffer:\n" .. filename }
     end
 
@@ -91,7 +103,7 @@ local function load_content(filename, bufnr)
   end
 
   if not bufnr then
-    local real = read_file(filename)
+    local real = QfbookmarkUtils.resolve_bufnr(filename)
     if real then
       return real
     end
@@ -231,7 +243,7 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
 
     local ft
 
-    if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
+    if QfbookmarkUtils.is_valid(bufnr) then
       local ok, result = pcall(vim.filetype.match, { buf = bufnr })
       if ok then
         ft = result
@@ -248,7 +260,7 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
     end
 
     if not ft and filename and filename:match "^fugitive://" then
-      ft = bufnr and vim.api.nvim_buf_is_valid(bufnr) and vim.bo[bufnr].filetype or "git"
+      ft = QfbookmarkUtils.is_valid(bufnr) and vim.bo[bufnr].filetype or "git"
     end
 
     if ft then
@@ -430,7 +442,8 @@ function M.save_footer(opts_popup, main_cfg)
     on_lines = function()
       vim.schedule(function()
         if opts_popup.save.target_path then
-          update_save_footer(opts_popup.popup.buf, buf_preview, opts_popup.save.target_path, opts_popup.save.is_loc)
+          -- update_save_footer(opts_popup, buf_preview, opts_popup.save.target_path, opts_popup.save.is_loc)
+          update_save_footer(opts_popup, buf_preview)
         end
       end)
     end,

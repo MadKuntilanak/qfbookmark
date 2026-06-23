@@ -418,7 +418,10 @@ function Mapping.mark.move_item_to(is_prev)
     e.start_line = #lines - (l3 and 2 or 1)
   end
 
+  local modifiable = vim.bo[Mapping.buf].modifiable
+  vim.bo[Mapping.buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[Mapping.buf].modifiable = modifiable
 
   -- Move cursor to new position
   local new_entry = entries[target_idx]
@@ -734,7 +737,10 @@ local function mark_del_item(is_all)
     end
   end
 
+  local modifiable = vim.bo[Mapping.buf].modifiable
+  vim.bo[Mapping.buf].modifiable = true
   vim.api.nvim_buf_set_lines(Mapping.buf, 0, -1, false, lines)
+  vim.bo[Mapping.buf].modifiable = modifiable
 
   local QfbookmarkMarkVisual = require "qfbookmark.visual"
   QfbookmarkMarkVisual.apply_entry_highlights(Mapping.buf, entries, Mapping.selected, Mapping.opts_popup.active)
@@ -785,7 +791,7 @@ function Mapping.buffer.item_del()
             table.remove(list, idx)
           end
 
-          if vim.api.nvim_buf_is_valid(entry.bufnr) then
+          if QfbookmarkUtils.is_valid(entry.bufnr) then
             QfbookmarkUtils.buf_del(entry.bufnr)
           end
         end
@@ -815,7 +821,10 @@ function Mapping.buffer.item_del()
       __entries[idx] = entry
     end
 
+    local modifiable = vim.bo[Mapping.buf].modifiable
+    vim.bo[Mapping.buf].modifiable = true
     vim.api.nvim_buf_set_lines(Mapping.buf, 0, -1, false, display_lines)
+    vim.bo[Mapping.buf].modifiable = modifiable
 
     local QfbookmarkMarkVisual = require "qfbookmark.visual"
     QfbookmarkMarkVisual.apply_entry_buffer_highlights(Mapping.buf, __entries, Mapping.buffer_selected)
@@ -825,7 +834,7 @@ function Mapping.buffer.item_del()
     end)
   elseif hval then
     local target_buf = hval.bufnr
-    if vim.api.nvim_buf_is_valid(target_buf) then
+    if QfbookmarkUtils.is_valid(target_buf) then
       QfbookmarkUtils.buf_del(target_buf)
       Mapping.press_normal_key "dd"
 
@@ -842,7 +851,7 @@ function Mapping.buffer.clear_all_items()
 
   for _, buf in ipairs(list) do
     local bufnr = buf.bufnr
-    if bufnr and bufnr ~= Mapping.last_buf and vim.api.nvim_buf_is_valid(bufnr) then
+    if bufnr and bufnr ~= Mapping.last_buf and QfbookmarkUtils.is_valid(bufnr) then
       local ok = pcall(vim.api.nvim_buf_delete, bufnr, { force = false })
       if ok then
         removed = removed + 1
@@ -1500,6 +1509,55 @@ function M.setup_keymap_mark_annotation(opts_popup, buf, cb)
   QfbookmarkKeymapUtils.append_active_keymaps({
     is_set = true,
     keymaps = {
+
+      -- +-----------------------------------------------------------------------------+
+      -- |                                   PREVIEW                                   |
+      -- +-----------------------------------------------------------------------------+
+
+      {
+        desc = "Qfmark: scroll preview up",
+        func = function()
+          Mapping.mark.scroll_preview_window(-1)
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.scroll_preview_up,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
+        desc = "Qfmark: scroll preview down",
+        func = function()
+          Mapping.mark.scroll_preview_window(1)
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.scroll_preview_down,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
+        desc = "Qfmark: scroll preview up fast",
+        func = function()
+          Mapping.mark.scroll_preview_window(-1, 10)
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.scroll_preview_up_fast,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
+        desc = "Qfmark: scroll preview down fast",
+        func = function()
+          Mapping.mark.scroll_preview_window(1, 10)
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.scroll_preview_down_fast,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
       {
         desc = "Qfmark: save mark annotation",
         func = function()

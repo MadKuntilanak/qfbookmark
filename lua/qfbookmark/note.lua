@@ -9,7 +9,13 @@ local QfbookmarkUiUtils = require "qfbookmark.ui.utils"
 
 local M = {}
 
+local note_path
 local last_position = nil
+local last_open = {
+  filname = nil,
+  is_global = nil,
+  win = nil,
+}
 
 -- +-----------------------------------------------------------------------------+
 -- |                                    MISC                                     |
@@ -77,11 +83,34 @@ local function resolve_note_path(target)
     end
   else
     path = target
+    assert(QfbookmarkPathUtils.is_file(path), string.format("Invalid target '%s': file does not exist", path))
   end
 
-  assert(QfbookmarkPathUtils.is_file(path), string.format("invalid target '%s': file does not exist", path))
-
   return path
+end
+
+local function kill_and_save_content_win(win_note)
+  local buf_note
+
+  if win_note and vim.api.nvim_win_is_valid(win_note) then
+    vim.api.nvim_set_current_win(win_note)
+    buf_note = vim.api.nvim_win_get_buf(win_note)
+
+    local row = vim.api.nvim_win_get_cursor(0)[1]
+    local col = vim.api.nvim_win_get_cursor(0)[2]
+    last_position = { row, col }
+  else
+    buf_note = vim.api.nvim_get_current_buf()
+  end
+
+  -- Auto save enabled
+  vim.api.nvim_buf_call(buf_note, function()
+    if vim.bo[buf_note].modified then
+      vim.cmd "silent write"
+    end
+  end)
+
+  QfbookmarkUtils.delete_buffer_by_name(note_path)
 end
 
 --- Append rendered lines to a note file, creating the file/dir if needed.
@@ -123,11 +152,10 @@ local function append_to_note(path, lines)
   return true
 end
 
----@param note_path string
 ---@param cfg_note QFBookWindowNotes
 ---@param is_insert_to? boolean
 ---@param window_command string
-local function toggle_note(note_path, cfg_note, is_global, is_insert_to, window_command)
+local function toggle_note(cfg_note, is_global, is_insert_to, window_command)
   is_insert_to = is_insert_to or false
 
   local win_note = QfbookmarkUtils.find_window_by_filename(note_path)
@@ -157,6 +185,9 @@ local function toggle_note(note_path, cfg_note, is_global, is_insert_to, window_
       end
     else
       QfbookmarkUI.open_note_in_float(note_path, cfg_note, is_global)
+      last_open.filname = note_path
+      last_open.is_global = is_global
+      last_open.win = vim.api.nvim_get_current_win()
     end
 
     -- Open folds at the cursor position and restore the last cursor location
@@ -200,23 +231,7 @@ local function toggle_note(note_path, cfg_note, is_global, is_insert_to, window_
       end
     end)
   else
-    if win_note and vim.api.nvim_win_is_valid(win_note) then
-      vim.api.nvim_set_current_win(win_note)
-      local row = vim.api.nvim_win_get_cursor(0)[1]
-      local col = vim.api.nvim_win_get_cursor(0)[2]
-      last_position = { row, col }
-    end
-
-    local buf_note = vim.api.nvim_win_get_buf(win_note)
-
-    -- Auto save enabled
-    vim.api.nvim_buf_call(buf_note, function()
-      if vim.bo[buf_note].modified then
-        vim.cmd "silent write"
-      end
-    end)
-
-    QfbookmarkUtils.delete_buffer_by_name(note_path)
+    kill_and_save_content_win(win_note)
   end
 end
 
@@ -227,29 +242,26 @@ end
 function M.handle_open(is_global, cfg_note, is_insert_to, window_command)
   window_command = window_command or ""
 
-  local note_path
-
-  local file_extension = "." .. cfg_note.filetype
-
-  if is_global then
-    QfbookmarkPath.setup_path(is_global)
-    note_path = QfbookmarkPath.get_target_file_path(is_global)
-    note_path = note_path .. "/note" .. file_extension
-  else
-    if cfg_note.current_project.enabled then
-      note_path = cfg_note.current_project.filename
-      note_path = vim.uv.cwd() .. "/" .. note_path
-    else
-      QfbookmarkPath.setup_path(is_global)
-      note_path = QfbookmarkPathUtils.get_base_path_root(note_path, is_global) .. file_extension
-    end
+  local target = is_global and "global" or "local"
+  note_path = resolve_note_path(target)
+  if not note_path then
+    return
   end
 
   if not QfbookmarkPathUtils.is_file(note_path) then
     QfbookmarkPathUtils.create_file(note_path)
   end
 
-  toggle_note(note_path, cfg_note, is_global, is_insert_to, window_command)
+  -- Save non-global/local paths first before toggling the floating window.
+  if last_open.win and vim.api.nvim_win_is_valid(last_open.win) then
+    local last_open_fn = QfbookmarkUtils.normalize_path(last_open.filname)
+    local new_note_path = QfbookmarkUtils.normalize_path(note_path)
+    if last_open_fn ~= new_note_path then
+      kill_and_save_content_win(last_open.win)
+    end
+  end
+
+  toggle_note(cfg_note, is_global, is_insert_to, window_command)
 end
 
 --- Insert captured text (visual selection, falling back to the current
@@ -294,7 +306,7 @@ function M.add_to_note(template_name)
     return
   end
 
-  local note_path = resolve_note_path(template.target)
+  note_path = resolve_note_path(template.target)
 
   if not note_path then
     QfbookmarkUtils.warn(string.format("Could not resolve note path for target '%s'.", template.target))
@@ -311,7 +323,7 @@ function M.add_to_note(template_name)
   local cfg_note = Config.window.note
   local is_insert_to = true
 
-  toggle_note(note_path, cfg_note, false, is_insert_to, "")
+  toggle_note(cfg_note, false, is_insert_to, "")
 end
 
 return M

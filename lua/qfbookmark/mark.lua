@@ -396,7 +396,7 @@ function M.update_mark_sign(mark_lists, bufnr)
     return
   end
 
-  if not bufnr or not vim.api.nvim_buf_is_valid(bufnr) then
+  if not QfbookmarkUtils.is_valid(bufnr) then
     return
   end
 

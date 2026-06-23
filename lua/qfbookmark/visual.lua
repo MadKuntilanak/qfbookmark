@@ -1,8 +1,68 @@
 local Config = require("qfbookmark.config").defaults
+local QfbookmarkUtils = require "qfbookmark.utils"
 
-local M = { sign_cache = {} }
+local M = {
+  sign_cache = {},
+  namespace_cache = {},
+}
 
 local MAX_NOTE_LEN = 25
+
+---@param bufnr integer
+---@param ns integer
+---@param line integer
+---@param col integer
+---@param opts vim.api.keyset.set_extmark
+local function set_extmark(bufnr, ns, line, col, opts)
+  if QfbookmarkUtils.is_valid(bufnr) then
+    pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, line, col, opts)
+  end
+end
+
+---@param bufnr integer
+---@param id integer
+---@param sign_name string
+---@param sign_group string
+---@param opts? vim.fn.sign_place.dict
+local function set_sign_place(bufnr, id, sign_group, sign_name, opts)
+  if QfbookmarkUtils.is_valid(bufnr) then
+    vim.fn.sign_place(id, sign_group, sign_name, bufnr, opts)
+  end
+end
+
+---@param bufnr integer
+---@param ns integer
+---@param id integer
+local function del_extmark(bufnr, ns, id)
+  if QfbookmarkUtils.is_valid(bufnr) then
+    pcall(vim.api.nvim_buf_del_extmark, bufnr, ns, id)
+  end
+end
+
+---@param bufnr integer
+---@param ns integer
+local function del_namespace(bufnr, ns)
+  if QfbookmarkUtils.is_valid(bufnr) then
+    vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+  end
+end
+
+---@param icon string
+---@param hl_group string
+local function register_sign(sign_name, icon, hl_group)
+  if not M.sign_cache[sign_name] then
+    M.sign_cache[sign_name] = true
+    vim.fn.sign_define(sign_name, { text = icon, texthl = hl_group })
+  end
+end
+
+---@param namespace_name string
+local function register_namespace(namespace_name)
+  if not M.namespace_cache[namespace_name] then
+    M.namespace_cache[namespace_name] = vim.api.nvim_create_namespace(namespace_name)
+  end
+  return M.namespace_cache[namespace_name]
+end
 
 ---@param id number
 ---@param bufnr number
@@ -11,15 +71,19 @@ local MAX_NOTE_LEN = 25
 ---@param extmarkspec QFBookSpec
 function M.insert_sign(id, mark_mode, bufnr, lnum, extmarkspec)
   local sign_name = "Qfbookmark" .. mark_mode
-
-  if not M.sign_cache[sign_name] then
-    M.sign_cache[sign_name] = true
-    vim.fn.sign_define(sign_name, { text = extmarkspec.icon, texthl = extmarkspec.hl_group })
-  end
+  register_sign(sign_name, extmarkspec.icon, extmarkspec.hl_group)
 
   local priority = Config.extmarks.priority and Config.extmarks.priority or 1
+  set_sign_place(bufnr, id, Config.sign_group, sign_name, { lnum = lnum, priority = priority })
+end
 
-  vim.fn.sign_place(id, Config.sign_group, sign_name, bufnr, { lnum = lnum, priority = priority })
+---@param id number
+---@param bufnr? number
+function M.delete_sign(id, bufnr)
+  bufnr = bufnr or vim.api.nvim_get_current_buf()
+  if QfbookmarkUtils.is_valid(bufnr) then
+    vim.fn.sign_unplace(Config.sign_group, { buffer = bufnr, id = id })
+  end
 end
 
 ---@param id integer
@@ -32,7 +96,7 @@ function M.insert_extmark(id, mark_mode, bufnr, lnum, text)
     return
   end
 
-  local ns = vim.api.nvim_create_namespace "qfbookmark_note_extmark"
+  local ns = register_namespace "qfbookmark_note_extmark"
 
   -- truncate teks
   local display = vim.fn.strdisplaywidth(text) > MAX_NOTE_LEN and vim.fn.strcharpart(text, 0, MAX_NOTE_LEN) .. "…"
@@ -48,42 +112,32 @@ function M.insert_extmark(id, mark_mode, bufnr, lnum, text)
 
   local icon = Config.extmarks.keywords[mark_mode].icon or "📌 "
 
-  pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, lnum - 1, 0, {
+  set_extmark(bufnr, ns, lnum - 1, 0, {
     id = id,
     virt_text = { { icon .. " " .. display, hl } },
-    virt_text_pos = "right_align",
+    -- virt_text_pos = "right_align",
     priority = 10,
   })
 end
-
----@param id number
----@param bufnr? number
-function M.delete_sign(id, bufnr)
-  bufnr = bufnr or vim.api.nvim_get_current_buf()
-  if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
-    vim.fn.sign_unplace(Config.sign_group, { buffer = bufnr, id = id })
-  end
-end
-
 ---@param id number
 ---@param bufnr? number
 function M.delete_extmark(id, bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local ns = vim.api.nvim_create_namespace "qfbookmark_note_extmark"
-  pcall(vim.api.nvim_buf_del_extmark, bufnr, ns, id)
+  local ns = register_namespace "qfbookmark_note_extmark"
+  del_extmark(bufnr, ns, id)
 end
 
 ---@param bufnr? integer
 function M.clear_extmarks(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
-  local ns = vim.api.nvim_create_namespace "qfbookmark_note_extmark"
-  pcall(vim.api.nvim_buf_clear_namespace, bufnr, ns, 0, -1)
+  local ns = register_namespace "qfbookmark_note_extmark"
+  del_namespace(bufnr, ns)
 end
 
 ---@param bufnr integer
 ---@param lnum integer -- 1-based
 function M.get_extmark_at_line(bufnr, lnum)
-  local ns = vim.api.nvim_create_namespace "qfbookmark_note_extmark"
+  local ns = register_namespace "qfbookmark_note_extmark"
 
   local marks = vim.api.nvim_buf_get_extmarks(bufnr, ns, 0, -1, { details = true })
 
@@ -144,7 +198,7 @@ function M.get_sign_at_line(bufnr, lnum)
 end
 
 function M.resolve_mark_sign(bufnr)
-  pcall(vim.api.nvim_buf_clear_namespace, bufnr, Config.ns, 0, -1)
+  del_namespace(bufnr, Config.ns)
 
   -- clear all signs
   local ok_signs, signinfo = pcall(vim.fn.sign_getplaced, bufnr, { group = Config.sign_group })
@@ -179,9 +233,8 @@ end
 ---@param selected table<string, boolean>
 ---@param cursor_hval string
 function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
-  local ns = vim.api.nvim_create_namespace "qfbookmark_popup_hl"
-
-  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+  local ns = register_namespace "qfbookmark_popup_hl"
+  del_namespace(bufnr, ns)
 
   for idx, entry in ipairs(content_map) do
     local ln_header = (entry.start_line or 1) - 1
@@ -196,7 +249,7 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
     local idx_s = 0
     local idx_e = 1 + #idx_str + 2
 
-    pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, idx_s, {
+    set_extmark(bufnr, ns, ln_header, idx_s, {
       end_col = math.min(idx_e, #header),
       hl_group = "QFBookmarkEntryIdx",
     })
@@ -204,7 +257,7 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
     local badge_s = idx_e
     local badge_e = badge_s + 4
 
-    pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, badge_s, {
+    set_extmark(bufnr, ns, ln_header, badge_s, {
       end_col = math.min(badge_e, #header),
       hl_group = badge_hl(entry.mark.mark_mode),
     })
@@ -224,30 +277,32 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
 
     if last_slash then
       -- dir part: dim
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, path_s, {
+      set_extmark(bufnr, ns, ln_header, path_s, {
         end_col = path_s + last_slash,
         hl_group = "QFBookmarkEntryPath",
       })
+
       -- basename part: bright
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, path_s + last_slash, {
+      set_extmark(bufnr, ns, ln_header, path_s + last_slash, {
         end_col = #header,
         hl_group = "QFBookmarkEntryBasename",
       })
+
       -- dot part
       if cur_pos then
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, cur_pos, {
+        set_extmark(bufnr, ns, ln_header, cur_pos, {
           end_col = #header,
           hl_group = "QFBookmarkEntryCurrentFile",
         })
       end
     else
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, path_s, {
+      set_extmark(bufnr, ns, ln_header, path_s, {
         end_col = #header,
         hl_group = "QFBookmarkEntryBasename",
       })
       -- dot part
       if cur_pos then
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, cur_pos, {
+        set_extmark(bufnr, ns, ln_header, cur_pos, {
           end_col = #header,
           hl_group = "QFBookmarkEntryCurrentFile",
         })
@@ -272,7 +327,7 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
       chk_hl = "QFBookmarkEntryUnselectedCheck"
     end
 
-    pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, 0, {
+    set_extmark(bufnr, ns, ln_header, 0, {
       virt_text = { { chk_text, chk_hl } },
       virt_text_pos = "right_align",
       hl_eol = true,
@@ -283,7 +338,7 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
     if is_sel then
       local line_count = entry.line_count or 2
       for ln = ln_header, ln_header + line_count - 1 do
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln, 0, {
+        set_extmark(bufnr, ns, ln, 0, {
           end_row = ln + 1,
           end_col = 0,
           hl_group = "QFBookmarkEntrySelected",
@@ -296,7 +351,7 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
       local _path_s = header:find("  ", 8, true)
 
       if _path_s then
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header, path_s + 1, {
+        set_extmark(bufnr, ns, ln_header, path_s + 1, {
           end_col = #header,
           hl_group = "QFBookmarkEntrySelectedPath",
           priority = 10,
@@ -308,7 +363,7 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
 
     local lnum_s, lnum_e_byte = detail:match "():%d+()"
     if lnum_s then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header + 1, lnum_s - 1, {
+      set_extmark(bufnr, ns, ln_header + 1, lnum_s - 1, {
         end_col = lnum_e_byte - 1,
         hl_group = "QFBookmarkEntryLnum",
       })
@@ -317,23 +372,15 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
       if preview_s <= #detail then
         local is_symbol = detail:find("⮞", preview_s + 1, true)
         if is_symbol then
-          pcall(
-            vim.api.nvim_buf_set_extmark,
-            bufnr,
-            ns,
-            ln_header + 1,
-            preview_s,
-            { end_col = #detail, hl_group = "QFbookmarkNoteExtmarkNoteEx" }
-          )
+          set_extmark(bufnr, ns, ln_header + 1, preview_s, {
+            end_col = #detail,
+            hl_group = "QFbookmarkNoteExtmarkNoteEx",
+          })
         else
-          pcall(
-            vim.api.nvim_buf_set_extmark,
-            bufnr,
-            ns,
-            ln_header + 1,
-            preview_s,
-            { end_col = #detail, hl_group = "QFBookmarkEntryDetail" }
-          )
+          set_extmark(bufnr, ns, ln_header + 1, preview_s, {
+            end_col = #detail,
+            hl_group = "QFBookmarkEntryDetail",
+          })
         end
       end
     end
@@ -348,24 +395,24 @@ function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
         local is_fn = symbol_line:sub(sym_s + 1, sym_s + 2) == "\xC6\x92"
 
         if is_fn then
-          pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header + 2, sym_s, {
+          set_extmark(bufnr, ns, ln_header + 2, sym_s, {
             end_col = #symbol_line,
             hl_group = "QFBookmarkEntryFnName",
           })
         else
           local sep = symbol_line:find(" > ", sym_s + 1, true)
           if sep then
-            pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header + 2, sym_s, {
+            set_extmark(bufnr, ns, ln_header + 2, sym_s, {
               end_col = sep - 1,
               hl_group = "QFBookmarkEntrySymbolType",
             })
 
-            pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header + 2, sep + 2, {
+            set_extmark(bufnr, ns, ln_header + 2, sep + 2, {
               end_col = #symbol_line,
               hl_group = "QFBookmarkEntryFnName",
             })
           else
-            pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, ln_header + 2, sym_s, {
+            set_extmark(bufnr, ns, ln_header + 2, sym_s, {
               end_col = #symbol_line,
               hl_group = "QFBookmarkEntrySymbolType",
             })
@@ -383,10 +430,10 @@ end
 function M.apply_entry_buffer_highlights(bufnr, list, selected)
   selected = selected or {}
 
-  local ns = vim.api.nvim_create_namespace "qfbookmark_popup_buffer_hl"
-  local ns_chk = vim.api.nvim_create_namespace "qfbookmark_popup_buffer_chk"
-  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
-  vim.api.nvim_buf_clear_namespace(bufnr, ns_chk, 0, -1)
+  local ns = register_namespace "qfbookmark_popup_buffer_hl"
+  local ns_chk = register_namespace "qfbookmark_popup_buffer_chk"
+  del_namespace(bufnr, ns)
+  del_namespace(bufnr, ns_chk)
 
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
 
@@ -402,7 +449,7 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
     -- ── index: col 0-3 (4 char, right-aligned digit) ───────────────────
     local idx_s, idx_e = line:find "%d+"
     if idx_s and idx_e and idx_s <= 4 then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, idx_s - 1, {
+      set_extmark(bufnr, ns, row, idx_s - 1, {
         end_col = idx_e,
         hl_group = "QFBookmarkEntryIdx",
         priority = 10,
@@ -413,7 +460,7 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
     local chk_text = is_sel and "✓" or "○"
     local chk_hl = is_sel and "QFBookmarkEntrySelectedCheck" or "QFBookmarkEntryUnselectedCheck"
 
-    pcall(vim.api.nvim_buf_set_extmark, bufnr, ns_chk, row, 0, {
+    set_extmark(bufnr, ns_chk, row, 0, {
       virt_text = { { chk_text, chk_hl } },
       virt_text_pos = "right_align",
       priority = 20,
@@ -421,7 +468,7 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
 
     -- ── selected background ──────────────────────────────────────────
     if is_sel then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, 0, {
+      set_extmark(bufnr, ns, row, 0, {
         end_row = row + 1,
         end_col = 0,
         hl_group = "QFBookmarkEntrySelected",
@@ -444,19 +491,19 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
     local is_modified_col1 = col1 == "+"
 
     if is_flag then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, BADGE_COL0, {
+      set_extmark(bufnr, ns, row, BADGE_COL0, {
         end_col = BADGE_COL0 + 1,
         hl_group = "QFBookmarkEntryFlag",
         priority = 10,
       })
     elseif is_hidden then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, BADGE_COL0, {
+      set_extmark(bufnr, ns, row, BADGE_COL0, {
         end_col = BADGE_COL0 + 1,
         hl_group = "QFBookmarkEntryHiddenFlag",
         priority = 10,
       })
     elseif is_modified_col0 then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, BADGE_COL0, {
+      set_extmark(bufnr, ns, row, BADGE_COL0, {
         end_col = BADGE_COL0 + 1,
         hl_group = "QFBookmarkEntryModifiedFlag",
         priority = 10,
@@ -464,7 +511,7 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
     end
 
     if is_modified_col1 then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, BADGE_COL1, {
+      set_extmark(bufnr, ns, row, BADGE_COL1, {
         end_col = BADGE_COL1 + 1,
         hl_group = "QFBookmarkEntryModifiedFlag",
         priority = 10,
@@ -487,25 +534,25 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
       end
 
       if last_slash then
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, path_start, {
+        set_extmark(bufnr, ns, row, path_start, {
           end_col = path_start + last_slash,
           hl_group = "QFBookmarkEntryPath",
           priority = 10,
         })
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, path_start + last_slash, {
+        set_extmark(bufnr, ns, row, path_start + last_slash, {
           end_col = path_end,
           hl_group = "QFBookmarkEntryBasename",
           priority = 10,
         })
       else
-        pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, path_start, {
+        set_extmark(bufnr, ns, row, path_start, {
           end_col = path_end,
           hl_group = "QFBookmarkEntryBasename",
           priority = 10,
         })
       end
 
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, row, lnum_s - 1, {
+      set_extmark(bufnr, ns, row, lnum_s - 1, {
         end_col = #line,
         hl_group = "QFBookmarkEntryLnum",
         priority = 10,
@@ -517,65 +564,67 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected)
 end
 
 ---@param bufnr integer
-function M.apply_save_highlights(bufnr, fn_opts, type_label, dir_display)
-  local ns = vim.api.nvim_create_namespace "qfbookmark_popup_save_hl"
-  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+---@param namespace string
+function M.apply_save_highlights(bufnr, fn_opts, type_label, dir_display, namespace)
+  namespace = namespace or ("qfbookmark" .. tostring(bufnr))
+  local ns = register_namespace(namespace)
+  del_namespace(bufnr, ns)
 
   -- line 0: type badge (QuickFix / LocList)
   local badge_hl_group = fn_opts.is_loc and "QFBookmarkBadgeNote" or "QFBookmarkBadgeMark"
-  pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, 0, 0, {
+  set_extmark(bufnr, ns, 0, 0, {
     end_col = #type_label,
     hl_group = badge_hl_group,
   })
 
   -- line 2: "  filename   value"
   local fn_key_end = ("  filename   "):len()
-  pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, 2, 2, {
+  set_extmark(bufnr, ns, 2, 2, {
     end_col = fn_key_end - 3,
     hl_group = "QFBookmarkEntryIdx",
   })
-  pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, 2, fn_key_end, {
+  set_extmark(bufnr, ns, 2, fn_key_end, {
     end_col = fn_key_end + #fn_opts.filename,
     hl_group = "QFBookmarkEntryPath",
   })
 
   -- line 3: "  directory  value"
   local dir_key_end = ("  directory  "):len()
-  pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, 3, 2, {
+  set_extmark(bufnr, ns, 3, 2, {
     end_col = dir_key_end - 2,
     hl_group = "QFBookmarkEntryIdx",
   })
-  pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, 3, dir_key_end, {
+  set_extmark(bufnr, ns, 3, dir_key_end, {
     end_col = dir_key_end + #dir_display,
     hl_group = "QFBookmarkEntryDirectory",
   })
 end
-
-local sign_group = "qfbookmark_qf_select"
-vim.fn.sign_define("QFSelected", { text = "✓", texthl = "QFBookmarkEntrySelectedCheck" })
-vim.fn.sign_define("QFUnselected", { text = " ", texthl = "QFBookmarkEntryUnselectedCheck" })
 
 ---@param qf_selected table[]
 ---@param is_loc boolean
 function M.apply_qf_selection_highlights(qf_selected, is_loc)
   local bufnr = vim.api.nvim_get_current_buf()
 
+  local sign_group = "qfbookmark_qf_select"
+  register_sign("QFSelected", "✓", "QFBookmarkEntrySelectedCheck")
+  register_sign("QFUnselected", " ", "QFBookmarkEntryUnselectedCheck")
+
   -- sign column: checkbox
   vim.fn.sign_unplace(sign_group, { buffer = bufnr })
 
   -- extmark: background highlight
-  local ns = vim.api.nvim_create_namespace "qfbookmark_qf_selection"
-  vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+  local ns = register_namespace "qfbookmark_qf_selection"
+  del_namespace(bufnr, ns)
 
   local list = is_loc and vim.fn.getloclist(0) or vim.fn.getqflist()
 
   for idx = 1, #list do
     local is_sel = qf_selected[idx] == true
 
-    vim.fn.sign_place(0, sign_group, is_sel and "QFSelected" or "QFUnselected", bufnr, { lnum = idx })
+    set_sign_place(bufnr, 0, sign_group, is_sel and "QFSelected" or "QFUnselected", { lnum = idx })
 
     if is_sel then
-      pcall(vim.api.nvim_buf_set_extmark, bufnr, ns, idx - 1, 0, {
+      set_extmark(bufnr, ns, idx - 1, 0, {
         end_row = idx,
         end_col = 0,
         hl_group = "QFBookmarkEntrySelected",

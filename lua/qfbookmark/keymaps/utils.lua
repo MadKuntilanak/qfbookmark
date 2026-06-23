@@ -192,7 +192,7 @@ function M.set_user_mappings(tbl_cmdline_strings, providers, buf)
 
     if buf then
       if not val.buffer then
-        if vim.api.nvim_buf_is_valid(buf) then
+        if QfbookmarkUtils.is_valid(buf) then
           val.buffer = buf
         end
       end
