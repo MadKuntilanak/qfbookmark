@@ -4,7 +4,7 @@
 ==============================================================================
 Table of Contents                               *qfbookmark-table-of-contents*
 
-1. QFbookmark (WIP )                            |qfbookmark-qfbookmark-(wip-)|
+1. QFBookmark (WIP )                            |qfbookmark-qfbookmark-(wip-)|
   - Features                           |qfbookmark-qfbookmark-(wip-)-features|
   - Showcase                           |qfbookmark-qfbookmark-(wip-)-showcase|
   - Requirements                   |qfbookmark-qfbookmark-(wip-)-requirements|
@@ -18,7 +18,7 @@ Table of Contents                               *qfbookmark-table-of-contents*
 2. Links                                                    |qfbookmark-links|
 
 ==============================================================================
-1. QFbookmark (WIP )                            *qfbookmark-qfbookmark-(wip-)*
+1. QFBookmark (WIP )                            *qfbookmark-qfbookmark-(wip-)*
 
 **QFBookmark** <https://github.com/MadKuntilanak/qfbookmark> is yet another
 bookmarking plugin for Neovim that combines **marks**, **buffers**, **quickfix
