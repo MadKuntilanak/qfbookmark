@@ -109,10 +109,10 @@ local colors = {
   -- +-----------------------------------------------------------------------------+
 
   EntrySelected = { bg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" }, tint = { amount = -0.8 } } },
-  -- EntrySelectedPath = {
-  --   fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
-  --   bold = true,
-  -- },
+  EntrySelectedPath = {
+    fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
+    bold = true,
+  },
   EntrySelectedCheck = {
     fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
     bg = {
@@ -128,8 +128,8 @@ local colors = {
   EntrySelectedCheckCursor = {
     fg = { higroup = { fromTo = "DiagnosticOk", attr = "fg" } },
     bg = {
-      higroup = { fromTo = "FloatBorder", attr = "fg" },
-      tint = { amount = -0.1 },
+      higroup = { fromTo = "DiagnosticOk", attr = "fg" },
+      tint = { amount = -0.8 },
     },
     bold = true,
   },

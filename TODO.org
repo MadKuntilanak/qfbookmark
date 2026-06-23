@@ -32,7 +32,7 @@
   - [X] fix padding float note window
   - [X] support insert text
   - [X] support custom templates
-- [ ] fix extermark priority at mark menu
+- [X] fix extermark priority at mark menu
 - [-] Update README [3/5]
   - [X] Explain provider features
   - [ ] Add demos for each feature
