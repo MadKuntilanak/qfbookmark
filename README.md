@@ -1,4 +1,4 @@
-# QFbookmark (WIP 🚀)
+# QFBookmark (WIP 🚀)
 
 <p align="center">
   <img src="./assets/tqfbookmark.svg" alt="qfbookmark" />
