@@ -532,6 +532,8 @@ https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
 
 ### Buffers
 
+https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
+
 - Buffer management with a simple popup interface.
 - Quickly browse and switch between open buffers.
 - Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
@@ -566,6 +568,9 @@ https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
 <summary><strong>Note</strong></summary>
 
 ### Note
+
+https://github.com/user-attachments/assets/91599209-d31c-4fbf-a4d5-3c5b8aa48ea3
+
 
 The note provider is just a way to capture text you'll want to check out
 later. Enable it via `keymaps.note.integrations.custom`, and it'll insert
