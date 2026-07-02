@@ -115,8 +115,17 @@ end
 ---@param open_mode OpenMode
 ---@param jump_to_n? integer
 function Mapping.setup_open_key(open_mode, jump_to_n)
-  local cur_line_nr = jump_to_n or vim.api.nvim_win_get_cursor(0)[1]
+  if Mapping.popup.win and vim.api.nvim_win_is_valid(Mapping.popup.win) then
+    local row = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
+    local col = vim.api.nvim_win_get_cursor(Mapping.popup.win)[2]
+    if Mapping.is_harpoon then
+      Mapping.last_position.mark = { row, col }
+    elseif Mapping.is_buffers then
+      Mapping.last_position.buffer = { row, col }
+    end
+  end
 
+  local cur_line_nr = jump_to_n or vim.api.nvim_win_get_cursor(0)[1]
   QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
 
   vim.schedule(function()
