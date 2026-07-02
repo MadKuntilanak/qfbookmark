@@ -259,6 +259,184 @@ local function place_mark_annotation(mark_lists, cb, load_chunk)
   QfbookmarkUIView.build_popup("mark_annotation", __opts, cb)
 end
 
+---@param bufnr integer
+---@param key integer
+---@param opts? QFbookPreviewOpts
+local function preview_mark_annotation(bufnr, key, opts)
+  opts = opts or {}
+
+  local editor = QfbookmarkUIUtils.get_editor_size()
+
+  local height = math.floor(editor.height / 1.5)
+  local width = math.floor(editor.width / 1.5)
+
+  local title_str = "  " .. "Sent context"
+
+  local win_buf = vim.api.nvim_create_buf(false, true)
+  local wincfg = {
+    buf = win_buf,
+    enter = true,
+    wincfg = {
+      relative = "editor",
+      row = math.floor((vim.o.lines - height) / 2),
+      col = math.floor((vim.o.columns - width) / 2),
+      width = width,
+      height = height,
+      style = "minimal",
+      border = "rounded",
+      title = QfbookmarkUIUtils.format_title(title_str),
+      title_pos = "center",
+      footer = " <CR> send · <Tab> switch template · y copy only · <Esc> cancel ",
+      footer_pos = "center",
+    },
+  }
+
+  local __opts = {
+    win_opts = wincfg,
+    opts_mark_preview = opts,
+    mark_preview_key = key,
+    mark_preview_bufnr = bufnr,
+    title_str = title_str,
+  }
+
+  QfbookmarkUIView.build_popup("preview_mark_annotation", __opts)
+end
+
+---Open a small floating input to capture the short note text for an annotation.
+---@param category string
+---@param on_submit fun(text: string)
+---@param on_cancel? fun()
+---@param load_chunk? {load_chunk: boolean, chunk: QFbookBufferMarkEntry}
+---@param opts? { anchor?: "cursor"|"editor", keyword_def: QFBookSpec }
+local function input_note(category, on_submit, on_cancel, load_chunk, opts)
+  opts = opts or {}
+  local anchor = opts.anchor or "cursor"
+
+  local width = 44
+
+  local win_config
+  if anchor == "editor" then
+    win_config = {
+      relative = "editor",
+      row = math.floor((vim.o.lines - 3) / 2),
+      col = math.floor((vim.o.columns - 46) / 2),
+      width = 44,
+      height = 1,
+    }
+  else
+    win_config = {
+      relative = "cursor",
+      row = 1,
+      col = 0,
+      width = width,
+      height = 1,
+    }
+  end
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  local wincfg = {
+    buf = buf,
+    enter = true,
+    wincfg = vim.tbl_extend("force", win_config, {
+      style = "minimal",
+      border = "rounded",
+      title = QfbookmarkUIUtils.format_title(category),
+      title_pos = "center",
+      footer = " <CR> save · <Esc> cancel ",
+      noautocmd = true,
+      footer_pos = "center",
+    }),
+  }
+
+  vim.bo[buf].buftype = "prompt"
+  vim.fn.prompt_setprompt(buf, "> ")
+
+  local curbuf = vim.api.nvim_get_current_buf()
+  local curline = vim.api.nvim_win_get_cursor(0)[1]
+
+  local __opts = {
+    win_opts = wincfg,
+    content_map = {
+      [1] = {
+        hval = "mark_note",
+        mark = {
+          bufnr = vim.api.nvim_get_current_buf(),
+          line = curline,
+          col = vim.api.nvim_win_get_cursor(0)[2],
+          filename = vim.api.nvim_buf_get_name(curbuf),
+        },
+      },
+    },
+    on_submit = on_submit,
+    on_cancel = on_cancel,
+    data_annotation = load_chunk,
+    _opts = opts,
+  }
+
+  QfbookmarkUIView.build_popup("mark_annotation", __opts)
+end
+
+---Open a small floating dropdown near the cursor to pick an extmark category.
+---@param on_select fun(category: string)
+---@param on_cancel? fun()
+local function select_category(on_select, on_cancel)
+  local QfbookmarkMarkUtils = require "qfbookmark.mark.utils"
+  local items = QfbookmarkMarkUtils.ordered_keywords()
+  if #items == 0 then
+    QfbookmarkUtils.warn "no extmark categories configured"
+    return
+  end
+
+  local display_lines = {}
+  local shortcuts = {}
+  for _, item in ipairs(items) do
+    local shortcut = item.def.shortcut or item.name:sub(1, 1)
+    shortcut = shortcut:lower()
+    shortcuts[shortcut] = item.name
+    table.insert(display_lines, string.format("    %s  %-10s %s", "●", item.name, shortcut))
+  end
+
+  local width = 0
+  for _, l in ipairs(display_lines) do
+    width = math.max(width, vim.fn.strdisplaywidth(l))
+  end
+  width = width + 3
+  local height = #display_lines
+
+  local row, col = QfbookmarkUIUtils.get_position(width, height, "auto", "cursor")
+
+  local buf = vim.api.nvim_create_buf(false, true)
+  local wincfg = {
+    buf = buf,
+    enter = true,
+    wincfg = {
+      relative = "cursor",
+      width = width,
+      height = height,
+      row = row,
+      col = col,
+      style = "minimal",
+      border = "rounded",
+      title = QfbookmarkUIUtils.format_title "annotation category",
+      title_pos = "center",
+      footer = " j/k select · <Esc> cancel ",
+      footer_pos = "center",
+      noautocmd = true,
+    },
+  }
+
+  local __opts = {
+    display_lines = display_lines,
+    contents = items,
+    win_opts = wincfg,
+    keys_shortcuts = shortcuts,
+    on_submit = on_select,
+    on_cancel = on_cancel,
+  }
+
+  QfbookmarkUIView.build_popup("select_category", __opts)
+end
+
 local buffer_selected = {}
 
 ---@param buffer_lists table
@@ -349,7 +527,7 @@ local function open_note_in_float(note_path, cfg_note, is_global)
   local width = math.floor(editor.width * cfg_width / 100)
   local height = math.floor(editor.height * cfg_height / 100)
 
-  local row, col = QfbookmarkUIUtils.get_position(cfg_note.anchor, width, height)
+  local row, col = QfbookmarkUIUtils.get_position(width, height, cfg_note.anchor, "editor")
 
   local shorten_path = QfbookmarkUIUtils.shorten_path(note_path, 40)
   local title_str = "📝 " .. (is_global and "Global " or "") .. "Note: " .. shorten_path
@@ -390,5 +568,8 @@ return {
   saveqf_popup = saveqf_popup,
   buffers_popup = buffers_popup,
   place_mark_annotation = place_mark_annotation,
+  preview_mark_annotation = preview_mark_annotation,
   open_note_in_float = open_note_in_float,
+  input_note = input_note,
+  select_category = select_category,
 }

@@ -33,7 +33,7 @@
   - [X] support insert text
   - [X] support custom templates
 - [X] fix extermark priority at mark menu
-- [ ] add extmark range support
+- [X] add extmark range support
 - [-] Update README [3/5]
   - [X] Explain provider features
   - [ ] Add demos for each feature

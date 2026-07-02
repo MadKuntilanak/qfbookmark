@@ -26,17 +26,6 @@ local get_hval = function(content_map, cur_line_nr)
   return hval
 end
 
-local update_title_main_win = function(total, selected)
-  total = total or #Mapping.content_map
-  local sel_count = vim.tbl_count(selected)
-  local cfg = vim.api.nvim_win_get_config(Mapping.popup.win)
-
-  local count_str = sel_count > 0 and string.format("QFMarks (%d) · %d selected", total, sel_count)
-    or string.format("QFMarks (%d)", total)
-  cfg.title = QfbookmarkUIUtils.format_title("🔗 " .. count_str)
-  vim.api.nvim_win_set_config(Mapping.popup.win, cfg)
-end
-
 local update_last_position_cursor = function(provider)
   local set_cursor_position
 
@@ -214,12 +203,9 @@ function Mapping.save.save_input()
 
   vim.schedule(function()
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
-    if input == "" then
-      return
-    end
-
-    if Mapping.cb then
-      Mapping.cb(input)
+    if Mapping.on_submit and input ~= "" then
+      input = input:gsub("^>%s*", "")
+      Mapping.on_submit(input)
     end
     QfbookmarkUIUtils.clean_up(Mapping.popup)
   end)
@@ -276,55 +262,27 @@ function Mapping.mark.nav_entry(direction)
   vim.api.nvim_win_set_cursor(0, { target_line, 0 })
 end
 
-local mark_preview_fullscreen = false
-local mark_preview_wincfg_orig = nil
-
-local function save_cfg_win_mark_preview(wincfg)
-  return {
-    main_wincfg = wincfg,
-    height = wincfg.height,
-    width = wincfg.width,
-    col = wincfg.col,
-  }
-end
+local is_full_screen = false
 
 function Mapping.mark.full_screen_preview()
-  local is_full_screen = mark_preview_fullscreen
+  is_full_screen = require("qfbookmark.config").defaults.window.mark.preview_fullscreen
 
-  local height
-  if not is_full_screen then
-    mark_preview_fullscreen = true
-
-    if not mark_preview_wincfg_orig then
-      mark_preview_wincfg_orig = save_cfg_win_mark_preview(Mapping.wincfg)
-    end
-
-    local editor = QfbookmarkUIUtils.get_editor_size()
-    height = editor.height
-
-    Mapping.wincfg.height = height - QfbookmarkUIUtils.PADDING_PREVIEW
-    Mapping.wincfg.width = math.ceil(editor.width / 4)
-
-    local __col = Mapping.opts_popup.popup.preview.wincfg.col - Mapping.wincfg.width - 2
-    Mapping.wincfg.col = Config.window.mark.anchor == "NW" and __col or Mapping.wincfg.col
+  if is_full_screen then
+    is_full_screen = false
   else
-    mark_preview_fullscreen = false
-
-    if mark_preview_wincfg_orig then
-      Mapping.wincfg = mark_preview_wincfg_orig.main_wincfg
-      Mapping.wincfg.height = mark_preview_wincfg_orig.height
-      Mapping.wincfg.width = mark_preview_wincfg_orig.width
-      Mapping.wincfg.col = mark_preview_wincfg_orig.col
-
-      height = Mapping.opts_popup.popup.preview.wincfg.height
-
-      mark_preview_wincfg_orig = nil
-    end
+    is_full_screen = true
   end
+
+  require("qfbookmark.config").defaults.window.mark.preview_fullscreen = is_full_screen
 
   QfbookmarkUIUtils.close_win { Mapping.popup.preview.win }
 
-  local buf_preview, win_preview = QfbookmarkUIPopup.mark_preview(Mapping.wincfg, Mapping.wincfg.width, height)
+  local buf_preview, win_preview = QfbookmarkUIPopup.mark_preview(
+    Mapping.wincfg,
+    Mapping.wincfg.width,
+    Mapping.wincfg.height,
+    { fullscreen = is_full_screen }
+  )
   if not win_preview or not buf_preview then
     return
   end
@@ -473,7 +431,7 @@ function Mapping.mark.toggle_selection()
 
   -- Update title count
   local total = #Mapping.content_map
-  update_title_main_win(total, Mapping.selected)
+  QfbookmarkUIUtils.update_title_win_popup(Mapping.popup.win, total, Mapping.selected)
 end
 
 function Mapping.mark.select_and_load_qfmasters()
@@ -747,7 +705,7 @@ local function mark_del_item(is_all)
 
   -- Update title count
   local total = #entries
-  update_title_main_win(total, Mapping.selected)
+  QfbookmarkUIUtils.update_title_win_popup(Mapping.popup.win, total, Mapping.selected)
 
   vim.defer_fn(function()
     restore_readonly()
@@ -761,6 +719,82 @@ end
 
 function Mapping.mark.clear_all_items()
   mark_del_item(true)
+end
+
+---@param is_all? boolean
+function Mapping.mark.preview_context(is_all)
+  is_all = is_all or false
+  local selected = Mapping.mark.get_selected_marks()
+  local cur = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
+  local entries = Mapping.content_map
+  if not entries or #entries == 0 then
+    return
+  end
+
+  local get_abc = {}
+
+  -- Start delete item or all items
+  if #selected > 0 then
+    for idx_hval, _ in pairs(Mapping.selected) do
+      for i, e in ipairs(entries) do
+        if idx_hval == e.hval then
+          if entries[i] then
+            get_abc[#get_abc + 1] = entries[i]
+          end
+        end
+      end
+    end
+  else
+    -- find current entry index
+    local cur_idx = 1
+    for i, e in ipairs(entries) do
+      if e.start_line <= cur then
+        cur_idx = i
+      end
+    end
+
+    if entries[cur_idx] then
+      get_abc[#get_abc + 1] = entries[cur_idx]
+    end
+  end
+
+  local QfbookmarkMark = require "qfbookmark.mark"
+
+  ---@type {bufnr: integer, key: integer, category: string, inserted_at: integer}
+  local items = {}
+  for _, mark in pairs(get_abc) do
+    local m = mark.mark
+    if m.note and #m.note > 0 then
+      for _, ann in ipairs(QfbookmarkMark.list_annotations(m.bufnr, m.key)) do
+        table.insert(items, {
+          bufnr = m.bufnr,
+          key = m.key,
+          category = ann.category,
+          inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0,
+        })
+        break
+      end
+    end
+  end
+
+  table.sort(items, function(a, b)
+    return (a.inserted_at or 0) > (b.inserted_at or 0)
+  end)
+
+  if #items == 0 then
+    QfbookmarkUtils.warn "no annotation context found"
+    return
+  end
+
+  if #items == 1 then
+    QfbookmarkMark.preview(items[1].bufnr, items[1].key, { default_template = "ask_ai" })
+  else
+    QfbookmarkMark.preview(
+      items[1].bufnr,
+      items[1].key,
+      { default_template = "ask_ai", is_multi = true, items = items }
+    )
+  end
 end
 
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
@@ -827,7 +861,12 @@ function Mapping.buffer.item_del()
     vim.bo[Mapping.buf].modifiable = modifiable
 
     local QfbookmarkMarkVisual = require "qfbookmark.visual"
-    QfbookmarkMarkVisual.apply_entry_buffer_highlights(Mapping.buf, __entries, Mapping.buffer_selected)
+    QfbookmarkMarkVisual.apply_entry_buffer_highlights(
+      Mapping.buf,
+      __entries,
+      Mapping.buffer_selected,
+      Mapping.popup.namespace
+    )
 
     vim.schedule(function()
       vim.cmd "redraw"
@@ -889,10 +928,15 @@ function Mapping.buffer.toggle_selection()
   end
 
   local QfbookmarkMarkVisual = require "qfbookmark.visual"
-  QfbookmarkMarkVisual.apply_entry_buffer_highlights(Mapping.buf, list, Mapping.buffer_selected)
+  QfbookmarkMarkVisual.apply_entry_buffer_highlights(
+    Mapping.buf,
+    list,
+    Mapping.buffer_selected,
+    Mapping.popup.namespace
+  )
 
   local total = #list
-  update_title_main_win(total, Mapping.buffer_selected)
+  QfbookmarkUIUtils.update_title_win_popup(Mapping.popup.win, total, Mapping.buffer_selected)
 end
 
 ---@return table[]
@@ -922,7 +966,12 @@ function Mapping.buffer.deselect_all_buffers()
   end
 
   local QfbookmarkMarkVisual = require "qfbookmark.visual"
-  QfbookmarkMarkVisual.apply_entry_buffer_highlights(Mapping.buf, list, Mapping.buffer_selected)
+  QfbookmarkMarkVisual.apply_entry_buffer_highlights(
+    Mapping.buf,
+    list,
+    Mapping.buffer_selected,
+    Mapping.popup.namespace
+  )
 end
 
 -- ├──────────────────────────────────┤ API ├───────────────────────────────┤
@@ -988,8 +1037,8 @@ local setup_popup_options = function(opts_popup, buf, cb)
   cb = cb or nil
 
   Mapping.buf = buf
-  Mapping.opts_popup = opts_popup
   Mapping.popup = opts_popup.popup
+  Mapping.opts_popup = opts_popup
   Mapping.mark_original_width = opts_popup.original_popup_mark_width and opts_popup.original_popup_mark_width or nil
   Mapping.popup.preview = opts_popup.popup.preview and opts_popup.popup.preview or nil
   Mapping.selected = opts_popup.selected
@@ -997,6 +1046,8 @@ local setup_popup_options = function(opts_popup, buf, cb)
   Mapping.wincfg = opts_popup.win_opts.wincfg
   Mapping.buffer_list = opts_popup.contents
   Mapping.last_buf = opts_popup.last_buf
+  Mapping.on_submit = opts_popup.on_submit and opts_popup.on_submit or {}
+  Mapping.on_cancel = opts_popup.on_cancel and opts_popup.on_cancel or {}
   Mapping.content_map = opts_popup.content_map
   Mapping.is_harpoon = opts_popup.is_harpoon and opts_popup.is_harpoon or false
   Mapping.is_buffers = opts_popup.is_buffers and opts_popup.is_buffers or false
@@ -1282,6 +1333,17 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       },
 
       {
+        desc = "Qfmark: preview context",
+        func = function()
+          Mapping.mark.preview_context()
+        end,
+        keys = Config.keymaps.mark and Config.keymaps.mark.preview_context,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
         desc = "Qfmark: load qfmaster",
         func = function()
           Mapping.mark.select_and_load_qfmasters()
@@ -1495,16 +1557,15 @@ end
 
 ---@param opts_popup QFBookmarkUiPopupCfg
 ---@param buf integer
----@param cb function
-function M.setup_keymap_mark_annotation(opts_popup, buf, cb)
+function M.setup_keymap_mark_annotation(opts_popup, buf)
   opts_popup.is_buffers = false
   opts_popup.is_harpoon = false
   opts_popup.is_note = false
   opts_popup.is_mark_annotation = true
 
-  setup_popup_options(opts_popup, buf, cb)
+  setup_popup_options(opts_popup, buf)
 
-  local _keys = M.build_keymaps(opts_popup, buf, cb)
+  local _keys = M.build_keymaps(opts_popup, buf)
 
   QfbookmarkKeymapUtils.append_active_keymaps({
     is_set = true,
@@ -1561,16 +1622,149 @@ function M.setup_keymap_mark_annotation(opts_popup, buf, cb)
       {
         desc = "Qfmark: save mark annotation",
         func = function()
-          Mapping.setup_open_key "default"
-          Mapping.exit_close()
+          Mapping.save.save_input()
+          if opts_popup._opts.anchor and opts_popup._opts.anchor == "editor" then
+            QfbookmarkUtils.info "Added 1 item(s); skipped 0 item(s) already present."
+          end
         end,
-        keys = Config.keymaps and Config.keymaps.mark.save_annotation,
+        keys = "<CR>",
         mode = { "i", "n" },
         buffer = Mapping.buf,
         from_user = true,
       },
     },
   }, _keys)
+
+  QfbookmarkKeymapUtils.set_keymaps(_keys, true)
+end
+
+function M.setup_keymap_preview_mark_annotation(opts_popup, buf)
+  opts_popup.is_buffers = false
+  opts_popup.is_harpoon = false
+  opts_popup.is_note = false
+  opts_popup.is_mark_annotation = true
+
+  setup_popup_options(opts_popup, buf)
+
+  local _keys = M.build_keymaps(opts_popup, buf)
+
+  local QfbookmarkMarkContext = require "qfbookmark.mark.context"
+
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+
+      -- +-----------------------------------------------------------------------------+
+      -- |                                   PREVIEW                                   |
+      -- +-----------------------------------------------------------------------------+
+
+      {
+        desc = "Qfmark: send dispatch",
+        func = function()
+          local resolve_preview_opts = QfbookmarkUIUtils.resolve_preview_context(opts_popup)
+          if resolve_preview_opts.text then
+            QfbookmarkMarkContext.dispatch(resolve_preview_opts.text, opts_popup.opts_mark_preview.send_target)
+          end
+          QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
+          QfbookmarkUIUtils.clean_up(Mapping.popup)
+        end,
+        keys = "<CR>",
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
+        desc = "Qfmark: toggle tab",
+        func = function()
+          opts_popup.current_idx = (opts_popup.current_idx % #opts_popup.names) + 1
+          QfbookmarkUIUtils.render_mark_preview_annotation(opts_popup.popup.buf, opts_popup.popup.win, opts_popup)
+        end,
+        keys = "<TAB>",
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
+        desc = "Qfmark: copy clipboard",
+        func = function()
+          local resolve_preview_opts = QfbookmarkUIUtils.resolve_preview_context(opts_popup)
+          if resolve_preview_opts.text then
+            QfbookmarkMarkContext.dispatch(resolve_preview_opts.text, "clipboard")
+          end
+          QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
+          QfbookmarkUIUtils.clean_up(Mapping.popup)
+        end,
+        keys = "y",
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
+
+  QfbookmarkKeymapUtils.set_keymaps(_keys, true)
+end
+
+---@param opts_popup QFBookmarkUiPopupCfg
+---@param buf integer
+function M.setup_keymap_select_category(opts_popup, buf)
+  opts_popup.is_buffers = false
+  opts_popup.is_harpoon = false
+  opts_popup.is_note = false
+  opts_popup.is_mark_annotation = true
+
+  setup_popup_options(opts_popup, buf)
+
+  local _keys = {}
+
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: quit",
+        func = function()
+          Mapping.exit_close()
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.quit,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+      {
+        desc = "Qfmark: enter category",
+        func = function()
+          local row = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
+          Mapping.exit_close()
+
+          Mapping.on_submit(Mapping.opts_popup.contents[row].name)
+        end,
+        keys = "<CR>",
+        mode = { "i", "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
+
+  for shortcut, name in pairs(opts_popup.keys_shortcuts) do
+    QfbookmarkKeymapUtils.append_active_keymaps({
+      is_set = Config.window.buffers.allow_number,
+      keymaps = {
+        {
+          desc = "Qfmark: select category by key {" .. name .. "}",
+          func = function()
+            Mapping.on_submit(name)
+          end,
+          keys = tostring(shortcut),
+          mode = "n",
+          buffer = Mapping.buf,
+          from_user = true,
+        },
+      },
+    }, _keys)
+  end
 
   QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end

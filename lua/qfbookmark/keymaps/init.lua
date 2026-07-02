@@ -87,7 +87,7 @@ local function mark_keymaps()
         desc = "Qfmark: add NOTE sign",
         func = "add_note_sign",
         keys = get_keymap(Config.keymaps, "mark", "add_mark_annotation"),
-        mode = "n",
+        mode = { "n", "x" },
       },
 
       -- NAV MARK
@@ -104,20 +104,35 @@ local function mark_keymaps()
         mode = { "n" },
       },
 
-      -- NOTE: Remove this keybinding before release
-      { -- Debug only
-        desc = "Qfmark: debug",
-        func = "test_create_mark_visual_annotation",
-        keys = get_keymap(Config.keymaps, "mark", "debug"),
-        mode = { "x", "v" },
+      {
+        desc = "Qfmark: toggle preview",
+        func = "preview_annotate",
+        keys = get_keymap(Config.keymaps, "mark", "toggle_preview"),
+        mode = { "n" },
       },
 
-      { -- Debug only
-        desc = "Qfmark: debug",
-        func = "get_annotation_range_test",
-        keys = get_keymap(Config.keymaps, "mark", "debug_t"),
-        mode = { "x", "v", "n" },
+      {
+        desc = "Qfmark: toggle preview",
+        func = "toggle_range_signs",
+        keys = get_keymap(Config.keymaps, "mark", "toggle_range_signs"),
+        mode = { "n" },
       },
+
+      -- NOTE: Remove this keybinding before release
+      --
+      -- { -- Debug only
+      --   desc = "Qfmark: debug",
+      --   func = "debug_qf",
+      --   keys = get_keymap(Config.keymaps, "mark", "debug"),
+      --   mode = { "n" },
+      -- },
+      --
+      -- { -- Debug only
+      --   desc = "Qfmark: debug",
+      --   func = "get_annotation_range_test",
+      --   keys = get_keymap(Config.keymaps, "mark", "debug_t"),
+      --   mode = { "x", "v", "n" },
+      -- },
     },
   }, keys)
 
@@ -385,20 +400,6 @@ local function note_keymaps()
         keys = get_keymap(Config.keymaps, "note", "toggle_open_local"),
         mode = "n",
       },
-
-      -- {
-      --   desc = "Qfmark: add to note global",
-      --   func = "add_note_to_global",
-      --   keys = get_keymap(Config.keymaps, "note", "toggle_open_global"),
-      --   mode = "v",
-      -- },
-      -- {
-      --   desc = "Qfmark: add to note local",
-      --   func = "add_note_to_local",
-      --   keys = get_keymap(Config.keymaps, "note", "toggle_open_local"),
-      --   mode = "v",
-      -- },
-
       {
         desc = "Qfmark: rotate note window",
         func = "toggle_rotate_note_window",

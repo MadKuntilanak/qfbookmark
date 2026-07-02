@@ -8,7 +8,8 @@ M.ns = _ns
 local _query_cache = {}
 local function get_hl_query(lang)
   if _query_cache[lang] == nil then
-    _query_cache[lang] = vim.treesitter.query.get(lang, "highlights") or false
+    local ok, result = pcall(vim.treesitter.query.get, lang, "highlights")
+    _query_cache[lang] = (ok and result) or false
   end
   return _query_cache[lang] or nil
 end

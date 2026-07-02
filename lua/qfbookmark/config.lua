@@ -6,11 +6,8 @@ M.defaults = {
   picker = "default", -- fzf-lua
   extmarks = {
     priority = 15,
-    excluded = {
-      buftypes = {},
-      filetypes = {},
-    },
     throttle = 200,
+    excluded = { buftypes = {}, filetypes = {} },
     keywords = {
       MARK = { icon = "📌", hl_group = "QFbookmarkBadgeMark" },
       FIX = { icon = "🔧", hl_group = "QFbookmarkBadgeFix" },
@@ -50,19 +47,33 @@ M.defaults = {
       enabled = true,
       anchor = "SE", -- NW/SW --- SE/NE
       allow_number = true,
+      preview_fullscreen = false,
       actions = { win_resized = false },
-      mark_annotation = {
-        enabled = true,
-        label = {
-          comment = {
-            target = "local",
-            description = "",
-            templates = string.format [[
-Comment:
+      context_templates = {
+        ask_ai = {
+          description = "Send to AI for analysis",
+          builder = function(ctx)
+            return string.format(
+              [[
+Can you review the code, analyze it first, and then fix it?
 
-              ]],
-          },
+note: %s
+
+```%s
+%s
+```
+]],
+              ctx.text,
+              ctx.filetype,
+              table.concat(ctx.lines, "\n")
+            )
+          end,
         },
+      },
+      sinks = {
+        -- example:
+        -- avante = function(text) require("avante.api").ask({ question = text }) end,
+        -- codecompanion = function(text) require("codecompanion").chat({ prompt = text }) end,
       },
     },
     note = {
@@ -134,7 +145,7 @@ error:
       up = { "<C-p>", "<C-k>", "k" },
       down = { "<C-n>", "<C-j>", "j" },
 
-      default = { "o", "<CR>" },
+      default = { "<CR>" },
       split = "<C-s>",
       vsplit = "<C-v>",
       tab = "<C-t>",
@@ -163,18 +174,20 @@ error:
       add_debug = "<Leader>qd",
       add_mark_annotation = "<Leader>qn",
 
+      preview_context = "S",
+      toggle_preview = "<Leader>qP",
+      toggle_range_signs = "<Leader>qp",
+
       toggle_open = "gl",
 
       save_annotation = "<C-s>",
 
-      debug = "<Leader>qu",
-      debug_t = "<Leader>qU",
+      -- WARN: dont forget to delete this line
+      --
+      -- debug = "<Leader>qu",
 
       del_mark = "dm",
       del_mark_buffer = "dM",
-
-      next_mark = "gn",
-      prev_mark = "gp",
 
       move_item_down = "<a-n>",
       move_item_up = "<a-p>",

@@ -60,21 +60,46 @@ function M.get_win_width(is_input, lines)
   return { row = row, col = col, width = win_width, height = win_height }
 end
 
-function M.get_position(anchor, width, height)
-  local lines = vim.o.lines
-  local cols = vim.o.columns
+---@param width integer
+---@param height integer
+---@param anchor? "auto"|"NW"|"NE"|"SW"|"SE"
+---@param relative? "cursor"|"editor"
+---@param padding? integer  -- hanya berlaku untuk relative="editor", default 4
+function M.get_position(width, height, anchor, relative, padding)
+  anchor = anchor or "auto"
+  relative = relative or "editor"
+  padding = (relative == "editor") and (padding or 4) or 0
 
-  local padding = 4
+  local row, col
 
-  if anchor == "NW" then
-    return 0 + (padding - 3), 0 + (padding - 2)
-  elseif anchor == "NE" then
-    return 0 + (padding - 3), cols - width - padding
-  elseif anchor == "SW" then
-    return lines - height - padding, 0 + (padding - 2)
-  elseif anchor == "SE" then
-    return lines - height - padding, cols - width - padding
+  if relative == "cursor" then
+    if anchor == "auto" then
+      local space_below = vim.o.lines - vim.fn.screenrow()
+      local space_above = vim.fn.screenrow() - 1
+      local space_right = vim.o.columns - vim.fn.screencol()
+      local space_left = vim.fn.screencol() - 1
+      row = (space_below >= height + 2 or space_below >= space_above) and 1 or -(height + 1)
+      col = (space_right >= width or space_right >= space_left) and 0 or -width
+    else
+      row = (anchor:sub(1, 1) == "N") and -(height + 1) or 1
+      col = (anchor:sub(2, 2) == "W") and -width or 0
+    end
+  else -- "editor"
+    if anchor == "auto" then
+      local space_below = vim.o.lines - vim.fn.screenrow()
+      local space_above = vim.fn.screenrow() - 1
+      local space_right = vim.o.columns - vim.fn.screencol()
+      local space_left = vim.fn.screencol() - 1
+      row = (space_below >= height + 2 or space_below >= space_above) and vim.fn.screenrow()
+        or vim.fn.screenrow() - height - 1
+      col = (space_right >= width or space_right >= space_left) and vim.fn.screencol() or vim.fn.screencol() - width
+    else
+      row = (anchor:sub(1, 1) == "N") and padding or (vim.o.lines - height - padding)
+      col = (anchor:sub(2, 2) == "W") and padding or (vim.o.columns - width - padding)
+    end
   end
+
+  return row, col
 end
 
 ---@param height integer
@@ -203,16 +228,16 @@ function M.shorten_text(text, max_len)
   return result .. "…"
 end
 
---- Badge label per mark_mode
----@param mark_mode QFBookMarkMode
+--- Badge label per category
+---@param category QFBookMarkMode
 ---@return string
-function M.get_mode_badge(mark_mode)
+function M.get_mode_badge(category)
   local badges = {}
   for key_, val_ in pairs(Config.extmarks.keywords) do
     badges[key_] = val_.icon
   end
 
-  return badges[mark_mode] or mark_mode:sub(1, 4)
+  return badges[category] or category:sub(1, 4)
 end
 
 --- Cek apakah mark entry ini adalah file yang sedang aktif
@@ -349,7 +374,7 @@ end
 ---@return string|nil line3 symbol line, nil when no symbol context
 ---@return string harpoon harpoon value for lookup
 function M.build_entry_lines(idx, mark, path_width, symbol)
-  local badge = M.get_mode_badge(mark.mark_mode)
+  local badge = M.get_mode_badge(mark.sign_category)
   local path = M.shorten_path(mark.filename, path_width)
   local cur_marker = M.is_current_file(mark.filename) and " ●" or ""
   local lnum = string.format(":%d", mark.line)
@@ -362,7 +387,7 @@ function M.build_entry_lines(idx, mark, path_width, symbol)
     note_annotation = mark.note
   end
 
-  local preview = mark.mark_mode == "NOTE" and ("⮞ " .. note_annotation or mark.text or "") or (mark.text or "")
+  local preview = mark.category == "NOTE" and ("⮞ " .. note_annotation or mark.text or "") or (mark.text or "")
   preview = M.shorten_text(preview, path_width)
 
   -- header: " N  BADGE  plugins/qf.lua ●"
@@ -457,27 +482,101 @@ function M.get_entry_at_line(entries, lnum)
   end
 end
 
+local SEPARATOR = "\n\n" .. string.rep("─", 60) .. "\n\n"
+
+---@return {text: string, err: string, title: string, footer_extra: string}
+function M.resolve_preview_context(opts)
+  local name = opts.names[opts.current_idx]
+
+  local text, err, title, footer_extra
+  local QfbookmarkMarkContext = require "qfbookmark.mark.context"
+  if opts.opts_mark_preview and opts.opts_mark_preview.is_multi then
+    local mode = "combined"
+
+    local results, labels =
+      QfbookmarkMarkContext.build_multi(opts.opts_mark_preview.items, opts.opts_mark_preview.ns, name)
+
+    if mode == "combined" then
+      if #results == 0 then
+        text = "-- no context available --"
+      else
+        text = table.concat(results, SEPARATOR)
+      end
+      title = string.format(
+        " %s · %s · %d item%s · combined ",
+        opts.title_str,
+        name,
+        #results,
+        #results == 1 and "" or "s"
+      )
+      footer_extra = "<C-m> individual"
+    else
+      -- individual mode
+      local item_idx = math.max(1, math.min(opts.current_idx, #results))
+      text = results[item_idx] or "-- no context --"
+      title = string.format("preview · %s · %s (%d/%d)", name, labels[item_idx] or "?", item_idx, #results)
+      footer_extra = "<C-m> combined · ] next · [ prev"
+    end
+  else
+    text, err = QfbookmarkMarkContext.build_context(
+      opts.mark_preview_bufnr,
+      opts.opts_mark_preview.ns,
+      opts.mark_preview_key,
+      name
+    )
+  end
+
+  return {
+    text = text,
+    err = err,
+    title = title,
+    footer_extra = footer_extra,
+  }
+end
+
+local function __set_title_win_popup(win, win_opts)
+  vim.api.nvim_win_set_config(win, win_opts)
+end
+
 ---@param win integer
 ---@param total integer
----@param selected table<string, boolean>,
-function M.update_title_mark_harpoon_popup(win, total, selected)
-  -- total = total or #Mapping.harpoon_map
-  -- local sel_count = vim.tbl_count(selected)
-  -- local cfg = vim.api.nvim_win_get_config(Mapping.popup.win)
-  --
-  -- local count_str = sel_count > 0 and string.format("QFMarks (%d) · %d selected", total, sel_count)
-  --   or string.format("QFMarks (%d)", total)
-  -- cfg.title = QfbookmarkUIUtils.format_title("🔗 " .. count_str)
-  -- vim.api.nvim_win_set_config(Mapping.popup.win, cfg)
-
+---@param selected table<string, boolean> | table<integer, boolean>
+function M.update_title_win_popup(win, total, selected)
   total = total
   local sel_count = vim.tbl_count(selected)
-  local cfg = vim.api.nvim_win_get_config(win)
 
   local count_str = sel_count > 0 and string.format("QFMarks (%d) · %d selected", total, sel_count)
     or string.format("QFMarks (%d)", total)
+
+  local cfg = vim.api.nvim_win_get_config(win)
   cfg.title = M.format_title("🔗 " .. count_str)
   vim.api.nvim_win_set_config(win, cfg)
+  __set_title_win_popup(win, cfg)
+end
+
+---@param buf integer
+---@param win integer
+function M.render_mark_preview_annotation(buf, win, opts)
+  local name = opts.names[opts.current_idx]
+
+  local resolve_preview_opts = M.resolve_preview_context(opts)
+
+  vim.bo[buf].modifiable = true
+  if not resolve_preview_opts.text then
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "error: " .. tostring(resolve_preview_opts.err) })
+  else
+    -- vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(text, "\n", { plain = true }))
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(resolve_preview_opts.text, "\n", { plain = true }))
+  end
+  vim.bo[buf].modifiable = false
+
+  local title
+  if opts.opts_mark_preview and opts.opts_mark_preview.is_multi then
+    title = resolve_preview_opts.title
+  else
+    title = string.format(" %s · %s ", opts.title_str, name)
+  end
+  vim.api.nvim_win_set_config(win, { title = title, title_pos = "center" })
 end
 
 return M

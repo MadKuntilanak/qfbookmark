@@ -38,7 +38,7 @@ function M.set_keymaps(keymaps_opts, is_bufnr)
       key_func = qf[cmd.func]
     end
 
-    local keymap_opts = { desc = cmd.desc }
+    local keymap_opts = { desc = cmd.desc, nowait = true, silent = true }
     local key = cmd.keys
 
     if is_bufnr then

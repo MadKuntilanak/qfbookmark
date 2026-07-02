@@ -50,7 +50,7 @@ function M.jump_to(opts)
   -- safe open file
   if mode and mode ~= "" then
     if mode == "default" then
-      mode = "edit"
+      mode = "buffer"
     end
 
     local ok, err = pcall(function()

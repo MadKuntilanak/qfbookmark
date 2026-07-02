@@ -8,7 +8,7 @@
 ---@alias QFBookmarkBufferMarkGroup table<string, QFbookBufferMarkEntry>
 ---@alias QFBookmarkBufferMark table<QFBookMarkMode, QFBookmarkBufferMarkGroup>
 
----@alias QFBookmarkUiPreview { win: integer, buf: integer, wincfg?: table, namespace: string }
+---@alias QFBookmarkUiPreview { win: integer, buf: integer, wincfg?: table, namespace: string, fullscreen?: boolean }
 ---@alias QFBookmarkUiPopup { win: integer, buf: integer, preview?: QFBookmarkUiPreview, namespace: string}
 
 ---@alias QFBookmarkUiSaveCfg {
@@ -42,6 +42,10 @@
 --- selected: table<string, boolean>,
 --- buffer_selected: table<integer, boolean>,
 --- last_buf: integer,
+--- keys_shortcuts: string[],
+--- on_submit: function,
+--- on_cancel: function,
+--- _opts: table,
 --- data_annotation?: { chunk: QFbookBufferMarkEntry, load_chunk: boolean } }
 
 ---@alias QFBookmarkWinCfg {
@@ -52,7 +56,8 @@
 --- buffer: QFBookUiCfg,
 --- note: QFBookUiCfg,
 --- mark_annotation: QFBookUiCfg,
---- mark_annotation_preview: QFBookUiCfg }
+--- mark_annotation_preview: QFBookUiCfg,
+--- select_category: QFBookUiCfg }
 
 ---@class QFBookmarkContextQFlist
 ---@field name string
@@ -92,11 +97,30 @@
 ---@field col integer
 ---@field text string
 ---@field harpoon string
----@field mark_mode string
+---@field category string
+---@field sign_category string
 ---@field inserted_at integer
 ---@field fn_name string
 ---@field note string[]
 ---@field id integer
+---@field key integer
+---@field start_line integer | nil
+---@field end_line integer | nil
+---@field sign_ids integer[] | nil
+---@field original_span integer | nil
+
+---@class QFBookmarkExtermarkAnnotationRange
+---@field start_row integer
+---@field start_col integer
+---@field end_row integer
+---@field end_col integer
+
+---@class QFbookPreviewOpts
+---@field default_template? string
+---@field send_target? string
+---@field ns? integer
+---@field is_multi? boolean
+---@field items? {bufnr: integer, key: integer, category: string}
 
 ---@class QFBookmarkExtermarks
 ---@field excluded { buftypes: string[], filetypes: string[] }
@@ -114,6 +138,7 @@
 ---@field del_mark_buffer string | string[]
 ---@field harpoon QFBookKeymapMarkHarpoon
 ---@field save_annotation string | string[]
+---@field preview_context string | string[]
 ---@field add_mark string | string[]
 ---@field add_fix string | string[]
 ---@field add_debug string | string[]
@@ -174,6 +199,9 @@
 ---@field enabled boolean
 ---@field anchor string
 ---@field allow_number boolean
+---@field preview_fullscreen boolean
+---@field context_templates table
+---@field sinks table<string, function>
 ---@field actions { win_resized: boolean }
 
 ---@class QFBookItemOpenMode

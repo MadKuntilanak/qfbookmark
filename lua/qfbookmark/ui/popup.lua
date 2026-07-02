@@ -323,17 +323,34 @@ end
 ---@param main_wincfg vim.api.keyset.win_config
 ---@param width integer
 ---@param height? integer
+---@param opts? {fullscreen: boolean}
 ---@return integer | nil, integer | nil
-function M.mark_preview(main_wincfg, width, height)
+function M.mark_preview(main_wincfg, width, height, opts)
+  opts = opts or {}
   local editor = QfbookmarkUIUtils.get_editor_size()
 
-  height = height or math.max(1, math.floor(editor.height * 2 / 3.5))
-  width = math.max(editor.width - math.floor(width * 2) + QfbookmarkUIUtils.PADDING_PREVIEW + 10, 50)
+  local is_fullscreen = opts.fullscreen or false
 
-  local _col = main_wincfg.col - width - QfbookmarkUIUtils.PADDING_PREVIEW
-  local _col_minus = main_wincfg.col + main_wincfg.width + QfbookmarkUIUtils.PADDING_PREVIEW
-  local col = Config.window.mark.anchor == "NW" and _col_minus or _col
-  local row = main_wincfg.row
+  local col, row
+  if is_fullscreen then
+    height = editor.height
+    width = math.max(editor.width - math.floor(width * 2) + QfbookmarkUIUtils.PADDING_PREVIEW + 10, 50)
+
+    local _col = main_wincfg.col - width - QfbookmarkUIUtils.PADDING_PREVIEW
+    local _col_minus = main_wincfg.col + main_wincfg.width + QfbookmarkUIUtils.PADDING_PREVIEW
+    col = Config.window.mark.anchor == "NW" and _col_minus or _col
+    row = main_wincfg.row - 10
+  else
+    height = math.max(1, math.floor(editor.height * 2 / 3.5))
+    width = math.max(editor.width - math.floor(width * 2) + QfbookmarkUIUtils.PADDING_PREVIEW + 10, 50)
+
+    local _col = main_wincfg.col - width - QfbookmarkUIUtils.PADDING_PREVIEW
+    local _col_minus = main_wincfg.col + main_wincfg.width + QfbookmarkUIUtils.PADDING_PREVIEW
+    col = Config.window.mark.anchor == "NW" and _col_minus or _col
+    row = main_wincfg.row
+  end
+
+  -- RUtils.info(height)
 
   ---@type WinCfg
   local wincfg = {

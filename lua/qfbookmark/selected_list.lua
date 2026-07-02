@@ -1,4 +1,8 @@
+local Config = require("qfbookmark.config").defaults
+
 local QfbookmarkUtils = require "qfbookmark.utils"
+
+local DEFAULT_EXTENSION_KEYWORDS = { "quickfix", "loclist" }
 
 local function tbl_count(tbl)
   local count = 0
@@ -40,7 +44,8 @@ end
 
 ---@param target QFBookListProviders
 function SelectedList:add_to(target)
-  local valid_targets = { "buffers", "mark", "debug", "fix", "note", "quickfix", "loclist" }
+  local valid_targets =
+    vim.list_extend(vim.tbl_keys(require("qfbookmark.mark.utils").get_keywords()), DEFAULT_EXTENSION_KEYWORDS)
 
   assert(
     vim.tbl_contains(valid_targets, target),
@@ -51,10 +56,10 @@ function SelectedList:add_to(target)
     return
   end
 
-  if vim.tbl_contains({ "mark", "debug", "fix", "note" }, target) then
+  if vim.tbl_contains(vim.tbl_keys(Config.extmarks.keywords), target) then
     local QfbookmarkBookmark = require "qfbookmark.mark"
 
-    local mark_mode = target:upper()
+    local category = target:upper()
 
     local already_add = {}
     local success_add = {}
@@ -87,7 +92,7 @@ function SelectedList:add_to(target)
       end
 
       if filename then
-        local ok = QfbookmarkBookmark.add_mark_at(bufnr, line, col, text, mark_mode)
+        local ok = QfbookmarkBookmark.add_mark_at(bufnr, line, col, text, category)
         local id = tonumber(line .. bufnr)
         if not id then
           goto continue
@@ -102,8 +107,17 @@ function SelectedList:add_to(target)
       ::continue::
     end
 
-    notify(success_add, already_add)
-  elseif target == "quickfix" or target == "loclist" then
+    if target ~= "NOTE" then
+      notify(success_add, already_add)
+
+      vim.schedule(function()
+        if tbl_count(success_add) > 0 then
+          local qf = require "qfbookmark.qf"
+          qf.open_mark_harpoon_window()
+        end
+      end)
+    end
+  elseif vim.tbl_contains(DEFAULT_EXTENSION_KEYWORDS, target:lower()) then
     local qf_items = {}
     for _, item in ipairs(self) do
       local filename = item.filename or (item.info and item.info.name)
@@ -149,8 +163,6 @@ function SelectedList:add_note_to(template_name)
     QfbookmarkUtils.error "add_to(template_name) requires a template name."
     return
   end
-
-  local Config = require("qfbookmark.config").defaults
 
   local TEMPLATES = vim.tbl_keys(Config.window.note.insert_to_note.templates) -- { mark, debug, note .. }
 
