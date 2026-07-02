@@ -163,19 +163,40 @@ function M.clamp_range(bufnr, start_line, end_line)
   return math.min(start_line, end_line), math.max(start_line, end_line)
 end
 
----@param keyword_def table  -- entry from Config.extmarks.keywords[category]
----@param text string
+---@param keyword_def table
+---@param text string|string[]
 function M.render_virt_text(keyword_def, text)
+  if not text then
+    QfbookmarkUtils.error("mark.utils.render_virt_text", "text is nil")
+    return
+  end
+
   local max_len = MAX_NOTE_LEN or 25
 
-  local display = vim.fn.strdisplaywidth(text) > max_len and vim.fn.strcharpart(text, 0, max_len) .. "…" or text
+  ---@type string
+  local display_text = ""
+
+  if type(text) == "table" then
+    display_text = text[1] or ""
+  elseif type(text) == "string" then
+    display_text = text
+  end
+
+  local display = display_text
+
+  if vim.fn.strdisplaywidth(display_text) > max_len then
+    display = vim.fn.strcharpart(display_text, 0, max_len) .. "…"
+  end
 
   if display == "" then
     display = keyword_def.description or ""
   end
 
   local icon = keyword_def.icon or ""
-  return { { " " .. icon .. " " .. display, keyword_def.hl_group } }
+
+  return {
+    { (" %s %s"):format(icon, display), keyword_def.hl_group },
+  }
 end
 
 return M

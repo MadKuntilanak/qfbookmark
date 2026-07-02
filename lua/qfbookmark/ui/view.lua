@@ -348,53 +348,44 @@ local __popup_opts_for = {
       opts_popup.popup.buf = M.window.mark_annotation.buf
     end
 
-    -- local main_win_cfg = vim.api.nvim_win_get_config(main_win)
-    --
-    -- local buf_preview, win_preview = QfbookmarkUIPopup.mark_note_preview(main_win_cfg, opts_popup.win_opts.wincfg.width)
-    -- if not win_preview or not buf_preview then
-    --   return
-    -- end
-    --
-    -- M.window.mark_annotation_preview.buf = buf_preview
-    -- M.window.mark_annotation_preview.win = win_preview
-    --
-    -- if not opts_popup.popup.preview then
-    --   opts_popup.popup.preview = {}
-    --   opts_popup.popup.preview.buf = M.window.mark_annotation_preview.buf
-    --   opts_popup.popup.preview.win = M.window.mark_annotation_preview.win
-    -- end
-    --
-    -- -- Wire up CursorMoved preview with the new harpoon_map
-    -- QfbookmarkUIPopup.setup_mark_preview_contents(opts_popup, main_buf, win_preview, buf_preview, true)
+    setup_option_main_popup(main_win, main_buf, true)
+
+    local main_win_cfg = vim.api.nvim_win_get_config(main_win)
+
+    local buf_preview, win_preview =
+      QfbookmarkUIPopup.mark_note_preview(opts_popup, main_win_cfg, opts_popup.win_opts.wincfg.width)
+    if not win_preview or not buf_preview then
+      return
+    end
+
+    M.window.mark_annotation_preview.buf = buf_preview
+    M.window.mark_annotation_preview.win = win_preview
+
+    if not opts_popup.popup.preview then
+      opts_popup.popup.preview = {}
+      opts_popup.popup.preview.buf = M.window.mark_annotation_preview.buf
+      opts_popup.popup.preview.win = M.window.mark_annotation_preview.win
+    end
 
     if opts_popup._opts and opts_popup._opts.keyword_def then
       local hl = opts_popup._opts.keyword_def.hl_group
-      vim.bo[main_buf].filetype = "qfbookmark"
       vim.wo[main_win].winhighlight = "NormalFloat:Normal,FloatFooter:QFBookmarkFloatFooter,FloatTitle:"
         .. (hl or "QFBookmarkFloatTitle")
     end
 
-    -- vim.keymap.set("i", "<C-w>", "<C-w>", { buffer = main_buf, remap = true })
+    vim.bo[main_buf].filetype = "qfbookmark"
+    vim.bo[main_buf].buftype = ""
+    vim.bo[main_buf].bufhidden = "wipe"
 
     QfbookmarkUIKeymaps.setup_keymap_mark_annotation(opts_popup, main_buf)
 
     if opts_popup.data_annotation and opts_popup.data_annotation.load_chunk then
       local raw_lines = opts_popup.data_annotation.chunk.note
-      local lines
-      if type(raw_lines) == "string" then
-        lines = { raw_lines }
-      else
-        lines = raw_lines
-      end
-
-      if type(lines) == "table" then
-        lines = table.concat(lines, " ")
-      end
 
       -- insert after prompt_setcallback/startinsert so it lands after "> "
       -- and cursor ends up at the end, ready to keep typing/editing
-      vim.api.nvim_buf_set_lines(main_buf, -2, -1, false, { "> " .. lines })
-      vim.api.nvim_win_set_cursor(main_win, { 1, #("> " .. lines) })
+      vim.api.nvim_buf_set_lines(main_buf, -2, -1, false, raw_lines)
+      vim.api.nvim_win_set_cursor(main_win, { 1, #raw_lines })
     end
 
     vim.cmd "startinsert!"

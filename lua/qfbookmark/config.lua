@@ -50,14 +50,13 @@ M.defaults = {
       preview_fullscreen = false,
       actions = { win_resized = false },
       context_templates = {
+        separator = nil, -- or "\n\n" .. string.rep("─", 60) .. "\n\n",
         ask_ai = {
           description = "Send to AI for analysis",
           builder = function(ctx)
             return string.format(
               [[
-Can you review the code, analyze it first, and then fix it?
-
-note: %s
+%s
 
 ```%s
 %s
@@ -183,7 +182,7 @@ error:
       save_annotation = "<C-s>",
 
       -- WARN: dont forget to delete this line
-      --
+
       -- debug = "<Leader>qu",
 
       del_mark = "dm",

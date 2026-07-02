@@ -26,9 +26,19 @@ local range_signs_enabled = true
 local warned = {}
 local atth_extmark_key = {}
 
+---@type integer ms timestamp of last branch check (for debounce)
+local last_check = 0
+
+---@type integer minimum ms between branch checks
+local CHECK_INTERVAL = 1500
+
 ---@param bufnr integer
 ---@param key integer
 local function warn_key(bufnr, key)
+  return string.format("%d:%d", bufnr, key)
+end
+
+local function attach_key(bufnr, key)
   return string.format("%d:%d", bufnr, key)
 end
 
@@ -37,12 +47,6 @@ M.dirty = false
 function M.mark_dirty()
   M.dirty = true
 end
-
----@type integer ms timestamp of last branch check (for debounce)
-local last_check = 0
-
----@type integer minimum ms between branch checks
-local CHECK_INTERVAL = 1500
 
 ---@type uv.uv_timer_t?
 M.timer = assert(vim.uv.new_timer())
@@ -92,15 +96,9 @@ local function insert_sign_or_extmark(key, category, bufnr, lnum)
       bufnr = meta.bufnr,
     }
 
-    local note_annotation
-
-    if type(meta.note) == "table" then
-      note_annotation = table.concat(meta.note, " ")
-    end
-
     clear_range_signs(bufnr, meta.sign_ids)
 
-    local __annon_meta = M.create_annotation(meta.sign_category, note_annotation, opts)
+    local __annon_meta = M.create_annotation(meta.sign_category, meta.note, opts)
     if not __annon_meta then
       return
     end
@@ -411,17 +409,12 @@ end
 ---@param lnum integer
 ---@param col integer
 ---@param line_text string
----@param ann_opts? {extmark_id: integer, note: string, sign_ids: integer[], original_span: integer, start_line: integer, end_line: integer, sign_category: string}
+---@param ann_opts? {extmark_id: integer, note: string[], sign_ids: integer[], original_span: integer, start_line: integer, end_line: integer, sign_category: string}
 ---@param inserted_at? integer
 ---@return QFBookmarkBufferMark | nil
 local function register_mark(mark_lists, category, key, bufnr, lnum, col, line_text, ann_opts, inserted_at)
   ann_opts = ann_opts or {}
   M.mark_dirty()
-
-  local note = {}
-  if type(ann_opts.note) == "string" then
-    note = { ann_opts.note }
-  end
 
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   inserted_at = inserted_at or os.time()
@@ -455,7 +448,7 @@ local function register_mark(mark_lists, category, key, bufnr, lnum, col, line_t
       inserted_at = inserted_at, -- Unix timestamp (seconds); consistent across sessions
       id = ann_opts.extmark_id and ann_opts.extmark_id or key,
       key = key,
-      note = note,
+      note = ann_opts.note,
       start_line = ann_opts.start_line,
       end_line = ann_opts.end_line,
       sign_ids = ann_opts.sign_ids,
@@ -469,14 +462,14 @@ end
 ---@param bufnr integer
 ---@param key integer
 ---@param id integer
----@param text string
+---@param text string[]
 function M.set_text(bufnr, key, id, category, text)
   local meta = M.get_meta(key, category)
   if not meta then
     return
   end
 
-  meta.note = { text }
+  meta.note = text
 
   local keyword_def = QfbookmarkMarkUtils.get_keyword_def(meta.sign_category)
   if not keyword_def then
@@ -540,16 +533,32 @@ local function __place_next_mark_annontation(mark_lists, category, key, bufnr, l
 
   local QfbookmarkUI = require "qfbookmark.ui"
 
-  local meta = M.get_meta(key, _category)
+  -- +-----------------------------------------------------------------------------+
+  -- | Edit extmark note                                                           |
+  -- +-----------------------------------------------------------------------------+
 
+  local meta = M.get_meta(key, _category)
   if meta then
     local row = vim.api.nvim_win_get_cursor(0)[1] - 1
+    local keyword_def = QfbookmarkMarkUtils.get_keyword_def(meta.sign_category)
 
     for _, ann in ipairs(M.list_annotations(bufnr, key)) do
       if ann.range and row >= ann.range.start_row and row <= ann.range.end_row then
-        QfbookmarkUI.input_note(ann.category, function(text)
-          M.set_text(bufnr, key, ann.id, _category, text)
-        end, nil, { load_chunk = true, chunk = meta })
+        QfbookmarkUI.place_mark_annotation(
+          meta.sign_category,
+          function(text)
+            M.set_text(bufnr, key, ann.id, _category, text)
+          end,
+          nil,
+          { load_chunk = true, chunk = meta },
+          {
+            anchor = line_opts.from_qf and "editor" or "cursor",
+            keyword_def = keyword_def,
+            bufnr = bufnr,
+            start_line = meta.start_line,
+            end_line = meta.end_line,
+          }
+        )
         return
       end
     end
@@ -560,60 +569,80 @@ local function __place_next_mark_annontation(mark_lists, category, key, bufnr, l
   -- | Adding extmark for note                                                     |
   -- +-----------------------------------------------------------------------------+
 
-  local start_line, end_line = QfbookmarkMarkUtils.visual_range()
-  annon_opts.start_line = start_line
-  annon_opts.end_line = end_line
+  if line_opts.from_qf then
+    annon_opts.start_line = line_opts.line
+    annon_opts.end_line = line_opts.line
+  else
+    local start_line, end_line = QfbookmarkMarkUtils.visual_range()
+    annon_opts.start_line = start_line
+    annon_opts.end_line = end_line
+  end
+
   if bufnr then
     annon_opts.bufnr = bufnr
   end
-
   local function after_category(__category)
     local keyword_def = QfbookmarkMarkUtils.get_keyword_def(__category)
-    QfbookmarkUI.input_note(__category, function(text)
-      local ann_opts = M.create_annotation(__category, text, annon_opts)
-      if not ann_opts then
-        return
-      end
+    QfbookmarkUI.place_mark_annotation(
+      __category,
+      function(text)
+        local ann_opts = M.create_annotation(__category, text, annon_opts)
+        if not ann_opts then
+          return
+        end
 
-      if not line_opts.col or not line_opts.line then
-        line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
-      end
+        if not line_opts.col or not line_opts.line then
+          line_opts = QfbookmarkUtils.get_line_pos_col_buffer()
+        end
 
-      local lnum = line_opts.line
-      local col = line_opts.col
-      local line_text = line_opts.text
+        local lnum = line_opts.line
+        local col = line_opts.col
+        local line_text = line_opts.text
 
-      if not atth_extmark_key[ann_opts.extmark_id] then
-        atth_extmark_key[ann_opts.extmark_id] = true
-      end
+        local atch_key = attach_key(bufnr, key)
+        if not atth_extmark_key[atch_key] then
+          atth_extmark_key[atch_key] = true
+        end
 
-      register_mark(mark_lists, _category, key, bufnr, lnum, col, line_text, ann_opts)
+        register_mark(mark_lists, _category, key, bufnr, lnum, col, line_text, ann_opts)
 
-      local qf = require "qfbookmark.qf"
-      local _mark_lists = qf.get_buffers()
-      local had_marks = false
+        if line_opts.from_qf then
+          local qf = require "qfbookmark.qf"
+          local _mark_lists = qf.get_buffers()
+          local had_marks = false
 
-      if mark_lists then
-        for _, marks in pairs(_mark_lists) do
-          if next(marks) ~= nil then
-            had_marks = true
-            break
+          if mark_lists then
+            for _, marks in pairs(_mark_lists) do
+              if next(marks) ~= nil then
+                had_marks = true
+                break
+              end
+            end
+          end
+
+          if not had_marks then
+            for _, mark in pairs(mark_lists[category]) do
+              qf.load_mark_lists({ mark }, true)
+            end
+          end
+
+          require("qfbookmark.qf").__update_mark_lists()
+
+          if not had_marks then
+            qf.open_mark_harpoon_window()
           end
         end
-      end
-
-      if not had_marks then
-        for _, mark in pairs(mark_lists[category]) do
-          qf.load_mark_lists({ mark }, true)
-        end
-      end
-
-      require("qfbookmark.qf").__update_mark_lists()
-
-      if not had_marks then
-        qf.open_mark_harpoon_window()
-      end
-    end, nil, nil, { anchor = line_opts.from_qf and "editor" or "cursor", keyword_def = keyword_def })
+      end,
+      nil,
+      nil,
+      {
+        anchor = line_opts.from_qf and "editor" or "cursor",
+        keyword_def = keyword_def,
+        bufnr = bufnr,
+        start_line = annon_opts.start_line,
+        end_line = annon_opts.end_line,
+      }
+    )
   end
 
   if annon_opts.category then
@@ -689,9 +718,10 @@ function M.update_mark_sign(mark_lists, bufnr)
           end
         else
           local extmark = QfbookmarkMarkExtmark.get_extmark_at_line(bufnr, ns, m.line)[1]
-          if not extmark and not atth_extmark_key[m.id] then
+          local atch_key = attach_key(bufnr, m.key)
+          if not extmark and not atth_extmark_key[atch_key] then
             insert_sign_or_extmark(m.key, category, bufnr, m.line)
-            atth_extmark_key[m.id] = true
+            atth_extmark_key[atch_key] = true
           end
         end
       end
@@ -718,9 +748,9 @@ end
 
 ---Create an extmark annotation over a (possibly multi-line) range.
 ---@param category string  -- key into Config.extmarks.keywords
----@param note string -- short note text shown inline
+---@param note string[] -- short note text shown inline
 ---@param opts? { bufnr?: integer, start_line?: integer, end_line?: integer }
----@return {extmark_id: integer, note: string, sign_ids: integer[], original_span: integer, start_line: integer, end_line: integer, sign_category: string}|nil  { bufnr, extmark_id, category, text }
+---@return {extmark_id: integer, note: string[], sign_ids: integer[], original_span: integer, start_line: integer, end_line: integer, sign_category: string}|nil  { bufnr, extmark_id, category, text }
 function M.create_annotation(category, note, opts)
   opts = opts or {}
 
@@ -843,8 +873,9 @@ function M.delete_mark(mark_lists, category, key, id, bufnr, clear_buffer)
     M.delete_annotation(bufnr, key, id, category)
     if clear_buffer then
       QfbookmarkMarkExtmark.clear_extmarks(M.note_namespace, bufnr)
-      if atth_extmark_key[id] then
-        atth_extmark_key[id] = nil
+      local atch_key = attach_key(bufnr, key)
+      if atth_extmark_key[atch_key] then
+        atth_extmark_key[atch_key] = nil
       end
     end
   else
@@ -973,6 +1004,10 @@ function M.setup_mark_autocmds(mark_lists, force_set)
     pattern = "*",
     callback = function(ctx)
       vim.schedule(function()
+        if not vim.api.nvim_buf_is_valid(ctx.buf) or not vim.api.nvim_buf_is_loaded(ctx.buf) then
+          return
+        end
+
         local filename = vim.api.nvim_buf_get_name(ctx.buf)
         local ns = QfbookmarkMarkUtils.register_namespace(M.note_namespace)
 
@@ -984,10 +1019,11 @@ function M.setup_mark_autocmds(mark_lists, force_set)
             M.scan_buffer(ctx.buf, m.key)
 
             -- Clear the cached attachment key if the extmark no longer exists.
+            local atch_key = attach_key(ctx.buf, m.key)
             local extmark = QfbookmarkMarkExtmark.get_extmark_at_line(ctx.buf, ns, m.line)[1]
             if not extmark then
-              if atth_extmark_key[m.id] then
-                atth_extmark_key[m.id] = nil
+              if atth_extmark_key[atch_key] then
+                atth_extmark_key[atch_key] = nil
               end
             end
           end

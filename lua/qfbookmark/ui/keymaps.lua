@@ -198,13 +198,12 @@ Mapping.save = {}
 
 function Mapping.save.save_input()
   local lines = vim.api.nvim_buf_get_lines(Mapping.buf, 0, -1, false)
-  local input = lines[1] or ""
+  local input = lines
   QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
 
   vim.schedule(function()
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
-    if Mapping.on_submit and input ~= "" then
-      input = input:gsub("^>%s*", "")
+    if Mapping.on_submit and #input > 0 then
       Mapping.on_submit(input)
     end
     QfbookmarkUIUtils.clean_up(Mapping.popup)

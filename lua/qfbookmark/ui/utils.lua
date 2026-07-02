@@ -482,7 +482,7 @@ function M.get_entry_at_line(entries, lnum)
   end
 end
 
-local SEPARATOR = "\n\n" .. string.rep("─", 60) .. "\n\n"
+local SEPARATOR = Config.window.mark.context_templates and Config.window.mark.context_templates.separator or nil
 
 ---@return {text: string, err: string, title: string, footer_extra: string}
 function M.resolve_preview_context(opts)
@@ -500,7 +500,11 @@ function M.resolve_preview_context(opts)
       if #results == 0 then
         text = "-- no context available --"
       else
-        text = table.concat(results, SEPARATOR)
+        if SEPARATOR then
+          text = table.concat(results, SEPARATOR)
+        else
+          text = table.concat(results, "\n\n")
+        end
       end
       title = string.format(
         " %s · %s · %d item%s · combined ",

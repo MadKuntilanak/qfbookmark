@@ -103,10 +103,10 @@ local function load_content(filename, bufnr)
   end
 
   if not bufnr then
-    local real = QfbookmarkUtils.resolve_bufnr(filename)
-    if real then
-      return real
-    end
+    -- local real = QfbookmarkUtils.resolve_bufnr(filename)
+    -- if real then
+    --   return real
+    -- end
     return { "⚠ Unable to load content. Buffer not found." }
   end
 
@@ -198,6 +198,7 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
     return
   end
 
+  ---@type string[]
   local content
   local buffer_status = QfbookmarkUIUtils.get_buffer_status(bufnr)
 
@@ -228,7 +229,14 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
   elseif buffer_status == "alive" then
     content = load_content(filename, bufnr)
   elseif buffer_status == "hidden" or buffer_status == "gone" then
-    content = read_file(filename)
+    local __content = read_file(filename)
+    if not __content then
+      content = {
+        string.format("⚠ Failed to load '%s'.", vim.fs.basename(filename)),
+      }
+    else
+      content = __content
+    end
   end
 
   if content then
@@ -350,8 +358,6 @@ function M.mark_preview(main_wincfg, width, height, opts)
     row = main_wincfg.row
   end
 
-  -- RUtils.info(height)
-
   ---@type WinCfg
   local wincfg = {
     buf = vim.api.nvim_create_buf(false, true),
@@ -383,11 +389,12 @@ function M.mark_preview(main_wincfg, width, height, opts)
   return buf_preview, win_preview
 end
 
+---@param opts_popup QFBookmarkUiPopupCfg
 ---@param main_wincfg vim.api.keyset.win_config
 ---@param width integer
 ---@param height? integer
 ---@return integer | nil, integer | nil
-function M.mark_note_preview(main_wincfg, width, height)
+function M.mark_note_preview(opts_popup, main_wincfg, width, height)
   height = math.min(10, math.floor(main_wincfg.height * 2)) + QfbookmarkUIUtils.PADDING_PREVIEW
   width = main_wincfg.width
 
@@ -406,7 +413,7 @@ function M.mark_note_preview(main_wincfg, width, height)
       col = col,
       style = "minimal",
       border = "rounded",
-      title = QfbookmarkUIUtils.format_title "Preview",
+      title = QfbookmarkUIUtils.format_title "Preview annotation",
       title_pos = "center",
       focusable = false,
       noautocmd = true,
@@ -421,6 +428,30 @@ function M.mark_note_preview(main_wincfg, width, height)
     "NormalFloat:QFBookmarkNormalFloat,FloatBorder:QFBookmarkFloatBorder,",
     { win = win_preview }
   )
+
+  vim.bo[buf_preview].filetype = "markdown"
+
+  local ctx = vim.api.nvim_buf_get_lines(
+    opts_popup._opts.bufnr,
+    opts_popup._opts.start_line,
+    opts_popup._opts.end_line + 1,
+    false
+  )
+
+  ---@type string[]
+  local content = {}
+
+  if #ctx > 0 then
+    vim.list_extend(content, {
+      "",
+      "```" .. vim.bo[opts_popup._opts.bufnr].filetype,
+    })
+
+    vim.list_extend(content, ctx)
+    table.insert(content, "```")
+  end
+
+  vim.api.nvim_buf_set_lines(buf_preview, 0, -1, false, content)
 
   return buf_preview, win_preview
 end

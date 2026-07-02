@@ -195,70 +195,6 @@ local function mark_harpoon_popup(mark_lists, cb)
   QfbookmarkUIView.build_popup("mark", __opts, cb)
 end
 
----@param mark_lists QFBookmarkBufferMark
----@param cb function
----@param load_chunk? {load_chunk: boolean, chunk: QFbookBufferMarkEntry}
-local function place_mark_annotation(mark_lists, cb, load_chunk)
-  load_chunk = load_chunk or {}
-
-  local editor = QfbookmarkUIUtils.get_editor_size()
-
-  local height = math.floor(editor.height / 5)
-  local width = math.floor(editor.width / 2)
-
-  -- local col, row = QfbookmarkUIUtils.get_center_col_row(height, width)
-  -- local cursor = vim.api.nvim_win_get_cursor(0)
-
-  -- row = row + 10
-  local title_str = "📝 " .. "Mark Annotation"
-
-  local row = QfbookmarkUIUtils.get_row_cursor_relative(height, 2)
-
-  local win_buf = vim.api.nvim_create_buf(false, true)
-  local wincfg = {
-    buf = win_buf,
-    enter = true,
-    wincfg = {
-      relative = "cursor",
-      width = width,
-      height = height,
-      row = row,
-      col = 0,
-      style = "minimal",
-      border = "rounded",
-      title = QfbookmarkUIUtils.format_title(title_str),
-      title_pos = "center",
-      footer = "",
-      footer_pos = "center",
-    },
-  }
-
-  local buf = vim.api.nvim_get_current_buf()
-  local curline = vim.api.nvim_win_get_cursor(0)[1]
-
-  local __opts = {
-    contents = mark_lists,
-    content_map = {
-      [1] = {
-        hval = "mark_note",
-        mark = {
-          bufnr = vim.api.nvim_get_current_buf(),
-          line = curline,
-          col = vim.api.nvim_win_get_cursor(0)[2],
-          filename = vim.api.nvim_buf_get_name(buf),
-        },
-      },
-    },
-    win_opts = wincfg,
-    harpoon = "mark_note",
-    is_mark_annotation = true,
-    data_annotation = load_chunk,
-    cb = cb,
-  }
-
-  QfbookmarkUIView.build_popup("mark_annotation", __opts, cb)
-end
-
 ---@param bufnr integer
 ---@param key integer
 ---@param opts? QFbookPreviewOpts
@@ -304,34 +240,28 @@ end
 
 ---Open a small floating input to capture the short note text for an annotation.
 ---@param category string
----@param on_submit fun(text: string)
+---@param on_submit fun(text: string[])
 ---@param on_cancel? fun()
 ---@param load_chunk? {load_chunk: boolean, chunk: QFbookBufferMarkEntry}
----@param opts? { anchor?: "cursor"|"editor", keyword_def: QFBookSpec }
-local function input_note(category, on_submit, on_cancel, load_chunk, opts)
+---@param opts? { anchor?: "cursor"|"editor", keyword_def: QFBookSpec, bufnr: integer, start_line: integer, end_line:integer}
+local function place_mark_annotation(category, on_submit, on_cancel, load_chunk, opts)
   opts = opts or {}
-  local anchor = opts.anchor or "cursor"
+  -- local anchor = opts.anchor or "cursor"
 
-  local width = 44
+  local editor = QfbookmarkUIUtils.get_editor_size()
 
-  local win_config
-  if anchor == "editor" then
-    win_config = {
-      relative = "editor",
-      row = math.floor((vim.o.lines - 3) / 2),
-      col = math.floor((vim.o.columns - 46) / 2),
-      width = 44,
-      height = 1,
-    }
-  else
-    win_config = {
-      relative = "cursor",
-      row = 1,
-      col = 0,
-      width = width,
-      height = 1,
-    }
-  end
+  local height = math.floor(editor.height / 5)
+  local width = math.floor(editor.width / 3)
+
+  local col, row = QfbookmarkUIUtils.get_center_col_row(height, width)
+
+  local win_config = {
+    relative = "editor",
+    row = row + 10,
+    col = col,
+    height = height,
+    width = width,
+  }
 
   local buf = vim.api.nvim_create_buf(false, true)
   local wincfg = {
@@ -347,9 +277,6 @@ local function input_note(category, on_submit, on_cancel, load_chunk, opts)
       footer_pos = "center",
     }),
   }
-
-  vim.bo[buf].buftype = "prompt"
-  vim.fn.prompt_setprompt(buf, "> ")
 
   local curbuf = vim.api.nvim_get_current_buf()
   local curline = vim.api.nvim_win_get_cursor(0)[1]
@@ -567,9 +494,8 @@ return {
   mark_harpoon_popup = mark_harpoon_popup,
   saveqf_popup = saveqf_popup,
   buffers_popup = buffers_popup,
-  place_mark_annotation = place_mark_annotation,
   preview_mark_annotation = preview_mark_annotation,
   open_note_in_float = open_note_in_float,
-  input_note = input_note,
+  place_mark_annotation = place_mark_annotation,
   select_category = select_category,
 }
