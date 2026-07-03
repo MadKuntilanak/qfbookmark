@@ -375,6 +375,7 @@ local __popup_opts_for = {
 
     vim.bo[main_buf].filetype = "qfbookmark"
     vim.bo[main_buf].buftype = ""
+    vim.bo[main_buf].textwidth = opts_popup.win_opts.wincfg.width
     vim.bo[main_buf].bufhidden = "wipe"
 
     QfbookmarkUIKeymaps.setup_keymap_mark_annotation(opts_popup, main_buf)
@@ -457,6 +458,8 @@ local __popup_opts_for = {
     end
 
     vim.bo[main_buf].filetype = "markdown"
+    vim.wo[main_win].winhighlight =
+      "NormalFloat:Normal,FloatFooter:QFBookmarkFloatFooter,FloatTitle:QFBookmarkFloatTitle"
 
     QfbookmarkUIKeymaps.setup_keymap_preview_mark_annotation(opts_popup, main_buf)
 

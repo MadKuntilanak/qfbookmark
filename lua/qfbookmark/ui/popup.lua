@@ -413,7 +413,7 @@ function M.mark_note_preview(opts_popup, main_wincfg, width, height)
       col = col,
       style = "minimal",
       border = "rounded",
-      title = QfbookmarkUIUtils.format_title "Preview annotation",
+      title = QfbookmarkUIUtils.format_title "Preview",
       title_pos = "center",
       focusable = false,
       noautocmd = true,
@@ -425,7 +425,7 @@ function M.mark_note_preview(opts_popup, main_wincfg, width, height)
   vim.api.nvim_set_option_value("winblend", 0, { win = win_preview })
   vim.api.nvim_set_option_value(
     "winhighlight",
-    "NormalFloat:QFBookmarkNormalFloat,FloatBorder:QFBookmarkFloatBorder,",
+    "NormalFloat:QFBookmarkNormalFloat,FloatBorder:QFBookmarkFloatBorder,FloatTitle:QFBookmarkFloatTitle",
     { win = win_preview }
   )
 
@@ -498,6 +498,97 @@ function M.save_footer(opts_popup, main_cfg)
   })
 
   return buf_preview, win_preview
+end
+
+---@param prefix_title string
+---@param keys QFBookKeys[]
+function M.show_keymap_helps(prefix_title, keys)
+  local editor = QfbookmarkUIUtils.get_editor_size()
+
+  local function format_key(x)
+    if not x.keys then
+      return nil
+    end
+    if type(x.keys) == "string" then
+      return x.keys
+    end
+    local cs = {}
+    for _, y in ipairs(x.keys) do
+      cs[#cs + 1] = y
+    end
+    return table.concat(cs, " ")
+  end
+
+  local max_key_width = 1
+  for _, x in ipairs(keys) do
+    local key = format_key(x)
+    if key then
+      max_key_width = math.max(max_key_width, vim.fn.strdisplaywidth(key))
+    end
+  end
+
+  local content = {}
+  for _, x in ipairs(keys) do
+    local key = format_key(x)
+    if key then
+      local pad_needed = max_key_width - vim.fn.strdisplaywidth(key)
+      content[#content + 1] = key .. string.rep(" ", pad_needed + 4) .. (x.desc or "")
+    end
+  end
+
+  local height = math.min(#content, math.floor(editor.height / 2)) + QfbookmarkUIUtils.PADDING_PREVIEW
+  local width = math.floor(editor.width / 2)
+  local col, row = QfbookmarkUIUtils.get_center_col_row(height, width)
+  local title_str = "(" .. prefix_title .. ") show keymap shortcuts"
+
+  ---@type WinCfg
+  local wincfg = {
+    buf = vim.api.nvim_create_buf(false, true),
+    enter = true,
+    wincfg = {
+      relative = "editor",
+      width = width,
+      height = height,
+      row = row,
+      col = col,
+      style = "minimal",
+      border = "rounded",
+      title = QfbookmarkUIUtils.format_title(title_str),
+      title_pos = "center",
+      focusable = true,
+      noautocmd = true,
+    },
+  }
+
+  local main_buf, main_win = M.new_open(wincfg, {})
+  vim.api.nvim_buf_set_lines(main_buf, 0, -1, false, content)
+  vim.bo[main_buf].filetype = "qfbookmark_help"
+  vim.wo[main_win].winhighlight = "NormalFloat:Normal,FloatFooter:QFBookmarkFloatFooter,FloatTitle:QFBookmarkFloatTitle"
+
+  local hl_ns = vim.api.nvim_create_namespace "qfbookmark_help_hl"
+  for i, x in ipairs(keys) do
+    local key = format_key(x)
+    if key then
+      local key_len = vim.fn.strdisplaywidth(key)
+      vim.api.nvim_buf_set_extmark(main_buf, hl_ns, i - 1, 0, {
+        end_col = key_len or 1,
+        hl_group = "@markup.raw.markdown_inline",
+      })
+    end
+  end
+
+  vim.api.nvim_set_option_value("readonly", true, { buf = main_buf })
+  vim.api.nvim_set_option_value("buftype", "nofile", { buf = main_buf })
+  vim.api.nvim_set_option_value("modifiable", false, { buf = main_buf })
+
+  local opts = { buffer = main_buf, nowait = true, silent = true }
+  local function close()
+    if vim.api.nvim_win_is_valid(main_win) then
+      vim.api.nvim_win_close(main_win, true)
+    end
+  end
+  vim.keymap.set("n", "<Esc>", close, opts)
+  vim.keymap.set("n", "q", close, opts)
 end
 
 return M

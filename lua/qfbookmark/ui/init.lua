@@ -162,6 +162,7 @@ local function mark_harpoon_popup(mark_lists, cb)
   local title_str = total > 0 and icon .. string.format("QFMarks (%d)", total) or icon .. "QFMarks"
 
   local win_buf = vim.api.nvim_create_buf(false, true)
+  local title_footer_str = " dd del · <CR> open · <C-v/s/t> split · g? help"
 
   ---@type WinCfg
   local wincfg = {
@@ -177,7 +178,7 @@ local function mark_harpoon_popup(mark_lists, cb)
       border = "rounded",
       title = QfbookmarkUIUtils.format_title(title_str),
       title_pos = "center",
-      footer = " dd del · <CR> open · <C-v/s/t> split · <C-q> quit ",
+      footer = QfbookmarkUIUtils.format_title(title_footer_str),
       footer_pos = "center",
     },
   }
@@ -207,6 +208,7 @@ local function preview_mark_annotation(bufnr, key, opts)
   local width = math.floor(editor.width / 1.5)
 
   local title_str = "  " .. "Sent context"
+  local title_footer_str = " <CR> send · <Tab> switch template · y copy only · <Esc> cancel · g? help"
 
   local win_buf = vim.api.nvim_create_buf(false, true)
   local wincfg = {
@@ -222,7 +224,7 @@ local function preview_mark_annotation(bufnr, key, opts)
       border = "rounded",
       title = QfbookmarkUIUtils.format_title(title_str),
       title_pos = "center",
-      footer = " <CR> send · <Tab> switch template · y copy only · <Esc> cancel ",
+      footer = QfbookmarkUIUtils.format_title(title_footer_str),
       footer_pos = "center",
     },
   }
@@ -243,7 +245,7 @@ end
 ---@param on_submit fun(text: string[])
 ---@param on_cancel? fun()
 ---@param load_chunk? {load_chunk: boolean, chunk: QFbookBufferMarkEntry}
----@param opts? { anchor?: "cursor"|"editor", keyword_def: QFBookSpec, bufnr: integer, start_line: integer, end_line:integer}
+---@param opts? { anchor?: "cursor"|"editor", keyword_def: QFBookSpec, bufnr: integer, start_line: integer, end_line:integer, is_edit: boolean}
 local function place_mark_annotation(category, on_submit, on_cancel, load_chunk, opts)
   opts = opts or {}
   -- local anchor = opts.anchor or "cursor"
@@ -251,9 +253,16 @@ local function place_mark_annotation(category, on_submit, on_cancel, load_chunk,
   local editor = QfbookmarkUIUtils.get_editor_size()
 
   local height = math.floor(editor.height / 5)
-  local width = math.floor(editor.width / 3)
+  local width = math.floor(editor.width / 2)
 
   local col, row = QfbookmarkUIUtils.get_center_col_row(height, width)
+  local title_str = opts.keyword_def.icon .. " " .. category
+
+  local prefix_footer_str = "new"
+  if opts.is_edit then
+    prefix_footer_str = "edit"
+  end
+  local title_footer_str = prefix_footer_str .. " annotation · <CR> save · <Esc> cancel · g? help"
 
   local win_config = {
     relative = "editor",
@@ -270,9 +279,9 @@ local function place_mark_annotation(category, on_submit, on_cancel, load_chunk,
     wincfg = vim.tbl_extend("force", win_config, {
       style = "minimal",
       border = "rounded",
-      title = QfbookmarkUIUtils.format_title(category),
+      title = QfbookmarkUIUtils.format_title(title_str),
       title_pos = "center",
-      footer = " <CR> save · <Esc> cancel ",
+      footer = QfbookmarkUIUtils.format_title(title_footer_str),
       noautocmd = true,
       footer_pos = "center",
     }),
@@ -332,6 +341,8 @@ local function select_category(on_select, on_cancel)
 
   local row, col = QfbookmarkUIUtils.get_position(width, height, "auto", "cursor")
 
+  local title_footer_str = "q quit · g? help"
+
   local buf = vim.api.nvim_create_buf(false, true)
   local wincfg = {
     buf = buf,
@@ -346,7 +357,7 @@ local function select_category(on_select, on_cancel)
       border = "rounded",
       title = QfbookmarkUIUtils.format_title "annotation category",
       title_pos = "center",
-      footer = " j/k select · <Esc> cancel ",
+      footer = QfbookmarkUIUtils.format_title(title_footer_str),
       footer_pos = "center",
       noautocmd = true,
     },
@@ -402,6 +413,7 @@ local function buffers_popup(buffer_lists)
   local total = #buffer_lists
   local icon = "📑 "
   local title_str = total > 0 and icon .. string.format("QFBuffers (%d)", total) or icon .. "QFBuffers"
+  local title_footer_str = " dd del · <C-v/s/t split · g? help"
   local win_buf = vim.api.nvim_create_buf(false, true)
 
   ---@type WinCfg
@@ -422,7 +434,7 @@ local function buffers_popup(buffer_lists)
       title = QfbookmarkUIUtils.format_title(title_str),
       title_pos = "center",
 
-      footer = " q quit · c-v/s/t open ",
+      footer = QfbookmarkUIUtils.format_title(title_footer_str),
       footer_pos = "center",
     },
   }

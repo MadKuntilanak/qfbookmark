@@ -555,6 +555,7 @@ local function __place_next_mark_annontation(mark_lists, category, key, bufnr, l
             anchor = line_opts.from_qf and "editor" or "cursor",
             keyword_def = keyword_def,
             bufnr = bufnr,
+            is_edit = true,
             start_line = meta.start_line,
             end_line = meta.end_line,
           }

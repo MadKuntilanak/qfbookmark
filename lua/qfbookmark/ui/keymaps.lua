@@ -199,6 +199,12 @@ function Mapping.setup_open_key(open_mode, jump_to_n)
   end)
 end
 
+---@param prefix string
+---@param keys QFBookKeys[]
+function Mapping.show_help(prefix, keys)
+  QfbookmarkUIPopup.show_keymap_helps(prefix, keys)
+end
+
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
 -- ║                                    SAVE                                     ║
 -- ╙─────────────────────────────────────────────────────────────────────────────╜
@@ -1162,7 +1168,7 @@ function M.build_keymaps(opts_popup, buf, cb)
     -- +-----------------------------------------------------------------------------+
 
     {
-      desc = "Qfmark: up",
+      desc = "Qfmark: move up",
       func = function()
         Mapping.press_normal_key("up", true)
       end,
@@ -1172,7 +1178,7 @@ function M.build_keymaps(opts_popup, buf, cb)
       from_user = true,
     },
     {
-      desc = "Qfmark: down",
+      desc = "Qfmark: move down",
       func = function()
         Mapping.press_normal_key("down", true)
       end,
@@ -1228,7 +1234,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       },
 
       {
-        desc = "Qfmark: scroll preview up fast",
+        desc = "Qfmark: scroll preview up (fast)",
         func = function()
           Mapping.mark.scroll_preview_window(-1, 10)
         end,
@@ -1239,7 +1245,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       },
 
       {
-        desc = "Qfmark: scroll preview down fast",
+        desc = "Qfmark: scroll preview down (fast)",
         func = function()
           Mapping.mark.scroll_preview_window(1, 10)
         end,
@@ -1254,7 +1260,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       -- +-----------------------------------------------------------------------------+
 
       {
-        desc = "Qfmark: up",
+        desc = "Qfmark: move up",
         func = function()
           Mapping.mark.nav_entry(-1)
         end,
@@ -1264,7 +1270,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
         from_user = true,
       },
       {
-        desc = "Qfmark: down",
+        desc = "Qfmark: move down",
         func = function()
           Mapping.mark.nav_entry(1)
         end,
@@ -1330,7 +1336,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
         from_user = true,
       },
       {
-        desc = "Qfmark: delete items all",
+        desc = "Qfmark: delete all items",
         func = function()
           Mapping.mark.clear_all_items()
         end,
@@ -1341,7 +1347,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       },
 
       {
-        desc = "Qfmark: preview context",
+        desc = "Qfmark: show preview context",
         func = function()
           Mapping.mark.preview_context()
         end,
@@ -1352,7 +1358,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       },
 
       {
-        desc = "Qfmark: load qfmaster",
+        desc = "Qfmark: load QFMaster",
         func = function()
           Mapping.mark.select_and_load_qfmasters()
           Mapping.exit_close()
@@ -1364,7 +1370,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       },
 
       {
-        desc = "Qfmark: toggle select",
+        desc = "Qfmark: toggle selection",
         func = function()
           Mapping.mark.toggle_selection()
         end,
@@ -1375,7 +1381,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       },
 
       {
-        desc = "Qfmark: diselect all",
+        desc = "Qfmark: deselect all items",
         func = function()
           Mapping.mark.deselect_all_marks()
         end,
@@ -1393,7 +1399,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
         is_set = Config.window.mark.allow_number,
         keymaps = {
           {
-            desc = "Qfmark: jump to {" .. i .. "}",
+            desc = "Qfmark: jump to " .. i,
             func = function()
               local curline = Mapping.content_map[i]
               Mapping.setup_open_key("default", curline.start_line)
@@ -1422,6 +1428,22 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
     }, _keys)
   end
 
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: show helps",
+        func = function()
+          Mapping.show_help("QFMarks", _keys)
+        end,
+        keys = "g?",
+        mode = { "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
+
   QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end
 
@@ -1440,7 +1462,7 @@ function M.setup_keymap_buffers(opts_popup, buf)
     is_set = true,
     keymaps = {
       {
-        desc = "Qfmark: delete",
+        desc = "Qfmark: delete item",
         func = function()
           Mapping.buffer.item_del()
         end,
@@ -1460,7 +1482,7 @@ function M.setup_keymap_buffers(opts_popup, buf)
         from_user = true,
       },
       {
-        desc = "Qfmark: toggle select",
+        desc = "Qfmark: toggle selection",
         func = function()
           Mapping.buffer.toggle_selection()
         end,
@@ -1471,7 +1493,7 @@ function M.setup_keymap_buffers(opts_popup, buf)
       },
 
       {
-        desc = "Qfmark: diselect all",
+        desc = "Qfmark: deselect all",
         func = function()
           Mapping.buffer.deselect_all_buffers()
         end,
@@ -1489,7 +1511,7 @@ function M.setup_keymap_buffers(opts_popup, buf)
         is_set = Config.window.buffers.allow_number,
         keymaps = {
           {
-            desc = "Qfmark: jump to {" .. i .. "}",
+            desc = "Qfmark: jump to item [" .. i .. "]",
             func = function()
               local curline = Mapping.content_map[i]
               Mapping.setup_open_key("default", curline.start_line)
@@ -1517,6 +1539,22 @@ function M.setup_keymap_buffers(opts_popup, buf)
       keymaps = user_keys,
     }, _keys)
   end
+
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: show helps",
+        func = function()
+          Mapping.show_help("QFBuffers", _keys)
+        end,
+        keys = "g?",
+        mode = { "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
 
   QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end
@@ -1606,7 +1644,7 @@ function M.setup_keymap_mark_annotation(opts_popup, buf)
       },
 
       {
-        desc = "Qfmark: scroll preview up fast",
+        desc = "Qfmark: scroll preview up (fast)",
         func = function()
           Mapping.mark.scroll_preview_window(-1, 10)
         end,
@@ -1617,7 +1655,7 @@ function M.setup_keymap_mark_annotation(opts_popup, buf)
       },
 
       {
-        desc = "Qfmark: scroll preview down fast",
+        desc = "Qfmark: scroll preview down (fast)",
         func = function()
           Mapping.mark.scroll_preview_window(1, 10)
         end,
@@ -1628,15 +1666,31 @@ function M.setup_keymap_mark_annotation(opts_popup, buf)
       },
 
       {
-        desc = "Qfmark: save mark annotation",
+        desc = "Qfmark: save annotation",
         func = function()
           Mapping.save.save_input()
           if opts_popup._opts.anchor and opts_popup._opts.anchor == "editor" then
             QfbookmarkUtils.info "Added 1 item(s); skipped 0 item(s) already present."
           end
         end,
-        keys = "<CR>",
+        keys = Config.keymaps.actions and Config.keymaps.actions.default,
         mode = { "i", "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
+
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: show helps",
+        func = function()
+          Mapping.show_help("QFMarkAnnotation", _keys)
+        end,
+        keys = "g?",
+        mode = { "n" },
         buffer = Mapping.buf,
         from_user = true,
       },
@@ -1712,6 +1766,22 @@ function M.setup_keymap_preview_mark_annotation(opts_popup, buf)
     },
   }, _keys)
 
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: show helps",
+        func = function()
+          Mapping.show_help("QFMarkAnnotation", _keys)
+        end,
+        keys = "g?",
+        mode = { "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
+
   QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end
 
@@ -1773,6 +1843,22 @@ function M.setup_keymap_select_category(opts_popup, buf)
       },
     }, _keys)
   end
+
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: show helps",
+        func = function()
+          Mapping.show_help("QFSelectCategory", _keys)
+        end,
+        keys = "g?",
+        mode = { "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
 
   QfbookmarkKeymapUtils.set_keymaps(_keys, true)
 end

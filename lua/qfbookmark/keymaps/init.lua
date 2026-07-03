@@ -376,6 +376,22 @@ local function qf_keymaps()
     }, keys_ft)
   end
 
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: show helps",
+        func = function()
+          local QfbookmarkUIPopup = require "qfbookmark.ui.popup"
+          QfbookmarkUIPopup.show_keymap_helps("Quickfix", keys_ft)
+        end,
+        keys = "g?",
+        mode = { "n" },
+        from_user = true,
+      },
+    },
+  }, keys_ft)
+
   QfbookmarkKeymapUtils.set_keymaps_ft("Quickfix", { "qf" }, keys_ft)
 end
 
