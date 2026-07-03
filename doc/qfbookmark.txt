@@ -1,5 +1,5 @@
 *qfbookmark.txt*
-                                  For NVIM v0.8.0    Last change: 2026 June 23
+                                  For NVIM v0.8.0    Last change: 2026 July 03
 
 ==============================================================================
 Table of Contents                               *qfbookmark-table-of-contents*
@@ -224,9 +224,6 @@ DEFAULT CONFIGS ~
         },
       },
       keymaps = {
-        -- Set to true to disable all default keymaps and define your own
-        disable_all = false,
-    
         actions = { -- General actions
           up = { "<C-p>", "<C-k>", "k" },
           down = { "<C-n>", "<C-j>", "j" },
