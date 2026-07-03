@@ -37,6 +37,7 @@
 --- is_buffers?: boolean,
 --- is_mark_annotation?: boolean,
 --- is_note?: boolean,
+--- is_select_sink?: boolean,
 --- active: string,
 --- save?: QFBookmarkUiSaveCfg,
 --- selected: table<string, boolean>,
@@ -200,8 +201,8 @@
 ---@field anchor string
 ---@field allow_number boolean
 ---@field preview_fullscreen boolean
----@field context_templates table
----@field sinks table<string, function>
+---@field context_templates {separator?: string, default: string, handler: table<string, table>}
+---@field sinks {default: string, handler: table<string, function|string, string>}
 ---@field actions { win_resized: boolean }
 
 ---@class QFBookItemOpenMode
@@ -310,6 +311,7 @@
 ---@field del_item_all string | table[]
 ---@field toggle_select string | string[]
 ---@field diselect_all string | string[]
+---@field show_help string
 ---@field scroll_preview_up string | string[]
 ---@field scroll_preview_down string | string[]
 ---@field scroll_preview_up_fast string | string[]
@@ -320,7 +322,6 @@
 ---@field integrations QFBookKeymapCustomIntegrations
 
 ---@class QFBookmarkKeymap
----@field disable_all boolean
 ---@field actions QFBookmarkKeymapActions
 ---@field mark QFBookmarkMarkKeymaps
 ---@field quickfix QFBookmarkQuickfixKeymaps

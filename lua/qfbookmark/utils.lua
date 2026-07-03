@@ -706,6 +706,15 @@ function M.save_table_to_file(contents, filename)
   end
 end
 
+---@return string
+function M.resolve_key_shortcut_keymaps()
+  local cfg = require("qfbookmark.config").defaults.keymaps.actions.show_help or "g?"
+  if type(cfg) == "table" then
+    return cfg[1]
+  end
+  return cfg
+end
+
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
 -- ║                                 NOTES UTILS                                 ║
 -- ╙─────────────────────────────────────────────────────────────────────────────╜

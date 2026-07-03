@@ -4,6 +4,11 @@ local QfbookmarkUIView = require "qfbookmark.ui.view"
 
 ---@alias WinSizeCfg { row: integer, col: integer, height: integer, width: integer, title: string, title_pos: string, buf?: integer}
 
+---@return string
+local function resolve_key_shortcuts()
+  return QfbookmarkUtils.resolve_key_shortcut_keymaps()
+end
+
 --- Compute optimal path column width across all mark entries
 ---@param mark_lists QFbookBufferMarkEntry[] | QFBookBufferItem[]
 ---@param max_path? integer
@@ -162,7 +167,8 @@ local function mark_harpoon_popup(mark_lists, cb)
   local title_str = total > 0 and icon .. string.format("QFMarks (%d)", total) or icon .. "QFMarks"
 
   local win_buf = vim.api.nvim_create_buf(false, true)
-  local title_footer_str = " dd del · <CR> open · <C-v/s/t> split · g? help"
+  local help_key = resolve_key_shortcuts()
+  local title_footer_str = " dd del · <CR> open · <C-v/s/t> split · " .. help_key .. " help"
 
   ---@type WinCfg
   local wincfg = {
@@ -208,7 +214,16 @@ local function preview_mark_annotation(bufnr, key, opts)
   local width = math.floor(editor.width / 1.5)
 
   local title_str = "  " .. "Sent context"
-  local title_footer_str = " <CR> send · <Tab> switch template · y copy only · <Esc> cancel · g? help"
+  local help_key = resolve_key_shortcuts()
+
+  local Config = require("qfbookmark.config").defaults
+  local default_sink = (Config.window.mark and Config.window.mark.sinks.default) or "copy_raw"
+
+  local title_footer_str = " <CR> "
+    .. default_sink
+    .. " · s send to · <Tab> switch template · y copy only · <Esc> cancel · "
+    .. help_key
+    .. " help"
 
   local win_buf = vim.api.nvim_create_buf(false, true)
   local wincfg = {
@@ -228,6 +243,10 @@ local function preview_mark_annotation(bufnr, key, opts)
       footer_pos = "center",
     },
   }
+
+  if not opts.send_target then
+    opts.send_target = default_sink
+  end
 
   local __opts = {
     win_opts = wincfg,
@@ -262,7 +281,8 @@ local function place_mark_annotation(category, on_submit, on_cancel, load_chunk,
   if opts.is_edit then
     prefix_footer_str = "edit"
   end
-  local title_footer_str = prefix_footer_str .. " annotation · <CR> save · <Esc> cancel · g? help"
+  local help_key = resolve_key_shortcuts()
+  local title_footer_str = prefix_footer_str .. " annotation · <CR> save · <Esc> cancel · " .. help_key .. " help"
 
   local win_config = {
     relative = "editor",
@@ -341,7 +361,8 @@ local function select_category(on_select, on_cancel)
 
   local row, col = QfbookmarkUIUtils.get_position(width, height, "auto", "cursor")
 
-  local title_footer_str = "q quit · g? help"
+  local help_key = resolve_key_shortcuts()
+  local title_footer_str = "q quit · " .. help_key .. " help"
 
   local buf = vim.api.nvim_create_buf(false, true)
   local wincfg = {
@@ -373,6 +394,80 @@ local function select_category(on_select, on_cancel)
   }
 
   QfbookmarkUIView.build_popup("select_category", __opts)
+end
+
+---@param text string
+local function select_sink_picker(text)
+  local Config = require("qfbookmark.config").defaults
+  local sinks = (Config.window.mark and Config.window.mark.sinks.handler) or {}
+
+  local sink_list = {}
+  for name, fn in pairs(sinks) do
+    if name ~= "default" and type(fn) == "function" then
+      local shortcut = name:sub(1, 1)
+      sink_list[#sink_list + 1] = { name = name, fn = fn, shortcut = shortcut }
+    end
+  end
+
+  local has_clipboard = false
+  for _, s in ipairs(sink_list) do
+    if s.name == "clipboard" then
+      has_clipboard = true
+    end
+  end
+  if not has_clipboard then
+    sink_list[#sink_list + 1] = {
+      name = "clipboard",
+      shortcut = "y",
+      fn = function(t)
+        vim.fn.setreg("+", t)
+        QfbookmarkUtils.info "copied to clipboard"
+      end,
+    }
+  end
+
+  if #sink_list == 1 then
+    sink_list[1].fn(text)
+    return
+  end
+
+  local display_lines = {}
+  local shortcuts = {}
+  for _, s in ipairs(sink_list) do
+    local shortcut = s.shortcut
+    shortcuts[shortcut] = s.name
+    table.insert(display_lines, string.format("  %s  %-14s %s", "●", s.name, s.shortcut))
+  end
+
+  local width = 25
+
+  ---@type WinCfg
+  local wincfg = {
+    buf = vim.api.nvim_create_buf(false, true),
+    enter = true,
+    wincfg = {
+      relative = "cursor",
+      row = 1,
+      col = 0,
+      width = width,
+      height = #sink_list,
+      style = "minimal",
+      border = "rounded",
+      title = " send to ",
+      title_pos = "center",
+      noautocmd = true,
+    },
+  }
+
+  local __opts = {
+    contents = text,
+    content_map = sink_list,
+    display_lines = display_lines,
+    keys_shortcuts = shortcuts,
+    win_opts = wincfg,
+  }
+
+  QfbookmarkUIView.build_popup("select_sink_picker", __opts)
 end
 
 local buffer_selected = {}
@@ -413,7 +508,8 @@ local function buffers_popup(buffer_lists)
   local total = #buffer_lists
   local icon = "📑 "
   local title_str = total > 0 and icon .. string.format("QFBuffers (%d)", total) or icon .. "QFBuffers"
-  local title_footer_str = " dd del · <C-v/s/t split · g? help"
+  local help_key = resolve_key_shortcuts()
+  local title_footer_str = " dd del · <C-v/s/t split · " .. help_key .. " help"
   local win_buf = vim.api.nvim_create_buf(false, true)
 
   ---@type WinCfg
@@ -508,6 +604,7 @@ return {
   buffers_popup = buffers_popup,
   preview_mark_annotation = preview_mark_annotation,
   open_note_in_float = open_note_in_float,
+  select_sink_picker = select_sink_picker,
   place_mark_annotation = place_mark_annotation,
   select_category = select_category,
 }

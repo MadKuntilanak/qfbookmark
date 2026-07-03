@@ -51,28 +51,50 @@ M.defaults = {
       actions = { win_resized = false },
       context_templates = {
         separator = nil, -- or "\n\n" .. string.rep("─", 60) .. "\n\n",
-        ask_ai = {
-          description = "Send to AI for analysis",
-          builder = function(ctx)
-            return string.format(
-              [[
+        default = "ask_ai",
+        handler = {
+          ask_ai = {
+            description = "Send to AI for analysis",
+            builder = function(ctx)
+              return string.format(
+                [[
 %s
 
 ```%s
 %s
 ```
 ]],
-              ctx.text,
-              ctx.filetype,
-              table.concat(ctx.lines, "\n")
-            )
-          end,
+                ctx.text,
+                ctx.filetype,
+                table.concat(ctx.lines, "\n")
+              )
+            end,
+          },
         },
       },
       sinks = {
-        -- example:
-        -- avante = function(text) require("avante.api").ask({ question = text }) end,
-        -- codecompanion = function(text) require("codecompanion").chat({ prompt = text }) end,
+        default = "codecompanion", -- builtin fallback: clipboard
+        handler = {
+          avante = function(text)
+            require("avante.api").ask { question = text }
+          end,
+          codecompanion = function(text)
+            local Chat = require "codecompanion"
+            local chat = Chat.last_chat()
+            vim.schedule(function()
+              if not chat then
+                chat = Chat.chat()
+
+                if not chat then
+                  return vim.notify("Something went wrong", vim.log.levels.ERROR)
+                end
+              end
+              chat:add_buf_message {
+                content = text,
+              }
+            end)
+          end,
+        },
       },
     },
     note = {
@@ -138,13 +160,11 @@ error:
     },
   },
   keymaps = {
-    disable_all = false,
-
     actions = { -- General actions
       up = { "<C-p>", "<C-k>", "k" },
       down = { "<C-n>", "<C-j>", "j" },
 
-      default = { "<CR>" },
+      default = { "<CR>", "o" },
       split = "<C-s>",
       vsplit = "<C-v>",
       tab = "<C-t>",
@@ -161,6 +181,8 @@ error:
       prev_item = "<C-p>",
 
       quit = { "q", "<Esc>", "<C-c>", "<C-q>" },
+
+      show_help = "g?",
 
       del_item = "dd",
       del_item_all = "dM",
@@ -179,11 +201,13 @@ error:
 
       toggle_open = "gl",
 
-      save_annotation = "<C-s>",
+      save_annotation = "<C-o>",
 
       -- WARN: dont forget to delete this line
-
       -- debug = "<Leader>qu",
+
+      next_mark = "gn",
+      prev_mark = "gp",
 
       del_mark = "dm",
       del_mark_buffer = "dM",
@@ -311,21 +335,22 @@ end
 ---@param user_opts QFBookmarkConfig
 ---@return QFBookmarkConfig
 local function merge_settings(defaults, user_opts)
-  local user_keymaps = user_opts.keymaps or {}
-  local disable_all = user_keymaps.disable_all == true
-  if not disable_all then
-    return vim.tbl_deep_extend("force", defaults, user_opts)
-  end
-  local new_defaults = vim.deepcopy(defaults)
-  for section, _ in pairs(new_defaults.keymaps) do
-    if section ~= "disable_all" then
-      new_defaults.keymaps[section] = {}
-    end
-  end
-  local final = vim.deepcopy(user_opts)
-  final = vim.tbl_deep_extend("force", new_defaults, final)
-  final.keymaps.disable_all = true
-  return final
+  -- local user_keymaps = user_opts.keymaps or {}
+  -- local disable_all = user_keymaps.disable_all == true
+  -- if not disable_all then
+  --   RUtils.info "fadshfh"
+  return vim.tbl_deep_extend("force", defaults, user_opts)
+  -- end
+  -- local new_defaults = vim.deepcopy(defaults)
+  -- for section, _ in pairs(new_defaults.keymaps) do
+  --   if section ~= "disable_all" then
+  --     new_defaults.keymaps[section] = {}
+  --   end
+  -- end
+  -- local final = vim.deepcopy(user_opts)
+  -- final = vim.tbl_deep_extend("force", new_defaults, final)
+  -- final.keymaps.disable_all = true
+  -- return final
 end
 
 ---@return QFBookmarkConfig

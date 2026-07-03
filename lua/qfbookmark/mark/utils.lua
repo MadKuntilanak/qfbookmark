@@ -59,7 +59,7 @@ function M.is_valid_key(mark_lists, category, key, bufnr)
 end
 
 local function get_templates()
-  return (Config.window.mark and Config.window.mark.context_templates) or {}
+  return (Config.window.mark and Config.window.mark.context_templates.handler) or {}
 end
 
 ---@param template_name string

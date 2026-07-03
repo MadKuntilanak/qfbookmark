@@ -476,7 +476,12 @@ function M.add_mark_annotation(name)
 end
 
 local function __preview_annotate(template_name)
-  template_name = template_name or "ask_ai"
+  if not Config.window.mark.context_templates.default then
+    QfbookmarkUtils.error "default template context is not set"
+    return
+  end
+
+  template_name = template_name or Config.window.mark.context_templates.default
   local mark_lists = M.buffers
 
   local row = vim.api.nvim_win_get_cursor(0)[1] - 1

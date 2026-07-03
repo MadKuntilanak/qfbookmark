@@ -47,7 +47,7 @@ local function mark_keymaps()
         mode = "n",
       },
       {
-        desc = "Qfmark: delete all mark buffer sign",
+        desc = "Qfmark: delete all marks buffer",
         func = "delete_mark_buffer",
         keys = get_keymap(Config.keymaps, "mark", "del_mark_buffer"),
         mode = "n",
@@ -63,28 +63,28 @@ local function mark_keymaps()
 
       -- MARK
       {
-        desc = "Qfmark: add MARK sign",
+        desc = "Qfmark: add MARK",
         func = "add_mark_sign",
         keys = get_keymap(Config.keymaps, "mark", "add_mark"),
         mode = "n",
       },
       -- FIX
       {
-        desc = "Qfmark: add FIX sign",
+        desc = "Qfmark: add FIX",
         func = "add_fix_sign",
         keys = get_keymap(Config.keymaps, "mark", "add_fix"),
         mode = "n",
       },
       -- DEBUG
       {
-        desc = "Qfmark: add DEBUG sign",
+        desc = "Qfmark: add DEBUG",
         func = "add_debug_sign",
         keys = get_keymap(Config.keymaps, "mark", "add_debug"),
         mode = "n",
       },
       -- NOTE
       {
-        desc = "Qfmark: add NOTE sign",
+        desc = "Qfmark: add NOTE",
         func = "add_note_sign",
         keys = get_keymap(Config.keymaps, "mark", "add_mark_annotation"),
         mode = { "n", "x" },
@@ -112,7 +112,7 @@ local function mark_keymaps()
       },
 
       {
-        desc = "Qfmark: toggle preview",
+        desc = "Qfmark: toggle range signs",
         func = "toggle_range_signs",
         keys = get_keymap(Config.keymaps, "mark", "toggle_range_signs"),
         mode = { "n" },
@@ -385,7 +385,7 @@ local function qf_keymaps()
           local QfbookmarkUIPopup = require "qfbookmark.ui.popup"
           QfbookmarkUIPopup.show_keymap_helps("Quickfix", keys_ft)
         end,
-        keys = "g?",
+        keys = Config.keymaps.actions.show_help,
         mode = { "n" },
         from_user = true,
       },

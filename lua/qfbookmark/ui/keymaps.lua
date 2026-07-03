@@ -800,13 +800,15 @@ function Mapping.mark.preview_context(is_all)
     return
   end
 
+  local default_template = (Config.window.mark and Config.window.mark.context_templates.default) or "copy_raw"
+
   if #items == 1 then
-    QfbookmarkMark.preview(items[1].bufnr, items[1].key, { default_template = "ask_ai" })
+    QfbookmarkMark.preview(items[1].bufnr, items[1].key, { default_template = default_template })
   else
     QfbookmarkMark.preview(
       items[1].bufnr,
       items[1].key,
-      { default_template = "ask_ai", is_multi = true, items = items }
+      { default_template = default_template, is_multi = true, items = items }
     )
   end
 end
@@ -1067,6 +1069,7 @@ local setup_popup_options = function(opts_popup, buf, cb)
   Mapping.is_buffers = opts_popup.is_buffers and opts_popup.is_buffers or false
   Mapping.is_mark_annotation = opts_popup.is_mark_annotation and opts_popup.is_mark_annotation or false
   Mapping.is_note = opts_popup.is_note and opts_popup.is_note or false
+  Mapping.is_select_sink = opts_popup.is_select_sink and opts_popup.is_select_sink or false
 
   Mapping.cb = cb
 
@@ -1436,7 +1439,7 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
         func = function()
           Mapping.show_help("QFMarks", _keys)
         end,
-        keys = "g?",
+        keys = QfbookmarkUtils.resolve_key_shortcut_keymaps(),
         mode = { "n" },
         buffer = Mapping.buf,
         from_user = true,
@@ -1548,7 +1551,7 @@ function M.setup_keymap_buffers(opts_popup, buf)
         func = function()
           Mapping.show_help("QFBuffers", _keys)
         end,
-        keys = "g?",
+        keys = QfbookmarkUtils.resolve_key_shortcut_keymaps(),
         mode = { "n" },
         buffer = Mapping.buf,
         from_user = true,
@@ -1611,11 +1614,21 @@ function M.setup_keymap_mark_annotation(opts_popup, buf)
 
   setup_popup_options(opts_popup, buf)
 
-  local _keys = M.build_keymaps(opts_popup, buf)
+  local _keys = {}
 
   QfbookmarkKeymapUtils.append_active_keymaps({
     is_set = true,
     keymaps = {
+      {
+        desc = "Qfmark: quit",
+        func = function()
+          Mapping.exit_close()
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.quit,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
 
       -- +-----------------------------------------------------------------------------+
       -- |                                   PREVIEW                                   |
@@ -1673,7 +1686,7 @@ function M.setup_keymap_mark_annotation(opts_popup, buf)
             QfbookmarkUtils.info "Added 1 item(s); skipped 0 item(s) already present."
           end
         end,
-        keys = Config.keymaps.actions and Config.keymaps.actions.default,
+        keys = Config.keymaps.mark and Config.keymaps.mark.save_annotation,
         mode = { "i", "n" },
         buffer = Mapping.buf,
         from_user = true,
@@ -1689,7 +1702,7 @@ function M.setup_keymap_mark_annotation(opts_popup, buf)
         func = function()
           Mapping.show_help("QFMarkAnnotation", _keys)
         end,
-        keys = "g?",
+        keys = QfbookmarkUtils.resolve_key_shortcut_keymaps(),
         mode = { "n" },
         buffer = Mapping.buf,
         from_user = true,
@@ -1737,12 +1750,28 @@ function M.setup_keymap_preview_mark_annotation(opts_popup, buf)
       },
 
       {
-        desc = "Qfmark: toggle tab",
+        desc = "Qfmark: toggle template",
         func = function()
           opts_popup.current_idx = (opts_popup.current_idx % #opts_popup.names) + 1
           QfbookmarkUIUtils.render_mark_preview_annotation(opts_popup.popup.buf, opts_popup.popup.win, opts_popup)
         end,
         keys = "<TAB>",
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
+        desc = "Qfmark: send it to",
+        func = function()
+          local resolve_preview_opts = QfbookmarkUIUtils.resolve_preview_context(opts_popup)
+          local text = resolve_preview_opts.text
+          if text then
+            local ui = require "qfbookmark.ui"
+            ui.select_sink_picker(text)
+          end
+        end,
+        keys = "s",
         mode = "n",
         buffer = Mapping.buf,
         from_user = true,
@@ -1774,7 +1803,7 @@ function M.setup_keymap_preview_mark_annotation(opts_popup, buf)
         func = function()
           Mapping.show_help("QFMarkAnnotation", _keys)
         end,
-        keys = "g?",
+        keys = QfbookmarkUtils.resolve_key_shortcut_keymaps(),
         mode = { "n" },
         buffer = Mapping.buf,
         from_user = true,
@@ -1791,7 +1820,7 @@ function M.setup_keymap_select_category(opts_popup, buf)
   opts_popup.is_buffers = false
   opts_popup.is_harpoon = false
   opts_popup.is_note = false
-  opts_popup.is_mark_annotation = true
+  opts_popup.is_mark_annotation = false
 
   setup_popup_options(opts_popup, buf)
 
@@ -1811,7 +1840,7 @@ function M.setup_keymap_select_category(opts_popup, buf)
         from_user = true,
       },
       {
-        desc = "Qfmark: enter category",
+        desc = "Qfmark: select category",
         func = function()
           local row = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
           Mapping.exit_close()
@@ -1852,7 +1881,107 @@ function M.setup_keymap_select_category(opts_popup, buf)
         func = function()
           Mapping.show_help("QFSelectCategory", _keys)
         end,
-        keys = "g?",
+        keys = QfbookmarkUtils.resolve_key_shortcut_keymaps(),
+        mode = { "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
+
+  QfbookmarkKeymapUtils.set_keymaps(_keys, true)
+end
+
+function M.setup_keymap_select_sink(opts_popup, buf)
+  opts_popup.is_buffers = false
+  opts_popup.is_harpoon = false
+  opts_popup.is_note = false
+  opts_popup.is_mark_annotation = false
+  opts_popup.is_select_sink = true
+
+  setup_popup_options(opts_popup, buf)
+
+  local _keys = {}
+
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: quit",
+        func = function()
+          Mapping.exit_close()
+        end,
+        keys = Config.keymaps.actions and Config.keymaps.actions.quit,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+      {
+        desc = "Qfmark: select sink",
+        func = function()
+          local row = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
+          if Mapping.content_map[row] then
+            ---@diagnostic disable-next-line: undefined-field
+            Mapping.content_map[row].fn(opts_popup.contents)
+            Mapping.exit_close()
+            ---@diagnostic disable-next-line: undefined-field
+            if Mapping.content_map[row].name == "clipboard" then
+              return
+            end
+            local uivew = require("qfbookmark.ui.view").window
+            QfbookmarkUIUtils.clean_up(uivew)
+          end
+        end,
+        keys = "<CR>",
+        mode = { "i", "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+    },
+  }, _keys)
+
+  for _, s in pairs(opts_popup.content_map) do
+    QfbookmarkKeymapUtils.append_active_keymaps({
+      is_set = Config.window.buffers.allow_number,
+      keymaps = {
+        {
+          desc = "Qfmark: select sink by key " .. s.shortcut,
+          func = function()
+            for idx, ss in ipairs(opts_popup.content_map) do
+              if ss.name == s.name then
+                if Mapping.content_map[idx] then
+                  ---@diagnostic disable-next-line: undefined-field
+                  Mapping.content_map[idx].fn(opts_popup.contents)
+                  Mapping.exit_close()
+                  ---@diagnostic disable-next-line: undefined-field
+                  if Mapping.content_map[idx].name == "clipboard" then
+                    return
+                  end
+                  local uivew = require("qfbookmark.ui.view").window
+                  QfbookmarkUIUtils.clean_up(uivew)
+                end
+                return
+              end
+            end
+          end,
+          keys = tostring(s.shortcut),
+          mode = "n",
+          buffer = Mapping.buf,
+          from_user = true,
+        },
+      },
+    }, _keys)
+  end
+
+  QfbookmarkKeymapUtils.append_active_keymaps({
+    is_set = true,
+    keymaps = {
+      {
+        desc = "Qfmark: show helps",
+        func = function()
+          Mapping.show_help("QFSelectSink", _keys)
+        end,
+        keys = QfbookmarkUtils.resolve_key_shortcut_keymaps(),
         mode = { "n" },
         buffer = Mapping.buf,
         from_user = true,

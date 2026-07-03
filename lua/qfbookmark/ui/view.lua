@@ -234,6 +234,109 @@ local __popup_opts_for = {
     QfbookmarkUIKeymaps.setup_keymap_mark(opts_popup, main_buf, cb_wrapper)
   end,
   ---@param opts_popup QFBookmarkUiPopupCfg
+  ["mark_annotation"] = function(opts_popup)
+    local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
+
+    if not QfbookmarkUtils.is_valid(main_buf, main_win) then
+      return
+    end
+
+    M.window.mark_annotation.win = main_win
+    M.window.mark_annotation.buf = main_buf
+
+    if not opts_popup.popup then
+      opts_popup.popup = {}
+      opts_popup.popup.win = M.window.mark_annotation.win
+      opts_popup.popup.buf = M.window.mark_annotation.buf
+    end
+
+    setup_option_main_popup(main_win, main_buf, true)
+
+    local main_win_cfg = vim.api.nvim_win_get_config(main_win)
+
+    local buf_preview, win_preview =
+      QfbookmarkUIPopup.mark_note_preview(opts_popup, main_win_cfg, opts_popup.win_opts.wincfg.width)
+    if not win_preview or not buf_preview then
+      return
+    end
+
+    M.window.mark_annotation_preview.buf = buf_preview
+    M.window.mark_annotation_preview.win = win_preview
+
+    if not opts_popup.popup.preview then
+      opts_popup.popup.preview = {}
+      opts_popup.popup.preview.buf = M.window.mark_annotation_preview.buf
+      opts_popup.popup.preview.win = M.window.mark_annotation_preview.win
+    end
+
+    if opts_popup._opts and opts_popup._opts.keyword_def then
+      local hl = opts_popup._opts.keyword_def.hl_group
+      vim.wo[main_win].winhighlight = "NormalFloat:Normal,FloatFooter:QFBookmarkFloatFooter,FloatTitle:"
+        .. (hl or "QFBookmarkFloatTitle")
+    end
+
+    vim.bo[main_buf].filetype = "qfbookmark"
+    vim.bo[main_buf].buftype = ""
+    vim.bo[main_buf].textwidth = opts_popup.win_opts.wincfg.width
+    vim.bo[main_buf].bufhidden = "wipe"
+
+    QfbookmarkUIKeymaps.setup_keymap_mark_annotation(opts_popup, main_buf)
+
+    if opts_popup.data_annotation and opts_popup.data_annotation.load_chunk then
+      local raw_lines = opts_popup.data_annotation.chunk.note
+
+      -- insert after prompt_setcallback/startinsert so it lands after "> "
+      -- and cursor ends up at the end, ready to keep typing/editing
+      vim.api.nvim_buf_set_lines(main_buf, -2, -1, false, raw_lines)
+      vim.api.nvim_win_set_cursor(main_win, { 1, #raw_lines })
+    end
+
+    vim.cmd "startinsert!"
+  end,
+  ["preview_mark_annotation"] = function(opts_popup)
+    local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
+
+    if not QfbookmarkUtils.is_valid(main_buf, main_win) then
+      return
+    end
+
+    M.window.mark_annotation.win = main_win
+    M.window.mark_annotation.buf = main_buf
+
+    if not opts_popup.popup then
+      opts_popup.popup = {}
+      opts_popup.popup.win = M.window.mark_annotation.win
+      opts_popup.popup.buf = M.window.mark_annotation.buf
+    end
+
+    if not opts_popup.names then
+      local QfbookmarkMarkUtils = require "qfbookmark.mark.utils"
+      opts_popup.names = QfbookmarkMarkUtils.template_names()
+    end
+
+    if #opts_popup.names == 0 then
+      QfbookmarkUtils.warn "no context templates available"
+      return
+    end
+
+    opts_popup.current_idx = 1
+    if opts_popup.opts_mark_preview.default_template then
+      for i, n in ipairs(opts_popup.names) do
+        if n == opts_popup.opts_mark_preview.default_template.default_template then
+          opts_popup.current_idx = i
+        end
+      end
+    end
+
+    vim.bo[main_buf].filetype = "markdown"
+    vim.wo[main_win].winhighlight =
+      "NormalFloat:Normal,FloatFooter:QFBookmarkFloatFooter,FloatTitle:QFBookmarkFloatTitle"
+
+    QfbookmarkUIKeymaps.setup_keymap_preview_mark_annotation(opts_popup, main_buf)
+
+    QfbookmarkUIUtils.render_mark_preview_annotation(main_buf, main_win, opts_popup)
+  end,
+  ---@param opts_popup QFBookmarkUiPopupCfg
   ["buffer"] = function(opts_popup)
     local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
 
@@ -331,66 +434,6 @@ local __popup_opts_for = {
       end
     end)
   end,
-  ---@param opts_popup QFBookmarkUiPopupCfg
-  ["mark_annotation"] = function(opts_popup)
-    local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
-
-    if not QfbookmarkUtils.is_valid(main_buf, main_win) then
-      return
-    end
-
-    M.window.mark_annotation.win = main_win
-    M.window.mark_annotation.buf = main_buf
-
-    if not opts_popup.popup then
-      opts_popup.popup = {}
-      opts_popup.popup.win = M.window.mark_annotation.win
-      opts_popup.popup.buf = M.window.mark_annotation.buf
-    end
-
-    setup_option_main_popup(main_win, main_buf, true)
-
-    local main_win_cfg = vim.api.nvim_win_get_config(main_win)
-
-    local buf_preview, win_preview =
-      QfbookmarkUIPopup.mark_note_preview(opts_popup, main_win_cfg, opts_popup.win_opts.wincfg.width)
-    if not win_preview or not buf_preview then
-      return
-    end
-
-    M.window.mark_annotation_preview.buf = buf_preview
-    M.window.mark_annotation_preview.win = win_preview
-
-    if not opts_popup.popup.preview then
-      opts_popup.popup.preview = {}
-      opts_popup.popup.preview.buf = M.window.mark_annotation_preview.buf
-      opts_popup.popup.preview.win = M.window.mark_annotation_preview.win
-    end
-
-    if opts_popup._opts and opts_popup._opts.keyword_def then
-      local hl = opts_popup._opts.keyword_def.hl_group
-      vim.wo[main_win].winhighlight = "NormalFloat:Normal,FloatFooter:QFBookmarkFloatFooter,FloatTitle:"
-        .. (hl or "QFBookmarkFloatTitle")
-    end
-
-    vim.bo[main_buf].filetype = "qfbookmark"
-    vim.bo[main_buf].buftype = ""
-    vim.bo[main_buf].textwidth = opts_popup.win_opts.wincfg.width
-    vim.bo[main_buf].bufhidden = "wipe"
-
-    QfbookmarkUIKeymaps.setup_keymap_mark_annotation(opts_popup, main_buf)
-
-    if opts_popup.data_annotation and opts_popup.data_annotation.load_chunk then
-      local raw_lines = opts_popup.data_annotation.chunk.note
-
-      -- insert after prompt_setcallback/startinsert so it lands after "> "
-      -- and cursor ends up at the end, ready to keep typing/editing
-      vim.api.nvim_buf_set_lines(main_buf, -2, -1, false, raw_lines)
-      vim.api.nvim_win_set_cursor(main_win, { 1, #raw_lines })
-    end
-
-    vim.cmd "startinsert!"
-  end,
   ["select_category"] = function(opts_popup)
     local buf, win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
 
@@ -422,52 +465,40 @@ local __popup_opts_for = {
 
     QfbookmarkUIKeymaps.setup_keymap_select_category(opts_popup, buf)
   end,
-  ["preview_mark_annotation"] = function(opts_popup)
+  ["select_sink_picker"] = function(opts_popup)
     local main_buf, main_win = QfbookmarkUIPopup.new_open(opts_popup.win_opts, opts_popup.display_lines)
 
     if not QfbookmarkUtils.is_valid(main_buf, main_win) then
       return
     end
 
-    M.window.mark_annotation.win = main_win
-    M.window.mark_annotation.buf = main_buf
+    M.window.select_category.buf = main_buf
+    M.window.select_category.win = main_win
 
     if not opts_popup.popup then
       opts_popup.popup = {}
-      opts_popup.popup.win = M.window.mark_annotation.win
-      opts_popup.popup.buf = M.window.mark_annotation.buf
+      opts_popup.popup.buf = M.window.select_category.buf
+      opts_popup.popup.win = M.window.select_category.win
     end
 
-    if not opts_popup.names then
-      local QfbookmarkMarkUtils = require "qfbookmark.mark.utils"
-      opts_popup.names = QfbookmarkMarkUtils.template_names()
+    setup_option_main_popup(main_win, main_buf)
+
+    local QfbookmarkMarkUtils = require "qfbookmark.mark.utils"
+    local ns = QfbookmarkMarkUtils.register_namespace "qfbookmark_extmark_picker_sink_dropdown"
+    QfbookmarkMarkUtils.del_namespace(main_buf, ns)
+
+    for i, _ in ipairs(opts_popup.display_lines) do
+      vim.api.nvim_buf_set_extmark(main_buf, ns, i - 1, 2, {
+        end_col = 5,
+        hl_group = "Comment",
+      })
     end
 
-    if #opts_popup.names == 0 then
-      QfbookmarkUtils.warn "no context templates available"
-      return
-    end
-
-    opts_popup.current_idx = 1
-    if opts_popup.opts_mark_preview.default_template then
-      for i, n in ipairs(opts_popup.names) do
-        if n == opts_popup.opts_mark_preview.default_template.default_template then
-          opts_popup.current_idx = i
-        end
-      end
-    end
-
-    vim.bo[main_buf].filetype = "markdown"
-    vim.wo[main_win].winhighlight =
-      "NormalFloat:Normal,FloatFooter:QFBookmarkFloatFooter,FloatTitle:QFBookmarkFloatTitle"
-
-    QfbookmarkUIKeymaps.setup_keymap_preview_mark_annotation(opts_popup, main_buf)
-
-    QfbookmarkUIUtils.render_mark_preview_annotation(main_buf, main_win, opts_popup)
+    QfbookmarkUIKeymaps.setup_keymap_select_sink(opts_popup, main_buf)
   end,
 }
 
----@param for_what "mark" | "buffer" | "save"| "note" | "mark_annotation" | "select_category" | "preview_mark_annotation"
+---@param for_what "mark" | "buffer" | "save"| "note" | "mark_annotation" | "select_category" | "preview_mark_annotation" | "select_sink_picker"
 ---@param opts_popup QFBookmarkUiPopupCfg
 ---@param is_editable? boolean
 ---@param cb? function | nil
@@ -476,14 +507,20 @@ function M.build_popup(for_what, opts_popup, cb, is_editable)
   is_editable = is_editable or false
 
   -- Clean up leftover windows and buffers before opening the popup.
-  M.window = QfbookmarkUIUtils.clean_up(M.window)
+  if for_what ~= "select_sink_picker" then
+    M.window = QfbookmarkUIUtils.clean_up(M.window)
+  end
+
   if opts_popup.popup then
     opts_popup.popup = nil
   end
 
   -- Call popup open window
   if
-    vim.tbl_contains({ "buffer", "note", "select_category", "mark_annotation", "preview_mark_annotation" }, for_what)
+    vim.tbl_contains(
+      { "buffer", "note", "select_category", "mark_annotation", "preview_mark_annotation", "select_sink_picker" },
+      for_what
+    )
   then
     __popup_opts_for[for_what](opts_popup)
   end

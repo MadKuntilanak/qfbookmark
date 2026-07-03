@@ -490,6 +490,7 @@ function M.resolve_preview_context(opts)
 
   local text, err, title, footer_extra
   local QfbookmarkMarkContext = require "qfbookmark.mark.context"
+
   if opts.opts_mark_preview and opts.opts_mark_preview.is_multi then
     local mode = "combined"
 

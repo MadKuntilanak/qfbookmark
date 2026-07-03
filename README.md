@@ -203,9 +203,6 @@ error:
     },
   },
   keymaps = {
-    -- Set to true to disable all default keymaps and define your own
-    disable_all = false,
-
     actions = { -- General actions
       up = { "<C-p>", "<C-k>", "k" },
       down = { "<C-n>", "<C-j>", "j" },

@@ -81,7 +81,7 @@ function M.build_multi(items, ns, template_name)
   local results = {}
   local labels = {}
   for _, item in ipairs(items) do
-    local text, err = M.build_context(item.bufnr, ns, item.key, template_name)
+    local text, _ = M.build_context(item.bufnr, ns, item.key, template_name)
     if text then
       local fname = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(item.bufnr), ":t")
       local range = M.build_ctx(item.bufnr, ns, item.key, "NOTE")
@@ -98,27 +98,21 @@ end
 ---@param text string
 ---@param target? string  -- e.g. "clipboard" | "register" | custom sink name
 function M.dispatch(text, target)
-  target = target or "clipboard"
-
-  local QfbookmarkUtils = require "qfbookmark.utils"
-
-  if target == "clipboard" then
-    vim.fn.setreg("+", text)
-    QfbookmarkUtils.info "context copied to clipboard"
-    return
-  end
-
-  local cfg = require("qfbookmark.config").defaults or {}
+  local cfg = require("qfbookmark.config").defaults
   local sinks = (cfg.window.mark and cfg.window.mark.sinks) or {}
-  local sink = sinks[target]
 
-  if not sink then
-    QfbookmarkUtils.info(string.format("qfbookmark: no sink registered for '%s', copied instead", target))
-    vim.fn.setreg("+", text)
+  local sink_name = target or (sinks.default ~= "clipboard" and sinks.default) or "clipboard"
+
+  local sink = sinks.handler[sink_name]
+
+  if sink and type(sink) == "function" then
+    sink(text)
     return
   end
 
-  sink(text)
+  -- fallback: clipboard
+  vim.fn.setreg("+", text)
+  vim.notify("qfbookmark: copied to clipboard", vim.log.levels.INFO)
 end
 
 return M
