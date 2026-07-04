@@ -719,6 +719,8 @@ nothing is selected, it falls back to the item under the cursor.
   are selected. Multi-selection is ignored in this case.
 Example:
 
+
+
 >lua
     buffers = {
       integrations = {
