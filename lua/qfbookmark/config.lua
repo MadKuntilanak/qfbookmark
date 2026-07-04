@@ -51,50 +51,12 @@ M.defaults = {
       actions = { win_resized = false },
       context_templates = {
         separator = nil, -- or "\n\n" .. string.rep("─", 60) .. "\n\n",
-        default = "ask_ai",
-        handler = {
-          ask_ai = {
-            description = "Send to AI for analysis",
-            builder = function(ctx)
-              return string.format(
-                [[
-%s
-
-```%s
-%s
-```
-]],
-                ctx.text,
-                ctx.filetype,
-                table.concat(ctx.lines, "\n")
-              )
-            end,
-          },
-        },
+        default = "",
+        handler = {},
       },
       sinks = {
-        default = "codecompanion", -- builtin fallback: clipboard
-        handler = {
-          avante = function(text)
-            require("avante.api").ask { question = text }
-          end,
-          codecompanion = function(text)
-            local Chat = require "codecompanion"
-            local chat = Chat.last_chat()
-            vim.schedule(function()
-              if not chat then
-                chat = Chat.chat()
-
-                if not chat then
-                  return vim.notify("Something went wrong", vim.log.levels.ERROR)
-                end
-              end
-              chat:add_buf_message {
-                content = text,
-              }
-            end)
-          end,
-        },
+        default = "", -- builtin fallback: clipboard
+        handler = {},
       },
     },
     note = {
@@ -109,53 +71,9 @@ M.defaults = {
         filename = "TODO.org",
       },
       insert_to_note = {
-        enabled = true,
-        line_placeholder = "<TEXT_HERE>",
-        templates = {
-          notice = {
-            target = "global", -- "global" | "local" | "target path"
-            description = "Quick notice / reminder",
-            templates = string.format(
-              [[
-date: %s
-notice:
-<TEXT_HERE>
-]],
-              os.date "%Y-%m-%d %H:%M"
-            ),
-          },
-
-          error = {
-            target = "local",
-            description = "Capture an error / bug for this project",
-            templates = string.format(
-              [[
-date: %s
-error:
-<TEXT_HERE>
-]],
-              os.date "%Y-%m-%d %H:%M"
-            ),
-          },
-
-          todo = {
-            target = "local",
-            description = "TODO item with source reference",
-            templates = function()
-              return string.format(
-                [[
-  - [ ] error ..
-
-    #+begin_src %s
-    <TEXT_HERE>
-    #+end_src
-
-      ]],
-                vim.bo.filetype
-              )
-            end,
-          },
-        },
+        enabled = false,
+        line_placeholder = "",
+        templates = {},
       },
     },
   },
@@ -196,15 +114,13 @@ error:
       add_mark_annotation = "<Leader>qn",
 
       preview_context = "S",
+      edit_context = "E",
       toggle_preview = "<Leader>qP",
       toggle_range_signs = "<Leader>qp",
 
       toggle_open = "gl",
 
       save_annotation = "<C-o>",
-
-      -- WARN: dont forget to delete this line
-      -- debug = "<Leader>qu",
 
       next_mark = "gn",
       prev_mark = "gp",
@@ -338,7 +254,6 @@ local function merge_settings(defaults, user_opts)
   -- local user_keymaps = user_opts.keymaps or {}
   -- local disable_all = user_keymaps.disable_all == true
   -- if not disable_all then
-  --   RUtils.info "fadshfh"
   return vim.tbl_deep_extend("force", defaults, user_opts)
   -- end
   -- local new_defaults = vim.deepcopy(defaults)

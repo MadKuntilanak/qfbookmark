@@ -140,6 +140,7 @@
 ---@field harpoon QFBookKeymapMarkHarpoon
 ---@field save_annotation string | string[]
 ---@field preview_context string | string[]
+---@field edit_context string | string[]
 ---@field add_mark string | string[]
 ---@field add_fix string | string[]
 ---@field add_debug string | string[]

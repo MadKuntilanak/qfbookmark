@@ -264,7 +264,7 @@ end
 ---@param on_submit fun(text: string[])
 ---@param on_cancel? fun()
 ---@param load_chunk? {load_chunk: boolean, chunk: QFbookBufferMarkEntry}
----@param opts? { anchor?: "cursor"|"editor", keyword_def: QFBookSpec, bufnr: integer, start_line: integer, end_line:integer, is_edit: boolean}
+---@param opts? { anchor?: "cursor"|"editor", key:integer, keyword_def: QFBookSpec, bufnr: integer, start_line: integer, end_line:integer, is_edit: boolean}
 local function place_mark_annotation(category, on_submit, on_cancel, load_chunk, opts)
   opts = opts or {}
   -- local anchor = opts.anchor or "cursor"
@@ -282,7 +282,15 @@ local function place_mark_annotation(category, on_submit, on_cancel, load_chunk,
     prefix_footer_str = "edit"
   end
   local help_key = resolve_key_shortcuts()
-  local title_footer_str = prefix_footer_str .. " annotation · <CR> save · <Esc> cancel · " .. help_key .. " help"
+  local Config = require("qfbookmark.config").defaults
+  local save_key = Config.keymaps.mark and Config.keymaps.mark.save_annotation or "<CR>"
+  local title_footer_str = prefix_footer_str
+    .. " annotation · "
+    .. "<CR> preview · "
+    .. save_key
+    .. " save · <Esc> cancel · "
+    .. help_key
+    .. " help"
 
   local win_config = {
     relative = "editor",

@@ -117,22 +117,6 @@ local function mark_keymaps()
         keys = get_keymap(Config.keymaps, "mark", "toggle_range_signs"),
         mode = { "n" },
       },
-
-      -- NOTE: Remove this keybinding before release
-      --
-      -- { -- Debug only
-      --   desc = "Qfmark: debug",
-      --   func = "debug_qf",
-      --   keys = get_keymap(Config.keymaps, "mark", "debug"),
-      --   mode = { "n" },
-      -- },
-      --
-      -- { -- Debug only
-      --   desc = "Qfmark: debug",
-      --   func = "get_annotation_range_test",
-      --   keys = get_keymap(Config.keymaps, "mark", "debug_t"),
-      --   mode = { "x", "v", "n" },
-      -- },
     },
   }, keys)
 
@@ -326,7 +310,6 @@ local function qf_keymaps()
   --           desc = "Qfmark: jump to {" .. i .. "}",
   --           func = function()
   --             local curline = qf_result[i]
-  --             RUtils.info(curline)
   --             -- Mapping.setup_open_key("default", curline.start_line)
   --           end,
   --           keys = tostring(i),

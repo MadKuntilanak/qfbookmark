@@ -214,15 +214,28 @@ Mapping.save = {}
 function Mapping.save.save_input()
   local lines = vim.api.nvim_buf_get_lines(Mapping.buf, 0, -1, false)
   local input = lines
+
+  -- trim leading empty strings
+  local start_idx = 1
+  while start_idx <= #lines and lines[start_idx] == "" do
+    start_idx = start_idx + 1
+  end
+
+  -- trim trailing empty strings
+  local end_idx = #lines
+  while end_idx >= start_idx and lines[end_idx] == "" do
+    end_idx = end_idx - 1
+  end
+
+  input = vim.list_slice(lines, start_idx, end_idx)
+
   QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
 
-  vim.schedule(function()
-    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
-    if Mapping.on_submit and #input > 0 then
-      Mapping.on_submit(input)
-    end
-    QfbookmarkUIUtils.clean_up(Mapping.popup)
-  end)
+  vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
+  if Mapping.on_submit and #input > 0 then
+    Mapping.on_submit(input)
+  end
+  QfbookmarkUIUtils.clean_up(Mapping.popup)
 end
 
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
@@ -736,7 +749,7 @@ function Mapping.mark.clear_all_items()
 end
 
 ---@param is_all? boolean
-function Mapping.mark.preview_context(is_all)
+local function populate_marks(is_all)
   is_all = is_all or false
   local selected = Mapping.mark.get_selected_marks()
   local cur = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
@@ -745,7 +758,7 @@ function Mapping.mark.preview_context(is_all)
     return
   end
 
-  local get_abc = {}
+  local get_marks = {}
 
   -- Start delete item or all items
   if #selected > 0 then
@@ -753,7 +766,7 @@ function Mapping.mark.preview_context(is_all)
       for i, e in ipairs(entries) do
         if idx_hval == e.hval then
           if entries[i] then
-            get_abc[#get_abc + 1] = entries[i]
+            get_marks[#get_marks + 1] = entries[i]
           end
         end
       end
@@ -768,7 +781,7 @@ function Mapping.mark.preview_context(is_all)
     end
 
     if entries[cur_idx] then
-      get_abc[#get_abc + 1] = entries[cur_idx]
+      get_marks[#get_marks + 1] = entries[cur_idx]
     end
   end
 
@@ -776,7 +789,8 @@ function Mapping.mark.preview_context(is_all)
 
   ---@type {bufnr: integer, key: integer, category: string, inserted_at: integer}
   local items = {}
-  for _, mark in pairs(get_abc) do
+
+  for _, mark in pairs(get_marks) do
     local m = mark.mark
     if m.note and #m.note > 0 then
       for _, ann in ipairs(QfbookmarkMark.list_annotations(m.bufnr, m.key)) do
@@ -785,6 +799,11 @@ function Mapping.mark.preview_context(is_all)
           key = m.key,
           category = ann.category,
           inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0,
+          start_line = m.start_line,
+          end_line = m.end_line,
+          text = m.note,
+          col = m.col,
+          line = m.line,
         })
         break
       end
@@ -795,11 +814,22 @@ function Mapping.mark.preview_context(is_all)
     return (a.inserted_at or 0) > (b.inserted_at or 0)
   end)
 
+  return items
+end
+
+---@param is_all? boolean
+function Mapping.mark.preview_context(is_all)
+  local items = populate_marks(is_all)
+  if not items then
+    return
+  end
+
   if #items == 0 then
     QfbookmarkUtils.warn "no annotation context found"
     return
   end
 
+  local QfbookmarkMark = require "qfbookmark.mark"
   local default_template = (Config.window.mark and Config.window.mark.context_templates.default) or "copy_raw"
 
   if #items == 1 then
@@ -811,6 +841,28 @@ function Mapping.mark.preview_context(is_all)
       { default_template = default_template, is_multi = true, items = items }
     )
   end
+end
+
+function Mapping.mark.edit_context()
+  local items = populate_marks()
+  if not items then
+    return
+  end
+
+  local item = items[1]
+  if not item then
+    QfbookmarkUtils.warn "there is no note annotation for this mark"
+    return
+  end
+
+  local QfbookmarkMark = require "qfbookmark.mark"
+  QfbookmarkMark.place_next_mark({}, item.category, item.key, item.bufnr, {
+    line = item.line,
+    col = item.col,
+    start_line = item.start_line,
+    end_line = item.end_line,
+    from_popup = true,
+  })
 end
 
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
@@ -1361,6 +1413,17 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       },
 
       {
+        desc = "Qfmark: edit context",
+        func = function()
+          Mapping.mark.edit_context()
+        end,
+        keys = Config.keymaps.mark and Config.keymaps.mark.edit_context,
+        mode = "n",
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
         desc = "Qfmark: load QFMaster",
         func = function()
           Mapping.mark.select_and_load_qfmasters()
@@ -1688,6 +1751,25 @@ function M.setup_keymap_mark_annotation(opts_popup, buf)
         end,
         keys = Config.keymaps.mark and Config.keymaps.mark.save_annotation,
         mode = { "i", "n" },
+        buffer = Mapping.buf,
+        from_user = true,
+      },
+
+      {
+        desc = "Qfmark: preview",
+        func = function()
+          Mapping.save.save_input()
+          QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
+          QfbookmarkUIUtils.clean_up(Mapping.popup)
+
+          local item = opts_popup._opts
+
+          local QfbookmarkMark = require "qfbookmark.mark"
+          local default_template = Config.window.mark.context_templates.default
+          QfbookmarkMark.preview(item.bufnr, item.key, { default_template = default_template })
+        end,
+        keys = "<CR>",
+        mode = "n",
         buffer = Mapping.buf,
         from_user = true,
       },

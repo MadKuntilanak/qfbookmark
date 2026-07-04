@@ -69,14 +69,13 @@ require("qfbookmark").setup {
 
   extmarks = {
     priority = 15,
+    throttle = 200, -- ms
 
     -- Exclude certain buffer or file types from showing extmarks
     excluded = {
       buftypes = {},
       filetypes = {},
     },
-
-    throttle = 200, -- ms
 
     -- Mark mode definitions: icon, highlight group, and sign text
     keywords = {
@@ -121,6 +120,44 @@ require("qfbookmark").setup {
       actions = {
         win_resized = false,
       },
+      context_templates = {
+        -- `separator` defines the string inserted between multiple contexts
+        -- when more than one annotation is selected for preview/send.
+        -- Set to `nil` to join them with a blank line, or provide a custom
+        -- string for a more visible divider.
+        -- Example: "\n\n" .. string.rep("─", 60) .. "\n\n"
+        separator = nil,
+
+        -- `default` sets which template is pre-selected when the preview
+        -- popup opens. Must match a key inside `handler`.
+        -- If unset or the key is not found, falls back to the first
+        -- entry in `handler`, then to the builtin "copy_raw".
+        default = "",
+
+        -- `handler` is a map of named templates. Each entry defines how
+        -- the annotation context is formatted before sending or copying.
+        -- The `builder` function receives a `ctx` table with:
+        --   ctx.text      → the short note the user typed
+        --   ctx.lines     → the actual code lines covered by the annotation range
+        --   ctx.filetype  → filetype of the source buffer
+        --   ctx.filepath  → absolute path of the source file
+        --   ctx.category  → annotation category (mark/fix/debug/note/etc)
+        --   ctx.range     → { start_row, start_col, end_row, end_col } (0-indexed)
+        -- The function must return a string.
+        handler = {},
+      },
+      sinks = {
+        -- `default` sets which sink is triggered by <CR> in the preview popup.
+        -- Set to "" or omit to fall back to the builtin clipboard sink.
+        -- Must match a key inside `handler`.
+        default = "", -- fallback: clipboard (builtin, always available)
+
+        -- `handler` is a map of named sink functions.
+        -- Each function receives the final formatted string and is responsible
+        -- for delivering it (e.g. sending to an AI plugin, writing to a file).
+        -- Builtin "clipboard" is always available even if not listed here.
+        handler = {},
+      },
     },
     note = {
       -- Cursor state:
@@ -136,69 +173,51 @@ require("qfbookmark").setup {
       width = 0.45, -- relative size (0.1 to 1)
       height = 0.80,
 
-      -- Syntax highlighting is not provided by this plugin,
-      -- it relies on nvim built-in filetypes or external plugins :D
-      filetype = "org", -- "org" | "norg" | "md" | "txt"
-
-      -- When enabled, notes are stored in a project-local file.
-      -- The target path will follow `filename` (e.g. "TODO.org") inside the current project directory.
-      -- This is useful for per-project notes (e.g. TODO.org per repo/workspace).
-
-      -- Global notes are always stored separately in `save_dir`,
-      -- and are shared across all projects/workspaces.
-
+      -- `current_project` controls where local (per-project) notes are saved.
+      -- When `enabled = true`, notes are written to a file named `filename`
+      -- inside the current working directory (i.e. the project root).
+      -- This keeps project-specific notes self-contained alongside the codebase.
+      --
+      -- `filename` can be a plain filename (resolved relative to cwd)
+      -- or an absolute path to a fixed location.
+      -- Examples:
+      --   filename = "TODO.org"          → <cwd>/TODO.org
+      --   filename = "/home/user/notes/work.md"  → fixed absolute path
+      --
+      -- Global notes are always stored separately under `save_dir`
+      -- and are shared across all projects and workspaces.
       current_project = {
         enabled = true,
-        filename = "TODO.org", -- or /path/to/mytodo.md
+        filename = "TODO.org",
       },
       insert_to_note = {
-        enabled = true,
-        line_placeholder = "<TEXT_HERE>",
-        templates = {
-          notice = {
-            target = "global", -- "global" | "local" | "target path"
-            description = "Quick notice / reminder",
-            templates = string.format(
-              [[
-date: %s
-notice:
-<TEXT_HERE>
-]],
-              os.date "%Y-%m-%d %H:%M"
-            ),
-          },
-
-          error = {
-            target = "local",
-            description = "Capture an error / bug for this project",
-            templates = string.format(
-              [[
-date: %s
-error:
-<TEXT_HERE>
-]],
-              os.date "%Y-%m-%d %H:%M"
-            ),
-          },
-
-          todo = {
-            target = "local",
-            description = "TODO item with source reference",
-            templates = function()
-              return string.format(
-                [[
-  - [ ] error ..
-
-    #+begin_src %s
-    <TEXT_HERE>
-    #+end_src
-
-      ]],
-                vim.bo.filetype
-              )
-            end,
-          },
-        },
+        enabled = false,
+        line_placeholder = "<TEXT_HERE>", -- define whatever you like
+        -- `templates` defines named note templates available when inserting
+        -- an annotation into a note file (triggered via `insert_to_note`).
+        -- Each key becomes a callable template that the user can bind to a mapping.
+        --
+        -- Each entry accepts the following fields:
+        --
+        --   `target`      Where the note is written to.
+        --                 Accepted values:
+        --                   "global"      → the global note file (under `save_dir`)
+        --                   "local"       → the project-local file (see `current_project`)
+        --                   "/path/to/file" → an explicit absolute path
+        --
+        --   `description` A short human-readable label shown in pickers/help.
+        --
+        --   `templates`   The note body. Can be:
+        --                   string   → used as-is, evaluated once at startup.
+        --                              Useful for static content or content that
+        --                              captures values at load time (e.g. os.date).
+        --                   function → called each time the template is triggered,
+        --                              so dynamic values (e.g. vim.bo.filetype,
+        --                              tomorrow's date) are evaluated at insert time.
+        --                 The placeholder `<TEXT_HERE>` (configurable via
+        --                 `line_placeholder`) marks where the selected text or
+        --                 annotation note will be inserted.
+        templates = {},
       },
     },
   },
@@ -207,7 +226,7 @@ error:
       up = { "<C-p>", "<C-k>", "k" },
       down = { "<C-n>", "<C-j>", "j" },
 
-      default = { "o", "<CR>" },
+      default = { "<CR>", "o" },
       split = "<C-s>",
       vsplit = "<C-v>",
       tab = "<C-t>",
@@ -225,6 +244,8 @@ error:
 
       quit = { "q", "<Esc>", "<C-c>", "<C-q>" },
 
+      show_help = "g?",
+
       del_item = "dd",
       del_item_all = "dM",
     },
@@ -236,15 +257,20 @@ error:
       add_debug = "<Leader>qd",
       add_mark_annotation = "<Leader>qn",
 
+      preview_context = "S",
+      edit_context = "E",
+      toggle_preview = "<Leader>qP",
+      toggle_range_signs = "<Leader>qp",
+
       toggle_open = "gl",
 
-      save_annotation = "<C-s>",
-
-      del_mark = "dm",
-      del_mark_buffer = "dM",
+      save_annotation = "<C-o>",
 
       next_mark = "gn",
       prev_mark = "gp",
+
+      del_mark = "dm",
+      del_mark_buffer = "dM",
 
       move_item_down = "<a-n>",
       move_item_up = "<a-p>",

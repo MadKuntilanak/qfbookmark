@@ -396,6 +396,10 @@ end
 
 ---@param category QFBookMarkMode | {category: QFBookMarkMode, sign_category: string}
 local function add_sign(category)
+  if not Config.window.mark.enabled then
+    return
+  end
+
   local mark_lists = M.buffers
   local bufnr = vim.api.nvim_get_current_buf()
 
@@ -505,12 +509,20 @@ end
 
 ---@param opts? {template: string}
 function M.preview_annotate(opts)
+  if not Config.window.mark.enabled then
+    return
+  end
+
   opts = opts or {}
   __preview_annotate(opts.template)
 end
 
 ---@param value? boolean
 function M.toggle_range_signs(value)
+  if not Config.window.mark.enabled then
+    return
+  end
+
   QfbookmarkMark.toggle_range_signs(value)
 end
 
@@ -533,6 +545,10 @@ local function delete_mark_builtin()
 end
 
 function M.delete_mark()
+  if not Config.window.mark.enabled then
+    return
+  end
+
   delete_mark_builtin()
 
   local mark_lists = M.get_buffers()
@@ -557,6 +573,10 @@ function M.delete_mark()
 end
 ---@param bufnr? integer
 function M.delete_mark_buffer(bufnr)
+  if not Config.window.mark.enabled then
+    return
+  end
+
   bufnr = bufnr or vim.api.nvim_get_current_buf()
 
   local filename = vim.fs.normalize(vim.api.nvim_buf_get_name(bufnr))
@@ -598,9 +618,15 @@ local function next_prev_mark(is_prev_or_next)
 end
 
 function M.next_mark()
+  if not Config.window.mark.enabled then
+    return
+  end
   next_prev_mark(false)
 end
 function M.prev_mark()
+  if not Config.window.mark.enabled then
+    return
+  end
   next_prev_mark(true)
 end
 

@@ -433,8 +433,8 @@ function M.mark_note_preview(opts_popup, main_wincfg, width, height)
 
   local ctx = vim.api.nvim_buf_get_lines(
     opts_popup._opts.bufnr,
-    opts_popup._opts.start_line,
-    opts_popup._opts.end_line + 1,
+    opts_popup._opts.start_line - 1,
+    opts_popup._opts.end_line,
     false
   )
 

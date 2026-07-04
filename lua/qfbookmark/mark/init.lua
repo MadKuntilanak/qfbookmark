@@ -512,7 +512,7 @@ end
 ---@param mark_lists? QFBookmarkBufferMark
 ---@param category QFBookMarkMode | {category: QFBookMarkMode, sign_category: string}
 ---@param bufnr? integer
----@param line_opts? { pos: integer, line: integer, col: integer, text: string, from_qf?: boolean}
+---@param line_opts? { pos: integer, line: integer, col: integer, text: string, from_qf?: boolean, from_popup?: boolean}
 local function __place_next_mark_annontation(mark_lists, category, key, bufnr, line_opts)
   category = category or "NOTE"
 
@@ -543,7 +543,7 @@ local function __place_next_mark_annontation(mark_lists, category, key, bufnr, l
     local keyword_def = QfbookmarkMarkUtils.get_keyword_def(meta.sign_category)
 
     for _, ann in ipairs(M.list_annotations(bufnr, key)) do
-      if ann.range and row >= ann.range.start_row and row <= ann.range.end_row then
+      if (ann.range and row >= ann.range.start_row and row <= ann.range.end_row) or line_opts.from_popup then
         QfbookmarkUI.place_mark_annotation(
           meta.sign_category,
           function(text)
@@ -558,6 +558,7 @@ local function __place_next_mark_annontation(mark_lists, category, key, bufnr, l
             is_edit = true,
             start_line = meta.start_line,
             end_line = meta.end_line,
+            key = key,
           }
         )
         return
@@ -642,6 +643,7 @@ local function __place_next_mark_annontation(mark_lists, category, key, bufnr, l
         bufnr = bufnr,
         start_line = annon_opts.start_line,
         end_line = annon_opts.end_line,
+        key = key,
       }
     )
   end
@@ -657,7 +659,7 @@ end
 ---@param category QFBookMarkMode | {category: QFBookMarkMode, sign_category: string}
 ---@param key integer
 ---@param bufnr? integer
----@param line_opts? { pos: integer, line: integer, col: integer, text: string, from_qf?: boolean}
+---@param line_opts? { pos: integer, line: integer, col: integer, text: string, from_qf?: boolean, from_popup?: boolean}
 function M.place_next_mark(mark_lists, category, key, bufnr, line_opts)
   line_opts = line_opts or {}
   bufnr = bufnr or vim.api.nvim_get_current_buf()
