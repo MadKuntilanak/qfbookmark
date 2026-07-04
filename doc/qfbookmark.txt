@@ -809,6 +809,8 @@ appended to the target file.
 
 Example:
 
+
+
 >lua
               insert_to_note = {
                 enabled = true,
