@@ -417,10 +417,7 @@ https://github.com/user-attachments/assets/6a8d277a-0e93-4c9c-90ed-5ee59753cbe6
 - Show current buffer mark indicators with a green bullet `●` (`QFBookmarkEntryCurrentFile` highlight).
 
 > ⚠️
-> Inside the mark popup, the delete keymaps live under `keymaps.actions.del_item`
-> (delete current entry) and `keymaps.actions.del_item_all` (delete all entries),
-> these are separate from `del_mark` / `del_mark_buffer` below, which operate
-> directly on a buffer rather than inside the popup.
+> Inside the mark popup, the delete keymaps live under `keymaps.actions.del_item` (delete current entry) and `keymaps.actions.del_item_all` (delete all entries), these are separate from `del_mark` / `del_mark_buffer` below, which operate directly on a buffer rather than inside the popup.
 
 
 > If you don't need this feature, you can disable it via `window.mark.enabled = false`.
@@ -487,8 +484,97 @@ ___
 #### Examples
 ___
 
-??
+The `mark` section controls how annotation contexts are formatted and where they
+are sent when you trigger the preview/send workflow from the mark popup.
 
+##### `context_templates`
+___
+
+Defines how the annotation content is assembled into a string before sending. 
+Each entry under `handler` is a named template with:
+
+- `description` — shown in the template picker inside the preview popup
+- `builder` — a function that receives a `ctx` table and returns a formatted string
+
+The `ctx` table contains:
+- `ctx.text` — the short note the user typed when creating the annotation
+- `ctx.lines` — the actual code lines covered by the annotation range
+- `ctx.filetype` — filetype of the source buffer
+- `ctx.filepath` — absolute path of the source file
+- `ctx.category` — annotation category (`mark` / `fix` / `debug` / `note` / etc)
+- `ctx.range` — `{ start_row, start_col, end_row, end_col }` (0-indexed)
+
+`default` sets which template is pre-selected when the preview popup opens.  If the key is not found in `handler`, it falls back to the first entry, then to the builtin `copy_raw`.
+
+`separator` controls how multiple contexts are joined when more than one annotation is selected for preview. Set to `nil` for a plain blank line, or provide a custom string for a visible divider.
+
+
+##### `sinks`
+___
+
+Defines where the formatted context string is delivered after the user confirms in the preview popup. Each entry under `handler` is a named function that receives the final string.
+
+`default` sets which sink is triggered by `<CR>` in the preview popup.  
+Set to `""` to fall back to the builtin clipboard sink. The builtin `clipboard` sink is always available even if not listed under `handler`.
+
+To send to a different destination without leaving the preview popup, press `s` to open the sink picker — a small dropdown listing all available sinks.  From there, press the first letter of the sink name to dispatch immediately.
+
+---
+
+Example:
+
+````lua
+mark = {
+  preview_fullscreen = true,
+  context_templates = {
+    separator = nil, -- or "\n\n" .. string.rep("─", 60) .. "\n\n"
+    default = "ask_ai",
+    handler = {
+      ask_ai = {
+        description = "Send to AI for analysis",
+        builder = function(ctx)
+          return string.format(
+            [[
+%s
+```%s
+%s
+```
+]],
+            ctx.text,
+            ctx.filetype,
+            table.concat(ctx.lines, "\n")
+          )
+        end,
+      },
+    },
+  },
+  sinks = {
+    -- <CR> in the preview popup sends to codecompanion by default.
+    -- Press `s` to open the sink picker and choose a different destination.
+    default = "codecompanion", -- fallback: clipboard (builtin)
+    handler = {
+      avante = function(text)
+        require("avante.api").ask { question = text }
+      end,
+      codecompanion = function(text)
+        local Chat = require "codecompanion"
+        local chat = Chat.last_chat()
+        vim.schedule(function()
+          if not chat then
+            chat = Chat.chat()
+            if not chat then
+              return vim.notify("Something went wrong", vim.log.levels.ERROR)
+            end
+          end
+          chat:add_buf_message { content = text }
+        end)
+      end,
+    },
+  },
+},
+````
+
+To trigger the preview workflow, place the cursor on a mark entry that has a note annotation in the mark popup, then press the bound key for `preview_context` (e.g. `S` in the example keymaps). If multiple items are selected, all their contexts are combined in the preview using `separator` between them
 </details>
 
 

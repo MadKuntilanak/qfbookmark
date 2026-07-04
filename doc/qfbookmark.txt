@@ -592,6 +592,113 @@ EXAMPLES
 ------------------------------------------------------------------------------
 ??
 
+Buffers ~
+
+
+BUFFERS ~
+
+------------------------------------------------------------------------------
+
+https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
+
+- Buffer management with a simple popup interface.
+- Quickly browse and switch between open buffers.
+- Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
+- Clear selections with `keymaps.actions.diselect_all`.
+- Optional custom integrations through the `integrations` config.
+- In the popup menu, jump directly to entries by number when `allow_number = true`.
+- Support custom basic commands for buffer actions (vsplit, split, open in tab)
+
+
+  If you don’t need this feature, you can disable it via
+  `window.buffers.enabled = false`.
+
+DEFAULT KEYMAPS
+
+------------------------------------------------------------------------------
+>lua
+    
+        buffers = {
+          toggle_open = "gb",
+          integrations = {
+            custom = { enabled = false, commands = {} },
+          },
+        },
+<
+
+
+EXAMPLES
+
+------------------------------------------------------------------------------
+When you define `integrations.custom.enabled = true` under `buffers`, you can
+attach custom commands to items in the buffer list popup. Each command receives
+an `opts` table where `opts.selected` refers to the currently selected buffer
+entry.
+
+The built-in method `opts.selected:add_to(target)` sends the selected buffer to
+a destination. Accepted values for `target`:
+
+- `"quickfix"` — adds the buffer to Neovim’s quickfix list
+- `"MARK"` — registers it as a general mark
+- `"FIX"` — registers it as a fix mark
+- `"DEBUG"` — registers it as a debug mark
+- `"NOTE"` — registers it as a note annotation
+
+Multi-select is supported out of the box, if you have multiple items selected
+in the popup (via the toggle selection key), `opts.selected:add_to(target)`
+will apply to all selected items at once. If nothing is selected, it falls back
+to the item under the cursor.
+
+
+  **Note:** `"NOTE"` is an exception to multi-select behavior. Because a note
+  annotation requires user input (category, text, and range), adding a `NOTE`
+  always operates on the single item under the cursor — even if multiple items
+  are selected. Multi-selection is ignored in this case.
+Example:
+
+
+
+>lua
+    buffers = {
+      integrations = {
+        custom = {
+          enabled = true,
+          commands = {
+            {
+              key  = "sq",
+              cmd  = function(opts) opts.selected:add_to "quickfix" end,
+              desc = "Qf: add to quickfix",
+            },
+            {
+              key  = "sd",
+              cmd  = function(opts) opts.selected:add_to "DEBUG" end,
+              desc = "Qf: add to debug mark",
+            },
+            {
+              key  = "sn",
+              cmd  = function(opts) opts.selected:add_to "NOTE" end,
+              desc = "Qf: add to note mark",
+            },
+            {
+              key  = "sf",
+              cmd  = function(opts) opts.selected:add_to "FIX" end,
+              desc = "Qf: add to fix mark",
+            },
+            {
+              key  = "ss",
+              cmd  = function(opts) opts.selected:add_to "MARK" end,
+              desc = "Qf: add to mark",
+            },
+          },
+        },
+      },
+    },
+<
+
+Commands are buffer-local to the popup window and only active while it is open.
+You can define as many entries as needed, each `key` is mapped in normal mode
+by default unless `mode` is specified.
+
 Quickfix ~
 
 
@@ -653,116 +760,132 @@ DEFAULT KEYMAPS
 EXAMPLES
 
 ------------------------------------------------------------------------------
-??
+When you define `integrations.custom.enabled = true` under `quickfix`, you can
+attach custom commands to items in the quickfix (or loclist) popup. Each
+command receives an `opts` table where `opts.selected` refers to the currently
+highlighted quickfix entry.
 
-Buffers ~
+The built-in method `opts.selected:add_to(target)` promotes the selected
+quickfix item into a mark. Accepted values for `target`:
 
+- `"MARK"` — registers the item as a general mark
+- `"FIX"` — registers the item as a fix mark
+- `"DEBUG"` — registers the item as a debug mark
+- `"NOTE"` — registers the item as a note annotation
 
-BUFFERS ~
+Multi-select is supported, if multiple items are selected, `add_to` applies to
+all of them at once. The same `"NOTE"` exception applies here: because a note
+annotation requires user input, it always operates on the single item under the
+cursor regardless of how many items are selected.
 
-------------------------------------------------------------------------------
-
-https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
-
-- Buffer management with a simple popup interface.
-- Quickly browse and switch between open buffers.
-- Multi-select entries with `<Tab>` (`keymaps.actions.toggle_select`).
-- Clear selections with `keymaps.actions.diselect_all`.
-- Optional custom integrations through the `integrations` config.
-- In the popup menu, jump directly to entries by number when `allow_number = true`.
-- Support custom basic commands for buffer actions (vsplit, split, open in tab)
-
-
-  If you don’t need this feature, you can disable it via
-  `window.buffers.enabled = false`.
-
-DEFAULT KEYMAPS
-
-------------------------------------------------------------------------------
->lua
-    
-        buffers = {
-          toggle_open = "gb",
-          integrations = {
-            custom = { enabled = false, commands = {} },
-          },
-        },
-<
-
-
-EXAMPLES
-
-------------------------------------------------------------------------------
-When you define `integrations.custom.enabled = true` under `buffers`, you can
-attach custom commands to items in the buffer list popup. Each command receives
-an `opts` table where `opts.selected` refers to the currently selected buffer
-entry.
-
-The built-in method `opts.selected:add_to(target)` sends the selected buffer to
-a destination. Accepted values for `target`:
-
-- `"quickfix"` — adds the buffer to Neovim’s quickfix list
-- `"MARK"` — registers it as a general mark
-- `"FIX"` — registers it as a fix mark
-- `"DEBUG"` — registers it as a debug mark
-- `"NOTE"` — registers it as a note annotation
-
-Multi-select is supported out of the box — if you have multiple items
-selected in the popup (via the toggle selection key),
-`opts.selected:add_to(target)` will apply to all selected items at once. If
-nothing is selected, it falls back to the item under the cursor.
-
-
-  **Note:** `"NOTE"` is an exception to multi-select behavior. Because a note
-  annotation requires user input (category, text, and range), adding a `NOTE`
-  always operates on the single item under the cursor — even if multiple items
-  are selected. Multi-selection is ignored in this case.
 Example:
 
-
-
 >lua
-    buffers = {
+    quickfix = {
       integrations = {
         custom = {
           enabled = true,
           commands = {
+            -- Mark promotion
             {
-              key  = "sq",
-              cmd  = function(opts) opts.selected:add_to "quickfix" end,
-              desc = "Qf: add to quickfix",
-            },
-            {
-              key  = "sd",
-              cmd  = function(opts) opts.selected:add_to "DEBUG" end,
-              desc = "Qf: add to debug mark",
-            },
-            {
-              key  = "sn",
-              cmd  = function(opts) opts.selected:add_to "NOTE" end,
-              desc = "Qf: add to note mark",
+              key  = "ss",
+              cmd  = function(opts) opts.selected:add_to "MARK" end,
+              desc = "Promote quickfix item to MARK",
             },
             {
               key  = "sf",
               cmd  = function(opts) opts.selected:add_to "FIX" end,
-              desc = "Qf: add to fix mark",
+              desc = "Promote quickfix item to FIX mark",
             },
             {
-              key  = "ss",
-              cmd  = function(opts) opts.selected:add_to "MARK" end,
-              desc = "Qf: add to mark",
+              key  = "sd",
+              cmd  = function(opts) opts.selected:add_to "DEBUG" end,
+              desc = "Promote quickfix item to DEBUG mark",
             },
-          },
-        },
-      },
-    },
+            {
+              key  = "sn",
+              cmd  = function(opts) opts.selected:add_to "NOTE" end,
+              desc = "Promote quickfix item to NOTE annotation (cursor item only)",
+            },
 <
 
-Commands are buffer-local to the popup window and only active while it is open.
-You can define as many entries as needed — each `key` is mapped in normal
-mode by default unless `mode` is specified.
+In addition to mark promotion, you can attach arbitrary quickfix/loclist
+commands. The helpers `call_func { qf = "...", lf = "..." }` resolve
+automatically to the quickfix or loclist variant depending on which list is
+currently active:
 
-Note ~
+- `Cfilter` / `Lfilter` — filter the list by a pattern (requires `vim-cfilter` or equivalent)
+- `cdo` / `ldo` — run a command on each **item** in the list
+- `cfdo` / `lfdo` — run a command on each **file** in the list (one per unique file)
+
+Example:
+
+>lua
+    ---@return boolean|nil
+    local is_filetype_is_loclist = function()
+      if vim.bo.filetype ~= "qf" then
+        notify.warn "Not in qf filetype"
+        return nil
+      end
+    
+      if Util.qf.is_loclist() then
+        return true
+      end
+      return false
+    end
+    
+    ---@param cmds { qf: string, lf: string }
+    ---@return string|nil
+    local call_func = function(cmds)
+      local is_ok = is_filetype_is_loclist()
+      if is_ok == nil then
+        return
+      end
+    
+      if is_ok then
+        return cmds.lf
+      end
+    
+      return cmds.qf
+    end
+<
+
+>lua
+    
+            -- Filter & bulk update
+            {
+              key = "<LocalLeader>qf",
+              cmd = function()
+                local str_cmd = call_func { qf = "Cfilter", lf = "Lfilter" }
+                if str_cmd then
+                  vim.api.nvim_feedkeys(string.format([[:%s / /]], str_cmd), "n", false)
+                end
+              end,
+              desc = "Filter quickfix/loclist by pattern (Cfilter / Lfilter)",
+            },
+            {
+              key = "<LocalLeader>qd",
+              cmd = function()
+                local str_cmd = call_func { qf = "cdo", lf = "ldo" }
+                if str_cmd then
+                  vim.api.nvim_feedkeys(string.format([[:%s %%s///gi | update]], str_cmd), "n", false)
+                end
+              end,
+              desc = "Run substitution on each quickfix/loclist item (cdo / ldo)",
+            },
+            {
+              key = "<LocalLeader>qD",
+              cmd = function()
+                local str_cmd = call_func { qf = "cfdo", lf = "lfdo" }
+                if str_cmd then
+                  vim.api.nvim_feedkeys(string.format([[:%s %%s///gi | update]], str_cmd), "n", false)
+                end
+              end,
+              desc = "Run substitution per file in quickfix/loclist (cfdo / lfdo)",
+            },
+<
+
+Commands are active only while the quickfix popup is open and are mapped in normal mode by default unless `mode` is specified.Note ~
 
 
 NOTE ~
@@ -804,7 +927,7 @@ note-taking plugin (I personally use `orgmode`).
 
 
   **Note:** `templates` can be defined as either a string or a function. Use a
-  function when you need the template to be evaluated at runtime — for example,
+  function when you need the template to be evaluated at runtime, for example,
   when it depends on values like `vim.bo.filetype` that should be read from the
   current buffer at insert time, rather than once when the config is first
   loaded.
