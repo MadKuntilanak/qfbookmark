@@ -4,28 +4,28 @@
 ==============================================================================
 Table of Contents                               *qfbookmark-table-of-contents*
 
-1. QFBookmark (WIP )                            |qfbookmark-qfbookmark-(wip-)|
-  - Features                           |qfbookmark-qfbookmark-(wip-)-features|
-  - Showcase                           |qfbookmark-qfbookmark-(wip-)-showcase|
-  - Requirements                   |qfbookmark-qfbookmark-(wip-)-requirements|
-  - Installation                   |qfbookmark-qfbookmark-(wip-)-installation|
-  - Configuration                 |qfbookmark-qfbookmark-(wip-)-configuration|
-  - Providers                         |qfbookmark-qfbookmark-(wip-)-providers|
-  - Support statusline       |qfbookmark-qfbookmark-(wip-)-support-statusline|
-  - FAQ                                     |qfbookmark-qfbookmark-(wip-)-faq|
-  - Acknowledgements           |qfbookmark-qfbookmark-(wip-)-acknowledgements|
-  - License                             |qfbookmark-qfbookmark-(wip-)-license|
+1. QFBookmark                                          |qfbookmark-qfbookmark|
+  - Features                                  |qfbookmark-qfbookmark-features|
+  - Showcase                                  |qfbookmark-qfbookmark-showcase|
+  - Requirements                          |qfbookmark-qfbookmark-requirements|
+  - Installation                          |qfbookmark-qfbookmark-installation|
+  - Configuration                        |qfbookmark-qfbookmark-configuration|
+  - Providers                                |qfbookmark-qfbookmark-providers|
+  - Support statusline              |qfbookmark-qfbookmark-support-statusline|
+  - FAQ                                            |qfbookmark-qfbookmark-faq|
+  - Acknowledgements                  |qfbookmark-qfbookmark-acknowledgements|
+  - License                                    |qfbookmark-qfbookmark-license|
 2. Links                                                    |qfbookmark-links|
 
 ==============================================================================
-1. QFBookmark (WIP )                            *qfbookmark-qfbookmark-(wip-)*
+1. QFBookmark                                          *qfbookmark-qfbookmark*
 
 **QFBookmark** <https://github.com/MadKuntilanak/qfbookmark> is yet another
 bookmarking plugin for Neovim that combines **marks**, **buffers**, **quickfix
 lists**, and **capturing notes** into a single workflow.
 
 
-FEATURES                               *qfbookmark-qfbookmark-(wip-)-features*
+FEATURES                                      *qfbookmark-qfbookmark-features*
 
 - Mark lines with modes: `MARK`, `FIX`, `DEBUG`, `NOTE` (Mark Annotation)
 - Harpoon-style popup with preview, symbol context (function/class/struct/impl), and per-entry highlights
@@ -38,10 +38,12 @@ FEATURES                               *qfbookmark-qfbookmark-(wip-)-features*
 - Seamless item sharing across providers (**Mark**, **Quickfix**, **Buffers**, **Note**): add entries from marks, buffers, or other lists into quickfix and other supported targets directly from popup menus, with configurable custom integrations via `integrations.custom` commands
 
 
-SHOWCASE                               *qfbookmark-qfbookmark-(wip-)-showcase*
+SHOWCASE                                      *qfbookmark-qfbookmark-showcase*
 
 
-REQUIREMENTS                       *qfbookmark-qfbookmark-(wip-)-requirements*
+  For more example videos and GIFs, see the |qfbookmark-providers| section.
+
+REQUIREMENTS                              *qfbookmark-qfbookmark-requirements*
 
 - Neovim >= 0.12
 - nvim-treesitter <https://github.com/nvim-treesitter/nvim-treesitter> (optional, for symbol context)
@@ -50,7 +52,7 @@ REQUIREMENTS                       *qfbookmark-qfbookmark-(wip-)-requirements*
 - grug-far <https://github.com/MagicDuck/grug-far.nvim> (optional)
 
 
-INSTALLATION                       *qfbookmark-qfbookmark-(wip-)-installation*
+INSTALLATION                              *qfbookmark-qfbookmark-installation*
 
 **lazy.nvim**
 
@@ -74,7 +76,7 @@ INSTALLATION                       *qfbookmark-qfbookmark-(wip-)-installation*
 <
 
 
-CONFIGURATION                     *qfbookmark-qfbookmark-(wip-)-configuration*
+CONFIGURATION                            *qfbookmark-qfbookmark-configuration*
 
 Default Configuration and Highlights ~
 
@@ -499,7 +501,9 @@ HIGHLIGHTS ~
   --------------------------------------------------------------------------
 ------------------------------------------------------------------------------
 
-PROVIDERS                             *qfbookmark-qfbookmark-(wip-)-providers*
+
+
+PROVIDERS                                    *qfbookmark-qfbookmark-providers*
 
 Mark ~
 
@@ -1223,7 +1227,7 @@ And under `keymaps` section
 <
 
 
-SUPPORT STATUSLINE           *qfbookmark-qfbookmark-(wip-)-support-statusline*
+SUPPORT STATUSLINE                  *qfbookmark-qfbookmark-support-statusline*
 
 Example using heirline <https://github.com/rebelot/heirline.nvim>
 
@@ -1261,26 +1265,45 @@ Click to expand ~
 <
 
 
-FAQ                                         *qfbookmark-qfbookmark-(wip-)-faq*
+FAQ                                                *qfbookmark-qfbookmark-faq*
 
 Why another bookmark plugin? ~
 
 **QFBookmark** <https://github.com/MadKuntilanak/qfbookmark> was built around
 my own coding workflow. I often found myself placing marks in different files
-and later forgetting the context around them especially which function, method,
-or code section the mark referred to. This plugin extends the idea of
+and later forgetting the context around them — especially which function,
+method, or code section the mark referred to. This plugin extends the idea of
 traditional marks by combining them with quickfix lists, notes, and contextual
 navigation, making it easier to revisit and organize important locations across
 a project.
 
 Why 4 mark types instead of one? ~
 
-The four types (MARK, FIX, DEBUG, NOTE) don’t change how marks work internally — they exist purely for visual clarity. When you have many marks across multiple files, being able to tell at a glance "this is a debugging point" vs "this needs fixing" vs "this is just a reference" makes navigation significantly faster. Think of them as colored sticky notes.Can I use only one type and ignore the rest? ~
+The four types (`MARK`, `FIX`, `DEBUG`, `NOTE`) don’t change how marks work
+internally — they exist purely for visual clarity. When you have many marks
+across multiple files, being able to tell at a glance "this is a debugging
+point" vs "this needs fixing" vs "this is just a reference" makes navigation
+significantly faster. Think of them as colored sticky notes.
 
-Yes. All four types behave identically under the hood. You can map only `MARK` and never touch the others.What’s Mark Note Annotation different from the others? ~
+Can I use only one type and ignore the rest? ~
 
-Mark Note Annotation is the only type that supports inline annotations. You can attach text to it, which is also exposed in the mark popup and can be leveraged by external AI plugins or custom integrations for additional context.
-ACKNOWLEDGEMENTS               *qfbookmark-qfbookmark-(wip-)-acknowledgements*
+Yes. All four types behave identically under the hood. You can map only `MARK`
+and never touch the others.
+
+What makes Mark Note Annotation different from the other types? ~
+
+`NOTE` is the only mark type that supports **inline and range annotations**:
+
+- **Single-line** — attach a note to a specific line, similar to a code comment.
+- **Range** — select multiple lines (e.g. an entire function or block) and annotate the whole range. The annotation range is elastic: if you add or remove lines inside it, the range adjusts automatically.
+
+In addition to the visual marker, the attached note text is exposed in the mark
+popup and can be used by external AI plugins (via `context_templates` and
+`sinks`) or any custom integration that needs additional context about a code
+region.
+
+
+ACKNOWLEDGEMENTS                      *qfbookmark-qfbookmark-acknowledgements*
 
 - Fzf-lua <https://github.com/ibhagwan/fzf-lua> The picker that inspired me a
     lot. I borrowed a few ideas along the way and occasionally peeked at the code.
@@ -1292,7 +1315,7 @@ ACKNOWLEDGEMENTS               *qfbookmark-qfbookmark-(wip-)-acknowledgements*
     smaller.
 
 
-LICENSE                                 *qfbookmark-qfbookmark-(wip-)-license*
+LICENSE                                        *qfbookmark-qfbookmark-license*
 
 MIT
 
