@@ -107,7 +107,7 @@ DEFAULT CONFIGS ~
         },
       },
       window = {
-        notify = { mark = true, plugin = true },
+        notify = { mark = true, plugin = true, note = true, buffers = true },
         quickfix = {
           enabled = true,
           theme = {
@@ -747,7 +747,175 @@ DEFAULT KEYMAPS
 
 EXAMPLES
 
-??
+>lua
+    insert_to_note = {
+      enabled = true,
+      line_placeholder = "<TEXT_HERE>",
+      templates = {
+        tomorrow = { ... },
+        notice   = { ... },
+        error    = { ... },
+        todo     = { ... },
+      },
+    },
+<
+
+Each key inside `templates` is a named template you can reference in your
+keymaps. The `target` field controls where the captured text is written: -
+`"global"` — the shared global note file (under `save_dir`) - `"local"` —
+the project-local file (see `current_project.filename`) - `"/absolute/path"`
+— a fixed file, e.g. an org-mode refile target
+
+`templates` can be a **string** (evaluated once at startup, good for static
+content like a timestamp captured at load time) or a **function** (called each
+time the template is triggered, good for dynamic values like `vim.bo.filetype`
+or tomorrow’s date from orgmode).
+
+The string `<TEXT_HERE>` (or whatever you set `line_placeholder` to) marks
+where the selected text or annotation note will be inserted.
+
+To trigger a template from a keymap, use `opts:add_note_to "<template_key>"`
+inside a custom command under `keymaps.note.integrations.custom`:
+
+>lua
+    keymaps = {
+      note = {
+        integrations = {
+          custom = {
+            enabled = true,
+            commands = {
+              {
+                key  = "<LocalLeader><LocalLeader>",
+                cmd  = function(opts) opts:add_note_to "todo" end,
+                mode = "v",
+                desc = "Qf: capture todo",
+              },
+              {
+                key  = "<LocalLeader>at",
+                cmd  = function(opts) opts:add_note_to "tomorrow" end,
+                mode = "v",
+                desc = "Qf: remind me tomorrow",
+              },
+            },
+          },
+        },
+      },
+    },
+<
+
+Visual-select the lines you want to capture, then press the mapped key. The
+selected text replaces `<TEXT_HERE>` in the template, and the result is
+appended to the target file.
+
+Example:
+
+>lua
+              insert_to_note = {
+                enabled = true,
+                line_placeholder = "<TEXT_HERE>",
+                templates = {
+                  tomorrow = {
+                    target = RUtils.file.get_agenda_path "/orgmode/gtd/refile.org",
+                    description = "Remind me tomorrow",
+                    templates = function()
+                      local Date = require "orgmode.objects.date"
+                      local scheduled_date = Date.today().tomorrow()
+                      return string.format(
+    
+                        [[
+    * TODO investigate this later                                   :mytodo:
+      SCHEDULED: <%d-%s-%d %s 18:00>
+    
+      #+begin_src %s
+      <TEXT_HERE>
+      #+end_src
+    ]],
+                        scheduled_date.year,
+                        #tostring(scheduled_date.month) == 1 and "0" .. scheduled_date.month or scheduled_date.month,
+                        #tostring(scheduled_date.day) == 1 and "0" .. scheduled_date.day or scheduled_date.day,
+                        scheduled_date.dayname,
+                        vim.bo.filetype
+                      )
+                    end,
+                  },
+                  notice = {
+                    target = "global",
+                    description = "Quick notice / reminder",
+                    templates = string.format(
+                      [[
+    date: %s
+    notice:
+    <TEXT_HERE>
+    ]],
+                      os.date "%Y-%m-%d %H:%M"
+                    ),
+                  },
+    
+                  error = {
+                    target = "local",
+                    description = "Capture an error / bug for this project",
+                    templates = string.format(
+                      [[
+    date: %s
+    error:
+    <TEXT_HERE>
+    ]],
+                      os.date "%Y-%m-%d %H:%M"
+                    ),
+                  },
+    
+                  todo = {
+                    target = "local",
+                    description = "TODO item with source reference",
+                    templates = function()
+                      return string.format(
+                        [[
+      - [ ] error ..
+    
+        #+begin_src %s
+        <TEXT_HERE>
+        #+end_src
+    
+          ]],
+                        vim.bo.filetype
+                      )
+                    end,
+                  },
+                },
+              },
+<
+
+And under `keymaps` section
+
+>lua
+          keymaps = {
+            note = {
+              ...
+              integrations = {
+                custom = {
+                  enabled = true,
+                  commands = {
+                    {
+                      key = "<LocalLeader><LocalLeader>",
+                      cmd = function(opts)
+                        opts:add_note_to "todo"
+                      end,
+                      mode = "v",
+                      desc = "Qf: capture todo",
+                    },
+                    {
+                      key = "<LocalLeader>at",
+                      cmd = function(opts)
+                        opts:add_note_to "tomorrow"
+                      end,
+                      mode = "v",
+                      desc = "Qf: remind me tomorrow",
+                    },
+                  },
+                },
+              },
+            },
+<
 
 
 SUPPORT STATUSLINE           *qfbookmark-qfbookmark-(wip-)-support-statusline*
