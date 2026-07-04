@@ -402,6 +402,7 @@ require("qfbookmark").setup {
 <summary><strong>Mark</strong></summary>
 
 ### Mark
+___
 
 https://github.com/user-attachments/assets/6a8d277a-0e93-4c9c-90ed-5ee59753cbe6
 
@@ -426,6 +427,7 @@ https://github.com/user-attachments/assets/6a8d277a-0e93-4c9c-90ed-5ee59753cbe6
 
 
 #### Default Bookmark Types
+___
 
 | Type | Purpose |
 |--------|----------|
@@ -435,6 +437,7 @@ https://github.com/user-attachments/assets/6a8d277a-0e93-4c9c-90ed-5ee59753cbe6
 | NOTE | Mark Note Annotation |
 
 #### Default Keymaps
+___
 
 ```lua
 
@@ -482,6 +485,7 @@ https://github.com/user-attachments/assets/6a8d277a-0e93-4c9c-90ed-5ee59753cbe6
 ```
 
 #### Examples
+___
 
 ??
 
@@ -492,6 +496,7 @@ https://github.com/user-attachments/assets/6a8d277a-0e93-4c9c-90ed-5ee59753cbe6
 <summary><strong>Quickfix</strong></summary>
 
 ### Quickfix
+___
 
 https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
 
@@ -513,6 +518,7 @@ https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
 
 
 #### Default Keymaps
+___
 
 ```lua
 
@@ -544,6 +550,7 @@ https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
 ```
 
 #### Examples
+___
 
 ??
 
@@ -554,6 +561,7 @@ https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
 <summary><strong>Buffers</strong></summary>
 
 ### Buffers
+___
 
 https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
 
@@ -569,6 +577,7 @@ https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
 
 
 #### Default Keymaps
+___
 
 ```lua
 
@@ -582,8 +591,75 @@ https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
 ```
 
 #### Examples
+___
 
-??
+When you define `integrations.custom.enabled = true` under `buffers`, you can
+attach custom commands to items in the buffer list popup. Each command receives
+an `opts` table where `opts.selected` refers to the currently selected buffer entry.
+
+The built-in method `opts.selected:add_to(target)` sends the selected buffer to
+a destination. Accepted values for `target`:
+
+- `"quickfix"` — adds the buffer to Neovim's quickfix list
+- `"MARK"` — registers it as a general mark
+- `"FIX"` — registers it as a fix mark
+- `"DEBUG"` — registers it as a debug mark
+- `"NOTE"` — registers it as a note annotation
+
+Multi-select is supported out of the box — if you have multiple items selected
+in the popup (via the toggle selection key), `opts.selected:add_to(target)` will
+apply to all selected items at once. If nothing is selected, it falls back to
+the item under the cursor.
+
+> **Note:** `"NOTE"` is an exception to multi-select behavior. Because a note
+> annotation requires user input (category, text, and range), adding a `NOTE`
+> always operates on the single item under the cursor — even if multiple items
+> are selected. Multi-selection is ignored in this case.
+
+Example:
+
+
+```lua
+buffers = {
+  integrations = {
+    custom = {
+      enabled = true,
+      commands = {
+        {
+          key  = "sq",
+          cmd  = function(opts) opts.selected:add_to "quickfix" end,
+          desc = "Qf: add to quickfix",
+        },
+        {
+          key  = "sd",
+          cmd  = function(opts) opts.selected:add_to "DEBUG" end,
+          desc = "Qf: add to debug mark",
+        },
+        {
+          key  = "sn",
+          cmd  = function(opts) opts.selected:add_to "NOTE" end,
+          desc = "Qf: add to note mark",
+        },
+        {
+          key  = "sf",
+          cmd  = function(opts) opts.selected:add_to "FIX" end,
+          desc = "Qf: add to fix mark",
+        },
+        {
+          key  = "ss",
+          cmd  = function(opts) opts.selected:add_to "MARK" end,
+          desc = "Qf: add to mark",
+        },
+      },
+    },
+  },
+},
+```
+
+Commands are buffer-local to the popup window and only active while it is open.
+You can define as many entries as needed — each `key` is mapped in normal mode
+by default unless `mode` is specified.
+
 
 </details>
 
@@ -591,6 +667,7 @@ https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
 <summary><strong>Note</strong></summary>
 
 ### Note
+___
 
 https://github.com/user-attachments/assets/91599209-d31c-4fbf-a4d5-3c5b8aa48ea3
 
@@ -633,6 +710,7 @@ insert_to_note = {
 
 
 #### Default Keymaps
+___
 
 ```lua
 note = {
@@ -646,6 +724,7 @@ note = {
 ```
 
 #### Examples
+___
 
 ```lua
 insert_to_note = {
@@ -702,6 +781,10 @@ Visual-select the lines you want to capture, then press the mapped key.  The sel
 Example:
 
 <img width="800" height="509" alt="260704-16-11-29" src="https://github.com/user-attachments/assets/1f4661ca-7346-4216-8688-6a1fefd5fe7d" />
+
+
+
+Config:
 
 ```lua
           insert_to_note = {
