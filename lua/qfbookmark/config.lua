@@ -16,7 +16,7 @@ M.defaults = {
     },
   },
   window = {
-    notify = { mark = true, plugin = true },
+    notify = { mark = true, plugin = true, note = true, buffers = true },
     quickfix = {
       enabled = true,
       theme = {

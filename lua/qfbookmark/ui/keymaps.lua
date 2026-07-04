@@ -971,7 +971,9 @@ function Mapping.buffer.clear_all_items()
   if skipped > 0 then
     QfbookmarkUtils.warn(string.format("Deleted %d buffers, skipped %d (unsaved changes)", removed, skipped))
   else
-    QfbookmarkUtils.info(string.format("Deleted %d buffers", removed))
+    if Config.window.notify.buffers then
+      QfbookmarkUtils.info(string.format("Deleted %d buffers", removed))
+    end
   end
 
   vim.cmd "redraw"
@@ -1746,7 +1748,9 @@ function M.setup_keymap_mark_annotation(opts_popup, buf)
         func = function()
           Mapping.save.save_input()
           if opts_popup._opts.anchor and opts_popup._opts.anchor == "editor" then
-            QfbookmarkUtils.info "Added 1 item(s); skipped 0 item(s) already present."
+            if Config.window.notify.mark then
+              QfbookmarkUtils.info "Added 1 item(s); skipped 0 item(s) already present."
+            end
           end
         end,
         keys = Config.keymaps.mark and Config.keymaps.mark.save_annotation,

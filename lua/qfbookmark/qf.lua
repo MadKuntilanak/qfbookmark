@@ -504,7 +504,7 @@ local function __preview_annotate(template_name)
     end
   end
 
-  QfbookmarkUtils.info "no annotation under cursor"
+  QfbookmarkUtils.warn "no annotation under cursor"
 end
 
 ---@param opts? {template: string}

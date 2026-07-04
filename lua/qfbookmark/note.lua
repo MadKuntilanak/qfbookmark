@@ -318,7 +318,11 @@ function M.add_to_note(template_name)
     return
   end
 
-  QfbookmarkUtils.info(string.format("Added to %s note (template: %s)", template.target, template_name))
+  if Config.window.notify.note then
+    QfbookmarkUtils.info(
+      string.format("Added to %s note (template: %s)", QfbookmarkUtils.denormalize_path(template.target), template_name)
+    )
+  end
 
   local cfg_note = Config.window.note
   local is_insert_to = true

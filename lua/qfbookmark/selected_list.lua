@@ -108,7 +108,9 @@ function SelectedList:add_to(target)
     end
 
     if target ~= "NOTE" then
-      notify(success_add, already_add)
+      if Config.window.notify.mark then
+        notify(success_add, already_add)
+      end
 
       vim.schedule(function()
         if tbl_count(success_add) > 0 then

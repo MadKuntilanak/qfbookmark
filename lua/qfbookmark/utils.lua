@@ -415,6 +415,10 @@ function M.normalize_path(path)
   return vim.fs.normalize(path)
 end
 
+function M.denormalize_path(path)
+  return vim.fn.fnamemodify(path, ":~")
+end
+
 ---@param exclude_filetypes? string[]
 ---@return integer | nil
 function M.windows_is_opened_by_name(filename, exclude_filetypes)

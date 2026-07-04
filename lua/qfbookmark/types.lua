@@ -230,7 +230,7 @@
 ---@field actions { win_resized: boolean }
 
 ---@class QFBookmarkWindowCfg
----@field notify { enabled: boolean, mark: boolean, plugin: boolean }
+---@field notify { note: boolean, mark: boolean, plugin: boolean, buffers: boolean }
 ---@field quickfix QFBookWindowQuickfix
 ---@field mark QFBookWindowMark
 ---@field buffers QFBookWindowBuffers
