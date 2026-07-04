@@ -701,6 +701,7 @@ Visual-select the lines you want to capture, then press the mapped key.  The sel
 
 Example:
 
+<img width="800" height="509" alt="260704-16-11-29" src="https://github.com/user-attachments/assets/1f4661ca-7346-4216-8688-6a1fefd5fe7d" />
 
 ```lua
           insert_to_note = {
