@@ -618,6 +618,8 @@ the item under the cursor.
 
 Example:
 
+<img width="800" height="513" alt="260704-16-45-10" src="https://github.com/user-attachments/assets/daba1b07-f6d6-4e3f-9ea8-c81d769048a9" />
+
 
 ```lua
 buffers = {
