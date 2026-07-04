@@ -637,6 +637,8 @@ there, press the first letter of the sink name to dispatch immediately.
 ------------------------------------------------------------------------------
 Example:
 
+
+
 >lua
     mark = {
       preview_fullscreen = true,
