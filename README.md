@@ -526,6 +526,9 @@ To send to a different destination without leaving the preview popup, press `s` 
 
 Example:
 
+<img width="800" height="471" alt="260704-17-40-26" src="https://github.com/user-attachments/assets/8091dd0c-0513-405b-9d7d-70f2b63da02f" />
+
+
 ````lua
 mark = {
   preview_fullscreen = true,
