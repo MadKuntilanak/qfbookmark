@@ -404,7 +404,10 @@ require("qfbookmark").setup {
 ### Mark
 ___
 
-https://github.com/user-attachments/assets/6a8d277a-0e93-4c9c-90ed-5ee59753cbe6
+
+https://github.com/user-attachments/assets/2d9809a3-1db4-46de-8857-b69b1c59bdef
+
+
 
 - Persistent bookmarks anywhere in your codebase, organized by type.
 - Fast navigation through a Harpoon-style popup.
