@@ -1,4 +1,4 @@
-# QFBookmark (WIP 🚀)
+# QFBookmark
 
 <p align="center">
   <img src="./assets/tqfbookmark.svg" alt="qfbookmark" />
@@ -21,6 +21,8 @@
 ## 📸 Showcase
 
 ![qfbookmark](./assets/qfbookmark.png)
+
+> For more example videos and GIFs, see the [Providers](#providers) section.
 
 ## 📦 Requirements
 
@@ -395,6 +397,8 @@ require("qfbookmark").setup {
 </details>
 
 ---
+
+<a name="providers"></a>
 
 ## 🧩 Providers
 
@@ -1145,26 +1149,34 @@ M.QFbookmark = {
 <details>
 <summary>Why another bookmark plugin?</summary>
 
-[**QFBookmark**](https://github.com/MadKuntilanak/qfbookmark) was built around my own coding workflow. I often found myself placing marks in different files and later forgetting the context around them especially which function, method, or code section the mark referred to. This plugin extends the idea of traditional marks by combining them with quickfix lists, notes, and contextual navigation, making it easier to revisit and organize important locations across a project.
+[**QFBookmark**](https://github.com/MadKuntilanak/qfbookmark) was built around my own coding workflow. I often found myself placing marks in different files and later forgetting the context around them — especially which function, method, or code section the mark referred to. This plugin extends the idea of traditional marks by combining them with quickfix lists, notes, and contextual navigation, making it easier to revisit and organize important locations across a project.
 
 </details>
 
 <details>
 <summary>Why 4 mark types instead of one?</summary>
 
-The four types (MARK, FIX, DEBUG, NOTE) don't change how marks work internally — they exist purely for visual clarity. When you have many marks across multiple files, being able to tell at a glance "this is a debugging point" vs "this needs fixing" vs "this is just a reference" makes navigation significantly faster. Think of them as colored sticky notes.
+The four types (`MARK`, `FIX`, `DEBUG`, `NOTE`) don't change how marks work internally — they exist purely for visual clarity. When you have many marks across multiple files, being able to tell at a glance "this is a debugging point" vs "this needs fixing" vs "this is just a reference" makes navigation significantly faster. Think of them as colored sticky notes.
+
 </details>
 
 <details>
 <summary>Can I use only one type and ignore the rest?</summary>
 
 Yes. All four types behave identically under the hood. You can map only `MARK` and never touch the others.
+
 </details>
 
 <details>
-<summary>What's Mark Note Annotation different from the others?</summary>
+<summary>What makes Mark Note Annotation different from the other types?</summary>
 
-Mark Note Annotation is the only type that supports inline annotations. You can attach text to it, which is also exposed in the mark popup and can be leveraged by external AI plugins or custom integrations for additional context.
+`NOTE` is the only mark type that supports **inline and range annotations**:
+
+- **Single-line** — attach a note to a specific line, similar to a code comment.
+- **Range** — select multiple lines (e.g. an entire function or block) and annotate the whole range. The annotation range is elastic: if you add or remove lines inside it, the range adjusts automatically.
+
+In addition to the visual marker, the attached note text is exposed in the mark popup and can be used by external AI plugins (via `context_templates` and `sinks`) or any custom integration that needs additional context about a code region.
+
 </details>
 
 ## 🙏 Acknowledgements
