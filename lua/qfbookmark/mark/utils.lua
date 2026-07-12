@@ -123,24 +123,24 @@ end
 
 ---@param bufnr integer
 ---@param lnum integer
----@return boolean
-local function is_not_valid_line(bufnr, lnum)
+---@return boolean true when lnum is OUT of range for this buffer
+local function is_invalid_line(bufnr, lnum)
   local line_count = vim.api.nvim_buf_line_count(bufnr)
-  return lnum >= 0 and lnum < line_count
+  return lnum < 0 or lnum >= line_count
 end
 
 ---@param bufnr integer
 ---@param lnum integer
 ---@param col integer
----@return boolean
+---@return boolean true when the line/col no longer matches the buffer
 function M.is_not_valid_line_and_col(bufnr, lnum, col)
-  if is_not_valid_line(bufnr, lnum) then
-    return false
+  if is_invalid_line(bufnr, lnum) then
+    return true
   end
 
   local text = vim.api.nvim_buf_get_lines(bufnr, lnum, lnum + 1, false)[1] or ""
   local line_len = #text
-  return col >= 0 and col <= line_len
+  return col < 0 or col > line_len
 end
 
 ---@return integer start_line, integer end_line  (1-indexed, inclusive)
