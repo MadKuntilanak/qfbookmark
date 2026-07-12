@@ -132,7 +132,7 @@
 ---@class QFBookmarkMarkKeymaps
 ---@field move_item_up string | string[]
 ---@field move_item_down string | string[]
----@field load_all string | string[]
+---@field pick_master string | string[]
 ---@field zoom string | string[]
 ---@field toggle_open string | string[]
 ---@field del_mark string | string[]

@@ -133,7 +133,7 @@ M.defaults = {
 
       zoom = "<C-z>",
 
-      load_all = "<C-a>",
+      pick_master = "<Leader>qm",
 
       -- Jump directly to harpoon slot N
       harpoon = {

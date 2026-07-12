@@ -11,10 +11,12 @@
 - Mark lines with modes: `MARK`, `FIX`, `DEBUG`, `NOTE` (Mark Annotation)
 - Harpoon-style popup with preview, symbol context (function/class/struct/impl), and per-entry highlights
 - Treesitter-powered symbol resolution, shows enclosing function, class, struct, impl, or table context
-* Persistent marks saved to disk per project, automatically separated and restored for each Git branch or tag, with support for merging marks across branches and tags
-* Quickfix and location list integration with custom formatting, supporting both project-local and global save/load workflows
+- Persistent marks saved to disk per project, automatically separated and restored for each Git branch or tag, with support for merging marks across branches and tags
+- Quickfix and location list integration with custom formatting, supporting both project-local and global save/load workflows
+
 - Notes per project or globally (using external filetype definitions like org, norg, md, txt, etc.)
-* Built-in quickfix integrations with trouble.nvim, grug-far.nvim, and fzf-lua (enabled by default, optional to disable)
+- Built-in quickfix integrations with trouble.nvim, grug-far.nvim, and fzf-lua (enabled by default, optional to disable)
+
 - Fast navigation across all popup menus with jump shortcuts, plus optional number-based selection (similar to Harpoon) when `allow_number = true`
 - Seamless item sharing across providers (**Mark**, **Quickfix**, **Buffers**, **Note**): add entries from marks, buffers, or other lists into quickfix and other supported targets directly from popup menus, with configurable custom integrations via `integrations.custom` commands
 
@@ -279,7 +281,7 @@ require("qfbookmark").setup {
 
       zoom = "<C-z>",
 
-      load_all = "<C-a>",
+      pick_master = "<Leader>qm",
 
       -- Jump directly to harpoon slot N
       harpoon = {
@@ -344,7 +346,7 @@ require("qfbookmark").setup {
 ### Highlights
 
 | Highlight Group | Description |
-|---|---|
+| --- | --- |
 | `QFBookmarkQfLineNr` | Line number column in the quickfix/loclist window |
 | `QFBookmarkQfFileBasename` | Basename of the file shown in quickfix entries |
 | `QFBookmarkQfWarn` | Quickfix entries marked as warnings |
@@ -406,12 +408,10 @@ require("qfbookmark").setup {
 <summary><strong>Mark</strong></summary>
 
 ### Mark
+
 ___
 
-
-https://github.com/user-attachments/assets/2d9809a3-1db4-46de-8857-b69b1c59bdef
-
-
+<https://github.com/user-attachments/assets/2d9809a3-1db4-46de-8857-b69b1c59bdef>
 
 - Persistent bookmarks anywhere in your codebase, organized by type.
 - Fast navigation through a Harpoon-style popup.
@@ -426,21 +426,21 @@ https://github.com/user-attachments/assets/2d9809a3-1db4-46de-8857-b69b1c59bdef
 > ⚠️
 > Inside the mark popup, the delete keymaps live under `keymaps.actions.del_item` (delete current entry) and `keymaps.actions.del_item_all` (delete all entries), these are separate from `del_mark` / `del_mark_buffer` below, which operate directly on a buffer rather than inside the popup.
 
-
 > If you don't need this feature, you can disable it via `window.mark.enabled = false`.
 
-
 #### Default Bookmark Types
+
 ___
 
 | Type | Purpose |
-|--------|----------|
+| -------- | ---------- |
 | MARK | General bookmark |
 | FIX | Something that needs fixing |
 | DEBUG | Debugging location |
 | NOTE | Mark Note Annotation |
 
 #### Default Keymaps
+
 ___
 
 ```lua
@@ -467,7 +467,7 @@ ___
 
       zoom = "<C-z>",
 
-      load_all = "<C-a>",
+      pick_master = "<Leader>qm",
 
       -- Jump directly to harpoon slot N
       harpoon = {
@@ -489,21 +489,24 @@ ___
 ```
 
 #### Examples
+
 ___
 
 The `mark` section controls how annotation contexts are formatted and where they
 are sent when you trigger the preview/send workflow from the mark popup.
 
 ##### `context_templates`
+
 ___
 
-Defines how the annotation content is assembled into a string before sending. 
+Defines how the annotation content is assembled into a string before sending.
 Each entry under `handler` is a named template with:
 
 - `description` — shown in the template picker inside the preview popup
 - `builder` — a function that receives a `ctx` table and returns a formatted string
 
 The `ctx` table contains:
+
 - `ctx.text` — the short note the user typed when creating the annotation
 - `ctx.lines` — the actual code lines covered by the annotation range
 - `ctx.filetype` — filetype of the source buffer
@@ -515,8 +518,8 @@ The `ctx` table contains:
 
 `separator` controls how multiple contexts are joined when more than one annotation is selected for preview. Set to `nil` for a plain blank line, or provide a custom string for a visible divider.
 
-
 ##### `sinks`
+
 ___
 
 Defines where the formatted context string is delivered after the user confirms in the preview popup. Each entry under `handler` is a named function that receives the final string.
@@ -531,7 +534,6 @@ To send to a different destination without leaving the preview popup, press `s` 
 Example:
 
 <img width="800" height="471" alt="260704-17-40-26" src="https://github.com/user-attachments/assets/8091dd0c-0513-405b-9d7d-70f2b63da02f" />
-
 
 ````lua
 mark = {
@@ -587,14 +589,14 @@ mark = {
 To trigger the preview workflow, place the cursor on a mark entry that has a note annotation in the mark popup, then press the bound key for `preview_context` (e.g. `S` in the example keymaps). If multiple items are selected, all their contexts are combined in the preview using `separator` between them
 </details>
 
-
 <details>
 <summary><strong>Buffers</strong></summary>
 
 ### Buffers
+
 ___
 
-https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
+<https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660>
 
 - Buffer management with a simple popup interface.
 - Quickly browse and switch between open buffers.
@@ -606,8 +608,8 @@ https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
 
 > If you don't need this feature, you can disable it via `window.buffers.enabled = false`.
 
-
 #### Default Keymaps
+
 ___
 
 ```lua
@@ -622,11 +624,12 @@ ___
 ```
 
 #### Examples
+
 ___
 
 When you define `integrations.custom.enabled = true` under `buffers`, you can attach custom commands to items in the buffer list popup. Each command receives an `opts` table where `opts.selected` refers to the currently selected buffer entry.
 
-The built-in method `opts.selected:add_to(target)` sends the selected buffer to a destination. 
+The built-in method `opts.selected:add_to(target)` sends the selected buffer to a destination.
 Accepted values for `target`:
 
 - `"quickfix"` — adds the buffer to Neovim's quickfix list
@@ -637,13 +640,12 @@ Accepted values for `target`:
 
 Multi-select is supported out of the box, if you have multiple items selected in the popup (via the toggle selection key), `opts.selected:add_to(target)` will apply to all selected items at once. If nothing is selected, it falls back to the item under the cursor.
 
-> **Note:** `"NOTE"` is an exception to multi-select behavior. 
+> **Note:** `"NOTE"` is an exception to multi-select behavior.
 > Because a note annotation requires user input (category, text, and range), adding a `NOTE` always operates on the single item under the cursor — even if multiple items are selected. Multi-selection is ignored in this case.
 
 Example:
 
 <img width="800" height="513" alt="260704-16-45-10" src="https://github.com/user-attachments/assets/daba1b07-f6d6-4e3f-9ea8-c81d769048a9" />
-
 
 ```lua
 buffers = {
@@ -684,17 +686,16 @@ buffers = {
 
 Commands are buffer-local to the popup window and only active while it is open.  You can define as many entries as needed, each `key` is mapped in normal mode by default unless `mode` is specified.
 
-
 </details>
 
 <details>
 <summary><strong>Quickfix</strong></summary>
 
 ### Quickfix
+
 ___
 
-https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
-
+<https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903>
 
 - Quickfix and LocList integration with custom formatter.
 - Navigate quickfix history with `next_hist` and `prev_hist`.
@@ -711,8 +712,8 @@ https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
 
 > If you don't need this feature, you can disable it via `window.quickfix.enabled = false`.
 
-
 #### Default Keymaps
+
 ___
 
 ```lua
@@ -745,6 +746,7 @@ ___
 ```
 
 #### Examples
+
 ___
 
 When you define `integrations.custom.enabled = true` under `quickfix`, you can attach custom commands to items in the quickfix (or loclist) popup. Each command receives an `opts` table where `opts.selected` refers to the currently highlighted quickfix entry.
@@ -759,7 +761,6 @@ The built-in method `opts.selected:add_to(target)` promotes the selected quickfi
 Multi-select is supported, if multiple items are selected, `add_to` applies to all of them at once. The same `"NOTE"` exception applies here: because a note annotation requires user input, it always operates on the single item under the cursor regardless of how many items are selected.
 
 Example:
-
 
 ```lua
 quickfix = {
@@ -868,16 +869,14 @@ end
 Commands are active only while the quickfix popup is open and are mapped in normal mode by default unless `mode` is specified.
 </details>
 
-
 <details>
 <summary><strong>Note</strong></summary>
 
-
 ### Note
+
 ___
 
-https://github.com/user-attachments/assets/91599209-d31c-4fbf-a4d5-3c5b8aa48ea3
-
+<https://github.com/user-attachments/assets/91599209-d31c-4fbf-a4d5-3c5b8aa48ea3>
 
 The note provider is just a way to capture text you'll want to check out
 later. Enable it via `keymaps.note.integrations.custom`, and it'll insert
@@ -912,8 +911,8 @@ insert_to_note = {
 > **Note:** `templates` can be defined as either a string or a function.  
 > Use a function when you need the template to be evaluated at runtime, for example, when it depends on values like `vim.bo.filetype` that should be read from the current buffer at insert time, rather than once when the config is first loaded.
 
-
 #### Default Keymaps
+
 ___
 
 ```lua
@@ -928,6 +927,7 @@ note = {
 ```
 
 #### Examples
+
 ___
 
 ```lua
@@ -944,6 +944,7 @@ insert_to_note = {
 ```
 
 Each key inside `templates` is a named template you can reference in your keymaps.  The `target` field controls where the captured text is written:
+
 - `"global"` — the shared global note file (under `save_dir`)
 - `"local"` — the project-local file (see `current_project.filename`)
 - `"/absolute/path"` — a fixed file, e.g. an org-mode refile target
@@ -985,8 +986,6 @@ Visual-select the lines you want to capture, then press the mapped key.  The sel
 Example:
 
 <img width="800" height="509" alt="260704-16-11-29" src="https://github.com/user-attachments/assets/1f4661ca-7346-4216-8688-6a1fefd5fe7d" />
-
-
 
 Config:
 
@@ -1106,7 +1105,7 @@ And under `keymaps` section
 
 Example using [heirline](https://github.com/rebelot/heirline.nvim)
 
-![statusline](./assets/qfbookmark-statusline.png) 
+![statusline](./assets/qfbookmark-statusline.png)
 
 <details>
 <summary>Click to expand</summary>
@@ -1141,8 +1140,8 @@ M.QFbookmark = {
   },
 }
 ```
-</details>
 
+</details>
 
 ## ❓ FAQ
 
@@ -1189,7 +1188,6 @@ In addition to the visual marker, the attached note text is exposed in the mark 
 
 - [folke](https://github.com/folke)  
   Creator of many incredible Neovim plugins. Basically one of the reasons my Neovim config keeps growing instead of getting smaller. 😅
-
 
 ## 📄 License
 

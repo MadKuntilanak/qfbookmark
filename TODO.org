@@ -34,9 +34,9 @@
   - [X] support custom templates
 - [X] fix extermark priority at mark menu
 - [X] add extmark range support
-- [-] Update README [3/5]
+- [-] Update README [4/5]
   - [X] Explain provider features
-  - [ ] Add demos for each feature
+  - [X] Add demos for each feature
   - [X] Add statusline helper
   - [ ] Add example integration scripts
   - [X] Add highlights
