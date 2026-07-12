@@ -1,5 +1,5 @@
 *qfbookmark.txt*
-                                  For NVIM v0.8.0    Last change: 2026 July 04
+                                  For NVIM v0.8.0    Last change: 2026 July 12
 
 ==============================================================================
 Table of Contents                               *qfbookmark-table-of-contents*
@@ -28,14 +28,25 @@ lists**, and **capturing notes** into a single workflow.
 FEATURES                                      *qfbookmark-qfbookmark-features*
 
 - Mark lines with modes: `MARK`, `FIX`, `DEBUG`, `NOTE` (Mark Annotation)
-- Harpoon-style popup with preview, symbol context (function/class/struct/impl), and per-entry highlights
-- Treesitter-powered symbol resolution, shows enclosing function, class, struct, impl, or table context
-- Persistent marks saved to disk per project, automatically separated and restored for each Git branch or tag, with support for merging marks across branches and tags
-- Quickfix and location list integration with custom formatting, supporting both project-local and global save/load workflows
-- Notes per project or globally (using external filetype definitions like org, norg, md, txt, etc.)
-- Built-in quickfix integrations with trouble.nvim, grug-far.nvim, and fzf-lua (enabled by default, optional to disable)
-- Fast navigation across all popup menus with jump shortcuts, plus optional number-based selection (similar to Harpoon) when `allow_number = true`
-- Seamless item sharing across providers (**Mark**, **Quickfix**, **Buffers**, **Note**): add entries from marks, buffers, or other lists into quickfix and other supported targets directly from popup menus, with configurable custom integrations via `integrations.custom` commands
+- Harpoon-style popup with preview, symbol context (function/class/struct/impl),
+    and per-entry highlights
+- Treesitter-powered symbol resolution, shows enclosing function, class, struct,
+    impl, or table context
+- Persistent marks saved to disk per project, automatically separated and
+    restored for each Git branch or tag, with support for merging marks across
+    branches and tags
+- Quickfix and location list integration with custom formatting, supporting both
+    project-local and global save/load workflows
+- Notes per project or globally (using external filetype definitions like org,
+    norg, md, txt, etc.)
+- Built-in quickfix integrations with trouble.nvim, grug-far.nvim, and fzf-lua
+    (enabled by default, optional to disable)
+- Fast navigation across all popup menus with jump shortcuts, plus optional
+    number-based selection (similar to Harpoon) when `allow_number = true`
+- Seamless item sharing across providers (**Mark**, **Quickfix**, **Buffers**,
+    **Note**): add entries from marks, buffers, or other lists into quickfix and
+    other supported targets directly from popup menus, with configurable custom
+    integrations via `integrations.custom` commands
 
 
 SHOWCASE                                      *qfbookmark-qfbookmark-showcase*
@@ -300,7 +311,7 @@ DEFAULT CONFIGS ~
     
           zoom = "<C-z>",
     
-          load_all = "<C-a>",
+          pick_master = "<Leader>qm",
     
           -- Jump directly to harpoon slot N
           harpoon = {
@@ -512,7 +523,7 @@ MARK ~
 
 ------------------------------------------------------------------------------
 
-https://github.com/user-attachments/assets/2d9809a3-1db4-46de-8857-b69b1c59bdef
+<https://github.com/user-attachments/assets/2d9809a3-1db4-46de-8857-b69b1c59bdef>
 
 - Persistent bookmarks anywhere in your codebase, organized by type.
 - Fast navigation through a Harpoon-style popup.
@@ -570,7 +581,7 @@ DEFAULT KEYMAPS
     
           zoom = "<C-z>",
     
-          load_all = "<C-a>",
+          pick_master = "<Leader>qm",
     
           -- Jump directly to harpoon slot N
           harpoon = {
@@ -607,12 +618,14 @@ Each entry under `handler` is a named template with:
 - `description` — shown in the template picker inside the preview popup
 - `builder` — a function that receives a `ctx` table and returns a formatted string
 
-The `ctx` table contains: - `ctx.text` — the short note the user typed when
-creating the annotation - `ctx.lines` — the actual code lines covered by the
-annotation range - `ctx.filetype` — filetype of the source buffer -
-`ctx.filepath` — absolute path of the source file - `ctx.category` —
-annotation category (`mark` / `fix` / `debug` / `note` / etc) - `ctx.range` —
-`{ start_row, start_col, end_row, end_col }` (0-indexed)
+The `ctx` table contains:
+
+- `ctx.text` — the short note the user typed when creating the annotation
+- `ctx.lines` — the actual code lines covered by the annotation range
+- `ctx.filetype` — filetype of the source buffer
+- `ctx.filepath` — absolute path of the source file
+- `ctx.category` — annotation category (`mark` / `fix` / `debug` / `note` / etc)
+- `ctx.range` — `{ start_row, start_col, end_row, end_col }` (0-indexed)
 
 `default` sets which template is pre-selected when the preview popup opens. If
 the key is not found in `handler`, it falls back to the first entry, then to
@@ -701,7 +714,7 @@ BUFFERS ~
 
 ------------------------------------------------------------------------------
 
-https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660
+<https://github.com/user-attachments/assets/ff2dc9f9-e281-4374-b6d7-c39ea20d0660>
 
 - Buffer management with a simple popup interface.
 - Quickly browse and switch between open buffers.
@@ -808,7 +821,7 @@ QUICKFIX ~
 
 ------------------------------------------------------------------------------
 
-https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903
+<https://github.com/user-attachments/assets/eeee5cf4-948d-4c45-baea-0c1952d52903>
 
 - Quickfix and LocList integration with custom formatter.
 - Navigate quickfix history with `next_hist` and `prev_hist`.
@@ -994,7 +1007,7 @@ NOTE ~
 
 ------------------------------------------------------------------------------
 
-https://github.com/user-attachments/assets/91599209-d31c-4fbf-a4d5-3c5b8aa48ea3
+<https://github.com/user-attachments/assets/91599209-d31c-4fbf-a4d5-3c5b8aa48ea3>
 
 The note provider is just a way to capture text you’ll want to check out
 later. Enable it via `keymaps.note.integrations.custom`, and it’ll insert the
@@ -1066,10 +1079,11 @@ EXAMPLES
 <
 
 Each key inside `templates` is a named template you can reference in your
-keymaps. The `target` field controls where the captured text is written: -
-`"global"` — the shared global note file (under `save_dir`) - `"local"` —
-the project-local file (see `current_project.filename`) - `"/absolute/path"`
-— a fixed file, e.g. an org-mode refile target
+keymaps. The `target` field controls where the captured text is written:
+
+- `"global"` — the shared global note file (under `save_dir`)
+- `"local"` — the project-local file (see `current_project.filename`)
+- `"/absolute/path"` — a fixed file, e.g. an org-mode refile target
 
 `templates` can be a **string** (evaluated once at startup, good for static
 content like a timestamp captured at load time) or a **function** (called each
