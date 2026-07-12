@@ -644,6 +644,13 @@ function M.prev_mark()
   next_prev_mark(true)
 end
 
+-- ├────────────────────────────────┤ COMMANDS ├────────────────────────────────┤
+
+vim.api.nvim_create_user_command("QfbookmarkReloadMarks", function()
+  QfbookmarkMark.check_and_reload(M.get_current_mark_lists(), true)
+end, {
+  desc = "QFBookmark: force reload marks for the current root/branch",
+})
 -- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
 -- ╏                                   BUFFERS                                   ╏
 -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
