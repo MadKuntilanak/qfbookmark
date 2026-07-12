@@ -29,6 +29,7 @@
 ## 📦 Requirements
 
 - Neovim >= 0.12
+- [`fd`](https://github.com/sharkdp/fd)
 - [nvim-treesitter](https://github.com/nvim-treesitter/nvim-treesitter) (optional, for symbol context)
 - [trouble](https://github.com/folke/trouble.nvim) (optional)
 - [fzf-lua](https://github.com/ibhagwan/fzf-lua) (optional)
@@ -487,6 +488,43 @@ ___
     },
 
 ```
+
+#### Commands
+
+___
+
+1. `:QfbookmarkReloadMarks`
+
+   Force-reloads marks for the currently active root/branch, bypassing the debounce interval used by the automatic `FocusGained`/`BufEnter`/`DirChanged` checks.
+
+   Useful when marks appear out of sync — for example, after manually editing a `qfmark_<branch>.lua` file outside Neovim, or right after a `git checkout` that the automatic detection hasn't picked up yet.
+
+   ```vim
+   :QfbookmarkReloadMarks
+   ```
+
+   ```lua
+   vim.keymap.set("n", "<leader>qr", "<cmd>QfbookmarkReloadMarks<cr>", { desc = "QFBookmark: Reload current marks" })
+   ```
+
+1. `:QfbookmarkPickMaster`
+
+   Opens an interactive picker listing every QFBookmark master file (`qfmark_<branch>.lua`) found across all your projects, not just the one you're currently in. Select an entry to merge its marks into your current project/branch. The bookmark for your current project is always shown first as `current`.
+
+   Handy when you frequently switch between multiple repos or branches and want to merge marks from a different project into your current bookmark set, without leaving Neovim.
+
+   ```vim
+   :QfbookmarkPickMaster
+   ```
+
+   ```lua
+   vim.keymap.set(
+     "n",
+     "<leader>qm",
+     "<cmd>QfbookmarkPickMaster<cr>",
+     { desc = "QFBookmark: Pick master (merge from another project/branch)" }
+   )
+   ```
 
 #### Examples
 
