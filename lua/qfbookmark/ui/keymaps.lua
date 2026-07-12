@@ -462,118 +462,7 @@ function Mapping.mark.toggle_selection()
 end
 
 function Mapping.mark.select_and_load_qfmasters()
-  local path_qf = Config.save_dir
-  local Path = require "qfbookmark.path"
-  local PUtils = require "qfbookmark.path.utils"
-
-  if not path_qf or not PUtils.is_dir(path_qf) then
-    QfbookmarkUtils.warn "something went wrong"
-    return
-  end
-
-  ---@param path string
-  ---@param is_current? boolean
-  ---@param padding? integer
-  ---@return QFbookMasterOpts
-  ---
-  local reform = function(path, is_current, padding)
-    is_current = is_current or false
-
-    local QfbookmarkPathUtils = require "qfbookmark.path.utils"
-    local basename = QfbookmarkPathUtils.basename(path) -- "qfmark_master.lua"
-
-    local parent = vim.fn.fnamemodify(path, ":h") -- /path/to/dotfiles-e76759d5fc3b
-    local dir = vim.fn.fnamemodify(parent, ":t") -- "dotfiles-e76759d5fc3b"
-
-    local dir_parts = vim.split(dir, "-")
-    local name_project = dir_parts[1] -- "dotfiles"
-    local hash_project = dir_parts[2] -- "e76759d5fc3b"
-
-    -- extract branch/tag/commit name from the filename itself:
-    --   qfmark_master.lua          → "master"
-    --   qfmark_no-branch.lua       → "no-branch"
-    --   qfmark_detached-85919cd.lua → "detached-85919cd"
-    local branch_name = basename:match "^qfmark_(.+)%.lua$" or ""
-
-    local shorten = QfbookmarkUIUtils.shorten_text(hash_project, 20)
-
-    local text
-    if is_current then
-      text = "current"
-    else
-      text =
-        string.format("%s-%-" .. tostring(padding - #name_project) .. "s · %s", name_project, shorten, branch_name)
-    end
-
-    return {
-      orig = path,
-      dir = dir,
-      basename = basename,
-      project = name_project,
-      branch = branch_name,
-      tag = "",
-      text = text,
-    }
-  end
-
-  local prefix = "qfmark"
-  local cmd = {
-    "fd",
-    -- ".",
-    prefix,
-    -- vim.fn.shellescape(path_qf),
-    path_qf,
-    -- "-d",
-    -- "2",
-    "-t",
-    "f",
-    "-e",
-    "lua",
-  }
-
-  local files = vim.fn.systemlist(cmd)
-
-  local qf_master = {}
-  local select_files = {}
-
-  local path_git_cwd = Path.get_target_file_path(false)
-
-  --- Create table for current mark project first
-  local current_mark = reform(path_git_cwd, true)
-  qf_master[current_mark.text] = current_mark
-  table.insert(select_files, "current")
-
-  --- Get the maximum padding from the lists
-  local get_padding = function()
-    local pad = 0
-    for _, f in ipairs(files) do
-      local parent = vim.fn.fnamemodify(f, ":h") -- /path/to/dotfiles-e76759d5fc3b
-      local dir = vim.fn.fnamemodify(parent, ":t") -- "dotfiles-e76759d5fc3b"
-      local txt_len = vim.fn.strdisplaywidth(dir)
-
-      if pad < txt_len then
-        pad = txt_len
-      end
-    end
-
-    return pad
-  end
-
-  local p = get_padding()
-
-  for _, f in ipairs(files) do
-    local other_mark = reform(f, false, p)
-
-    -- Do not include current project
-    if other_mark.orig ~= current_mark.orig then
-      -- qf_master[#qf_master + 1] = other_mark
-      qf_master[other_mark.text] = other_mark
-      select_files[#select_files + 1] = other_mark.text
-    end
-  end
-
-  local picker = require "qfbookmark.pickers"
-  picker.pick_master_bookmark(Config, select_files, qf_master)
+  require("qfbookmark.mark").pick_master()
 end
 
 function Mapping.mark.jump_to_mark_n()
@@ -1426,12 +1315,12 @@ function M.setup_keymap_mark(opts_popup, buf, cb)
       },
 
       {
-        desc = "Qfmark: load QFMaster",
+        desc = "Qfmark: pick QFMaster",
         func = function()
           Mapping.mark.select_and_load_qfmasters()
           Mapping.exit_close()
         end,
-        keys = Config.keymaps.mark and Config.keymaps.mark.load_all,
+        keys = Config.keymaps.mark and Config.keymaps.mark.pick_master,
         mode = "n",
         buffer = Mapping.buf,
         from_user = true,

@@ -971,6 +971,119 @@ function M.add_mark_at(bufnr, line, col, line_text, category)
   return true
 end
 
+--- Open an interactive picker listing all available QFBookmark "master" files
+--- (i.e. `qfmark_<branch>.lua` files stored under `Config.save_dir`), grouped
+--- by project/directory hash, so the user can switch bookmarks to any other
+--- project or branch — not just the one currently active.
+function M.pick_master()
+  local path_qf = Config.save_dir
+
+  if not path_qf or not QfbookmarkPathUtils.is_dir(path_qf) then
+    QfbookmarkUtils.warn "something went wrong"
+    return
+  end
+
+  ---@param path string
+  ---@param is_current? boolean
+  ---@param padding? integer
+  ---@return QFbookMasterOpts
+  local reform = function(path, is_current, padding)
+    is_current = is_current or false
+
+    local basename = QfbookmarkPathUtils.basename(path) -- "qfmark_master.lua"
+
+    local parent = vim.fn.fnamemodify(path, ":h") -- /path/to/dotfiles-e76759d5fc3b
+    local dir = vim.fn.fnamemodify(parent, ":t") -- "dotfiles-e76759d5fc3b"
+
+    local dir_parts = vim.split(dir, "-")
+    local name_project = dir_parts[1] -- "dotfiles"
+    local hash_project = dir_parts[2] -- "e76759d5fc3b"
+
+    -- extract branch/tag/commit name from the filename itself:
+    --   qfmark_master.lua          → "master"
+    --   qfmark_no-branch.lua       → "no-branch"
+    --   qfmark_detached-85919cd.lua → "detached-85919cd"
+    local branch_name = basename:match "^qfmark_(.+)%.lua$" or ""
+    local shorten = require("qfbookmark.ui.utils").shorten_text(hash_project, 20)
+
+    local text
+    if is_current then
+      text = "current"
+    else
+      text =
+        string.format("%s-%-" .. tostring(padding - #name_project) .. "s · %s", name_project, shorten, branch_name)
+    end
+
+    return {
+      orig = path,
+      dir = dir,
+      basename = basename,
+      project = name_project,
+      branch = branch_name,
+      tag = "",
+      text = text,
+    }
+  end
+
+  local prefix = "qfmark"
+  local cmd = {
+    "fd",
+    -- ".",
+    prefix,
+    -- vim.fn.shellescape(path_qf),
+    path_qf,
+    -- "-d",
+    -- "2",
+    "-t",
+    "f",
+    "-e",
+    "lua",
+  }
+
+  local files = vim.fn.systemlist(cmd)
+
+  local qf_master = {}
+  local select_files = {}
+
+  local path_git_cwd = QfbookmarkPaths.get_target_file_path(false)
+
+  --- Create table for current mark project first
+  local current_mark = reform(path_git_cwd, true)
+  qf_master[current_mark.text] = current_mark
+  table.insert(select_files, "current")
+
+  --- Get the maximum padding from the lists
+  local get_padding = function()
+    local pad = 0
+    for _, f in ipairs(files) do
+      local parent = vim.fn.fnamemodify(f, ":h") -- /path/to/dotfiles-e76759d5fc3b
+      local dir = vim.fn.fnamemodify(parent, ":t") -- "dotfiles-e76759d5fc3b"
+      local txt_len = vim.fn.strdisplaywidth(dir)
+
+      if pad < txt_len then
+        pad = txt_len
+      end
+    end
+
+    return pad
+  end
+
+  local p = get_padding()
+
+  for _, f in ipairs(files) do
+    local other_mark = reform(f, false, p)
+
+    -- Do not include current project
+    if other_mark.orig ~= current_mark.orig then
+      -- qf_master[#qf_master + 1] = other_mark
+      qf_master[other_mark.text] = other_mark
+      select_files[#select_files + 1] = other_mark.text
+    end
+  end
+
+  require("qfbookmark.pickers").pick_master_bookmark(Config, select_files, qf_master)
+end
+
 local autocmds_set_once = false
 
 ---@param mark_lists QFBookmarkBufferMark

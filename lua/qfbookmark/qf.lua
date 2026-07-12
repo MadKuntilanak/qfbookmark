@@ -651,6 +651,12 @@ vim.api.nvim_create_user_command("QfbookmarkReloadMarks", function()
 end, {
   desc = "QFBookmark: force reload marks for the current root/branch",
 })
+vim.api.nvim_create_user_command("QfbookmarkPickMaster", function()
+  require("qfbookmark.mark").pick_master()
+end, {
+  desc = "QFBookmark: browse (merge) qfmaster",
+})
+
 -- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
 -- ╏                                   BUFFERS                                   ╏
 -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
