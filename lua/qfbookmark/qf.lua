@@ -120,16 +120,15 @@ local function recall_augroup()
   QfbookmarkUtils.clear_autocmd_group(Config.sign_group .. "BranchWatch")
   local path_group = QfbookmarkUtils.create_augroup_name "BranchWatch"
 
-  --- unplan: no need this?
   --- DirChanged fires immediately on `:cd`, `:lcd`, or `:tcd` — covers the
   --- case where the user explicitly changes Neovim's working directory.
-  -- vim.api.nvim_create_autocmd("DirChanged", {
-  --   group = path_group,
-  --   callback = function()
-  --     M.check_and_reload(mark_lists, true)
-  --   end,
-  --   desc = "qfbookmark: reload marks when cwd changes",
-  -- })
+  vim.api.nvim_create_autocmd("DirChanged", {
+    group = path_group,
+    callback = function()
+      QfbookmarkMark.check_and_reload(M.get_current_mark_lists(), true)
+    end,
+    desc = "QFBookmark: reload marks when cwd actually changes (:cd/:lcd/:tcd)",
+  })
 
   --- FocusGained fires when Neovim regains focus (e.g. switching back from
   --- a terminal where `git checkout` was run). Debounced to avoid running
@@ -153,6 +152,21 @@ local function recall_augroup()
       if buftype ~= "" then
         return
       end
+
+      -- Skip if the buffer has no real file (e.g. a fresh empty buffer)
+      local bufname = vim.api.nvim_buf_get_name(args.buf)
+      if bufname == "" then
+        return
+      end
+
+      -- only proceed if this file is still inside the active cwd
+      -- file is outside the active project, don't disturb the context
+      local cwd = vim.fn.getcwd()
+      local file_dir = vim.fn.fnamemodify(bufname, ":p:h")
+      if not vim.startswith(file_dir, cwd) then
+        return
+      end
+
       QfbookmarkMark.check_and_reload(M.get_current_mark_lists(), false)
     end,
     desc = "QFBookmark: reload marks when entering a buffer from a different project",

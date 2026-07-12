@@ -712,6 +712,9 @@ function M.update_mark_sign(mark_lists, bufnr)
       end
 
       if QfbookmarkMarkUtils.is_not_valid_line_and_col(bufnr, m.line, m.col) then
+        QfbookmarkUtils.warn(
+          string.format("mark '%s' removed — line %d no longer matches in '%s'", m.key, m.line, m.filename)
+        )
         M.delete_mark(mark_lists, category, m.key, m.id, bufnr)
       else
         if m.category ~= "NOTE" then
@@ -1007,7 +1010,7 @@ function M.setup_mark_autocmds(mark_lists, force_set)
     pattern = "*",
     callback = function(ctx)
       vim.schedule(function()
-        if not vim.api.nvim_buf_is_valid(ctx.buf) or not vim.api.nvim_buf_is_loaded(ctx.buf) then
+        if not ctx.buf or not vim.api.nvim_buf_is_valid(ctx.buf) or not vim.api.nvim_buf_is_loaded(ctx.buf) then
           return
         end
 
