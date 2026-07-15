@@ -252,6 +252,16 @@ local __popup_opts_for = {
 
     setup_option_main_popup(main_win, main_buf, true)
 
+    local tw = math.max(opts_popup.win_opts.wincfg.width - 10, 1)
+    vim.bo[main_buf].textwidth = tw
+    vim.bo[main_buf].formatoptions = vim.bo[main_buf].formatoptions .. "t"
+    vim.wo[main_win].wrap = true
+    vim.wo[main_win].linebreak = true
+
+    -- Use the foldcolumn to simulate 2-character left padding
+    vim.wo[main_win].foldcolumn = "2"
+    vim.wo[main_win].signcolumn = "no"
+
     local main_win_cfg = vim.api.nvim_win_get_config(main_win)
 
     local buf_preview, win_preview =

@@ -35,6 +35,8 @@
 --- popup?: QFBookmarkUiPopup,
 --- is_harpoon?: boolean,
 --- is_buffers?: boolean,
+--- current_cursor?: integer,
+--- current_mark?: QFBookmarkEntry,
 --- is_mark_annotation?: boolean,
 --- is_note?: boolean,
 --- is_select_sink?: boolean,

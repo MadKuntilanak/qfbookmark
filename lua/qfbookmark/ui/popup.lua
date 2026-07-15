@@ -303,6 +303,32 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, content)
     pcall(vim.treesitter.stop, buf)
   end
+
+  if not filename then
+    return
+  end
+  local fname = QfbookmarkUIUtils.shorten_path(QfbookmarkUtils.denormalize_path(filename), 20)
+  local m = opts_popup.current_mark
+  if not m then
+    return
+  end
+
+  local category = m.mark and m.mark.sign_category or "MARK"
+  local keyword_def = require("qfbookmark.mark.utils").get_keyword_def(category)
+  if not keyword_def then
+    return
+  end
+
+  local line_str = m.mark and ":" .. tostring(m.mark.line) .. " " or ""
+  local is_annotation = (m.mark and m.mark.note and #m.mark.note > 0) and "(Note) " or " "
+
+  vim.api.nvim_win_set_config(win, {
+    title = {
+      { " " .. keyword_def.icon .. is_annotation, keyword_def.hl_group or "WarningMsg" },
+      { fname, "QFBookmarkEntryFnName" },
+      { line_str, "QFBookmarkEntryLnum" },
+    },
+  })
 end
 
 --- Setup CursorMoved autocmd to update the preview window on navigation.

@@ -173,7 +173,7 @@ function M.shorten_path(path, max_len)
   local result = parts[#parts]
   for i = #parts - 1, 1, -1 do
     local candidate = parts[i] .. "/" .. result
-    if vim.fn.strdisplaywidth(candidate) > max_len - 2 then
+    if vim.fn.strdisplaywidth(candidate) > max_len + 10 then
       return "…/" .. result
     end
     result = candidate

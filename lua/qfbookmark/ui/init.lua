@@ -357,7 +357,7 @@ local function select_category(on_select, on_cancel)
     local shortcut = item.def.shortcut or item.name:sub(1, 1)
     shortcut = shortcut:lower()
     shortcuts[shortcut] = item.name
-    table.insert(display_lines, string.format("    %s  %-10s %s", "●", item.name, shortcut))
+    table.insert(display_lines, string.format("    %s  %-20s %s", "●", item.name, shortcut))
   end
 
   local width = 0
@@ -365,26 +365,29 @@ local function select_category(on_select, on_cancel)
     width = math.max(width, vim.fn.strdisplaywidth(l))
   end
   width = width + 3
-  local height = #display_lines
-
-  local row, col = QfbookmarkUIUtils.get_position(width, height, "auto", "cursor")
+  local height = #display_lines + 1
 
   local help_key = resolve_key_shortcuts()
   local title_footer_str = "q quit · " .. help_key .. " help"
 
   local buf = vim.api.nvim_create_buf(false, true)
+
+  local editor = QfbookmarkUIUtils.get_editor_size()
+  local col = math.floor((editor.width - width) / 2)
+  local row = math.floor((editor.height - height) / 2)
+
   local wincfg = {
     buf = buf,
     enter = true,
     wincfg = {
-      relative = "cursor",
+      relative = "editor",
       width = width,
       height = height,
       row = row,
       col = col,
       style = "minimal",
       border = "rounded",
-      title = QfbookmarkUIUtils.format_title "annotation category",
+      title = QfbookmarkUIUtils.format_title "Annotation category",
       title_pos = "center",
       footer = QfbookmarkUIUtils.format_title(title_footer_str),
       footer_pos = "center",

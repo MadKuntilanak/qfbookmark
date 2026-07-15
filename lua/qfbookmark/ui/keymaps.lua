@@ -115,6 +115,9 @@ end
 ---@param open_mode OpenMode
 ---@param jump_to_n? integer
 function Mapping.setup_open_key(open_mode, jump_to_n)
+  -- Set the cursor first before saving the last position
+  pcall(vim.api.nvim_win_set_cursor, Mapping.opts_popup.popup.win, { jump_to_n, 0 })
+
   if Mapping.popup.win and vim.api.nvim_win_is_valid(Mapping.popup.win) then
     local row = vim.api.nvim_win_get_cursor(Mapping.popup.win)[1]
     local col = vim.api.nvim_win_get_cursor(Mapping.popup.win)[2]
@@ -127,6 +130,9 @@ function Mapping.setup_open_key(open_mode, jump_to_n)
 
   local cur_line_nr = jump_to_n or vim.api.nvim_win_get_cursor(0)[1]
   QfbookmarkUIUtils.close_win { Mapping.popup.win, Mapping.popup.preview and Mapping.popup.preview.win or nil }
+
+  Mapping.opts_popup.current_cursor = cur_line_nr
+  Mapping.opts_popup.current_mark = QfbookmarkUIUtils.get_entry_at_line(Mapping.content_map, cur_line_nr)
 
   vim.schedule(function()
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<Esc>", true, false, true), "n", true)
@@ -286,6 +292,8 @@ function Mapping.mark.nav_entry(direction)
   local line_count = vim.api.nvim_buf_line_count(0)
   local target_line = math.max(1, math.min(target.start_line, line_count))
 
+  Mapping.opts_popup.current_cursor = target_line
+  Mapping.opts_popup.current_mark = QfbookmarkUIUtils.get_entry_at_line(Mapping.content_map, target_line)
   vim.api.nvim_win_set_cursor(0, { target_line, 0 })
 end
 
