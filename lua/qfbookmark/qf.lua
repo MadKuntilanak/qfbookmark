@@ -313,6 +313,20 @@ function M.load_mark_lists(mark_lists, is_renew)
   for _, entry in ipairs(sorted_marks) do
     local m_idx, m = entry.idx, entry.data
 
+    -- Only validate line range if the buffer is already loaded.
+    -- If not loaded yet, let the mark through — update_mark_sign will
+    -- re-validate when the buffer is eventually opened (BufReadPost/BufEnter).
+    if m.bufnr and m.bufnr > 0 and vim.api.nvim_buf_is_loaded(m.bufnr) then
+      local line_count = vim.api.nvim_buf_line_count(m.bufnr)
+      if m.line > line_count then
+        -- Line is genuinely out of range for a loaded buffer — skip silently.
+        -- Do not warn here: the mark may still be recoverable after the file
+        -- is reloaded or the user undoes edits. Let update_mark_sign decide
+        -- whether to warn or delete.
+        goto continue
+      end
+    end
+
     if not M.buffers[m.category] then
       M.buffers[m.category] = {}
     end
@@ -334,10 +348,11 @@ function M.load_mark_lists(mark_lists, is_renew)
       end_line = m.end_line or nil,
       sign_ids = m.sign_ids or nil,
       original_span = m.original_span or nil,
-      inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0, -- preserve from saved file; reject stale hrtime values (> 1e13 = nanoseconds, not Unix seconds)
+      inserted_at = (m.inserted_at and m.inserted_at < 1e13) and m.inserted_at or 0,
     }
 
     M.mark_lists_harpoon[#M.mark_lists_harpoon + 1] = QfbookmarkUtils.add_idx_m_harpoon(m_idx, m.harpoon)
+    ::continue::
   end
 end
 

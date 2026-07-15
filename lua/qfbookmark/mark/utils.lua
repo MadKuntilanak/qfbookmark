@@ -126,7 +126,7 @@ end
 ---@return boolean true when lnum is OUT of range for this buffer
 local function is_invalid_line(bufnr, lnum)
   local line_count = vim.api.nvim_buf_line_count(bufnr)
-  return lnum < 0 or lnum >= line_count
+  return lnum < 0 or lnum > line_count
 end
 
 ---@param bufnr integer
@@ -134,13 +134,25 @@ end
 ---@param col integer
 ---@return boolean true when the line/col no longer matches the buffer
 function M.is_not_valid_line_and_col(bufnr, lnum, col)
+  -- Line check is the real guard — if the line doesn't exist, the mark is gone.
   if is_invalid_line(bufnr, lnum) then
     return true
   end
 
-  local text = vim.api.nvim_buf_get_lines(bufnr, lnum, lnum + 1, false)[1] or ""
-  local line_len = #text
-  return col < 0 or col > line_len
+  -- local text = vim.api.nvim_buf_get_lines(bufnr, lnum, lnum + 1, false)[1] or ""
+  -- local line_len = #text
+  -- return col < 0 or col > line_len
+
+  -- Col check is intentionally lenient: if the saved col is beyond the current
+  -- line length (e.g. the line was shortened after the mark was placed), we
+  -- still consider the mark valid. The sign will be placed at the line and the
+  -- col will be clamped when the user jumps to it.
+  -- Only reject truly invalid col values (negative).
+  if col < 0 then
+    return true
+  end
+
+  return false
 end
 
 ---@return integer start_line, integer end_line  (1-indexed, inclusive)

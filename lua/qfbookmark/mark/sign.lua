@@ -14,9 +14,10 @@ function M.register_sign(sign_name, icon, hl_group)
 end
 
 ---@param bufnr integer
+---@param group_name? string
 ---@return table <integer>
-local function get_all_signs_buffer(bufnr)
-  local placed = vim.fn.sign_getplaced(bufnr, { group = "*" }) -- Ambil semua sign yang terpasang
+function M.get_all_signs_buffer(bufnr, group_name)
+  local placed = vim.fn.sign_getplaced(bufnr, { group = group_name or "*" }) -- Ambil semua sign yang terpasang
   local all_signs = placed[1] and placed[1].signs or {}
   return all_signs
 end
@@ -25,7 +26,7 @@ end
 ---@param existing_ids table
 ---@return table <integer>
 function M.get_sign_unused_ids(bufnr, existing_ids)
-  local all_signs = get_all_signs_buffer(bufnr)
+  local all_signs = M.get_all_signs_buffer(bufnr)
   local unused_ids = {}
 
   for _, sign in ipairs(all_signs) do
@@ -43,7 +44,7 @@ end
 ---@param lnum integer
 ---@return table
 function M.get_sign_at_line(bufnr, lnum)
-  local all_signs = get_all_signs_buffer(bufnr)
+  local all_signs = M.get_all_signs_buffer(bufnr)
 
   for _, x in pairs(all_signs) do
     if x.lnum == lnum then

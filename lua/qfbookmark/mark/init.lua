@@ -272,10 +272,8 @@ local function refresh_mark(mark_lists, force_refresh, bufnr)
     return
   end
 
-  if force_refresh and not M.timer:is_active() then
-    -- Stop the timer if it's running (safe to call even if not running)
+  if force_refresh then
     M.timer:stop()
-
     M.timer:start(
       Config.extmarks.throttle,
       0,
@@ -701,36 +699,82 @@ function M.update_mark_sign(mark_lists, bufnr)
   end
 
   local ns = QfbookmarkMarkUtils.register_namespace(M.note_namespace)
-
   local filename = vim.api.nvim_buf_get_name(bufnr)
+
+  -- Cache sign_getplaced per call, avoid calling it once per mark inside the loop
+  local placed_signs = QfbookmarkMarkSign.get_all_signs_buffer(bufnr, Config.sign_group)
 
   for category, mark in pairs(mark_lists) do
     for _, m in pairs(mark) do
-      -- Do not normalize the path, as it may no longer match Fugitive's tracked path
       if m.filename ~= filename then
         goto continue
       end
 
-      if QfbookmarkMarkUtils.is_not_valid_line_and_col(bufnr, m.line, m.col) then
-        QfbookmarkUtils.warn(
-          string.format("mark '%s' removed — line %d no longer matches in '%s'", m.key, m.line, m.filename)
-        )
-        M.delete_mark(mark_lists, category, m.key, m.id, bufnr)
-      else
-        if m.category ~= "NOTE" then
-          local sign = QfbookmarkMarkSign.get_sign_at_line(bufnr, m.line)
-          if vim.tbl_isempty(sign) then
-            insert_sign_or_extmark(m.key, category, bufnr, m.line)
+      if m.category ~= "NOTE" then
+        -- ----------------------------------------------------------------
+        -- For Non-NOTE the sign position is the source of truth.
+        -- Find the sign by id, sync m.line from it, re-place if missing.
+        -- ----------------------------------------------------------------
+        local actual_line = nil
+        for _, s in ipairs(placed_signs) do
+          if tostring(s.id) == tostring(m.key) then
+            actual_line = s.lnum
+            break
+          end
+        end
+
+        if actual_line then
+          -- Sign exists — sync m.line if the sign has drifted
+          if actual_line ~= m.line then
+            m.line = actual_line
+            require("qfbookmark.qf").__update_mark_lists()
           end
         else
-          local extmark = QfbookmarkMarkExtmark.get_extmark_at_line(bufnr, ns, m.line)[1]
-          local atch_key = attach_key(bufnr, m.key)
-          if not extmark and not atth_extmark_key[atch_key] then
+          -- Sign is missing — re-place at the last known valid line
+          if not QfbookmarkMarkUtils.is_not_valid_line_and_col(bufnr, m.line, m.col) then
+            insert_sign_or_extmark(m.key, category, bufnr, m.line)
+          end
+        end
+      else
+        -- ----------------------------------------------------------------
+        -- For NOTE the extmark position is the source of truth.
+        -- Extmarks auto-adjust on insert/delete, so always read from the
+        -- registry rather than searching by the (potentially stale) m.line.
+        -- ----------------------------------------------------------------
+        local atch_key = attach_key(bufnr, m.key)
+        local meta = M.get_meta(m.key, category)
+
+        if meta then
+          local range = QfbookmarkMarkExtmark.get_annotation_range(bufnr, ns, meta.id)
+
+          if range then
+            -- Extmark exists, sync m.line from the current extmark position
+            local actual_line = range.start_row + 1 -- extmark is 0-indexed
+            if actual_line ~= m.line then
+              m.line = actual_line
+              require("qfbookmark.qf").__update_mark_lists()
+            end
+            atth_extmark_key[atch_key] = true
+          else
+            -- Extmark is orphaned — re-place if the line is still valid
+            if QfbookmarkMarkUtils.is_not_valid_line_and_col(bufnr, m.line, m.col) then
+              goto continue
+            end
+            atth_extmark_key[atch_key] = nil
             insert_sign_or_extmark(m.key, category, bufnr, m.line)
             atth_extmark_key[atch_key] = true
           end
+        else
+          -- Not in registry yet, place for the first time
+          if not QfbookmarkMarkUtils.is_not_valid_line_and_col(bufnr, m.line, m.col) then
+            if not atth_extmark_key[atch_key] then
+              insert_sign_or_extmark(m.key, category, bufnr, m.line)
+              atth_extmark_key[atch_key] = true
+            end
+          end
         end
       end
+
       ::continue::
     end
   end
@@ -1101,6 +1145,15 @@ function M.setup_mark_autocmds(mark_lists, force_set)
   local refresh_group = QfbookmarkUtils.create_augroup_name "RefreshMark"
 
   vim.api.nvim_create_autocmd("BufReadPost", {
+    group = refresh_group,
+    pattern = "*",
+    callback = function(ctx)
+      refresh_mark(mark_lists, true, ctx.buf)
+    end,
+    desc = "QFBookmark: refresh marks after read post buffer",
+  })
+
+  vim.api.nvim_create_autocmd({ "BufWritePost" }, {
     group = refresh_group,
     pattern = "*",
     callback = function(ctx)
