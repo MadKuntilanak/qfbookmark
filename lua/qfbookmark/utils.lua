@@ -849,8 +849,8 @@ function M.resolve_bufnr(filename)
     if bufnr == -1 then
       bufnr = vim.fn.bufadd(filename)
     end
-    vim.fn.bufload(bufnr)
-    return bufnr
+
+    return bufnr ~= -1 and bufnr or nil
   end
 
   return nil

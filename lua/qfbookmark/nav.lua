@@ -75,9 +75,6 @@ function M.jump_to(opts)
     if not ok and err and err:match "E37" then
       local target_buf = QfbookmarkUtils.resolve_bufnr(filename)
       if target_buf then
-        if not vim.api.nvim_buf_is_loaded(target_buf) then
-          vim.fn.bufload(target_buf)
-        end
         vim.api.nvim_win_set_buf(0, target_buf)
       end
     end
