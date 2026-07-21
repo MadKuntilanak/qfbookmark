@@ -134,9 +134,9 @@ local function find_target_win(winnr, exclude_filetypes)
   while attempt < max_attempts do
     local ft = vim.fn.getwinvar(candidate, "&filetype")
     if
-      candidate ~= winnr
-      and not QfbookmarkUtils.is_quickfix_win(candidate)
-      and not vim.tbl_contains(exclude_filetypes, ft)
+        candidate ~= winnr
+        and not QfbookmarkUtils.is_quickfix_win(candidate)
+        and not vim.tbl_contains(exclude_filetypes, ft)
     then
       return vim.fn.win_getid(candidate)
     end
@@ -235,7 +235,7 @@ local function open_qf_items(qf_mode, indices, open_mode, is_center, is_expanded
       -- Force open fold
       if is_expanded then
         local qf_info = is_loc and vim.fn.getloclist(0, { idx = 0, items = 0 })
-          or vim.fn.getqflist { idx = 0, items = 0 }
+            or vim.fn.getqflist { idx = 0, items = 0 }
         local item = qf_info.items[qf_info.idx]
         if item and item.bufnr and item.lnum then
           --- Ensure current buffer matches item buffer

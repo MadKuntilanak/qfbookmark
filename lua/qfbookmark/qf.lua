@@ -473,12 +473,15 @@ end
 function M.add_mark_sign()
   add_sign "MARK"
 end
+
 function M.add_fix_sign()
   add_sign "FIX"
 end
+
 function M.add_debug_sign()
   add_sign "DEBUG"
 end
+
 function M.add_note_sign()
   add_sign "NOTE"
 end
@@ -600,6 +603,7 @@ function M.delete_mark()
 
   M.__update_mark_lists()
 end
+
 ---@param bufnr? integer
 function M.delete_mark_buffer(bufnr)
   if not Config.window.mark.enabled then
@@ -652,6 +656,7 @@ function M.next_mark()
   end
   next_prev_mark(false)
 end
+
 function M.prev_mark()
   if not Config.window.mark.enabled then
     return
@@ -947,6 +952,7 @@ end
 function M.add_item_qflist()
   add_item "quickfix"
 end
+
 function M.add_item_loclist()
   add_item "loclist"
 end
@@ -1021,6 +1027,7 @@ M.toggle_list = toggle_list
 function M.toggle_open_qflist()
   toggle_list "quickfix"
 end
+
 function M.toggle_open_loclist()
   toggle_list "loclist"
 end
@@ -1060,12 +1067,15 @@ end
 function M.open_item_default()
   open_item_qf "default"
 end
+
 function M.open_item_in_tab()
   open_item_qf "tabnew"
 end
+
 function M.open_item_in_split()
   open_item_qf "split"
 end
+
 function M.open_item_in_vsplit()
   open_item_qf "vsplit"
 end
@@ -1075,11 +1085,13 @@ function M.next_item()
   local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_nav(false, "open", is_center, is_ispanded, false)
 end
+
 function M.prev_item()
   local is_center = Config.window.quickfix.actions.auto_center
   local is_ispanded = Config.window.quickfix.actions.auto_unfold
   QfbookmarkNav.handle_nav(true, "open", is_center, is_ispanded, false)
 end
+
 function M.next_hist_qf()
   local selected = M.get_qf_selected()
   if #selected > 0 then
@@ -1120,6 +1132,7 @@ function M.delete_all_items()
     clear_all_items_qflist()
   end
 end
+
 function M.delete_item()
   local is_loc = QfbookmarkUtils.is_loclist()
 
@@ -1232,6 +1245,7 @@ function M.integrations_trouble_qflist()
     trouble.handle_toggle_qf(true, "quickfix")
   end
 end
+
 function M.integrations_trouble_loclist()
   if not Config.keymaps.quickfix.integrations.trouble.enabled then
     return
@@ -1247,6 +1261,7 @@ function M.integrations_trouble_loclist()
     trouble.handle_toggle_qf(true, "loclist", true)
   end
 end
+
 function M.integrations_grugfar()
   if not Config.keymaps.quickfix.integrations.grugfar.enabled then
     return
@@ -1259,6 +1274,7 @@ function M.integrations_grugfar()
     grugfar.handle_toggle_qf("quickfix", false)
   end
 end
+
 function M.integrations_copyline()
   local bufnr = vim.api.nvim_get_current_buf()
   if not exclude_buf(bufnr) then
@@ -1303,6 +1319,7 @@ function M.toggle_open_note_global()
   end
   __note(true)
 end
+
 function M.toggle_open_note_local()
   if not Config.window.note.enabled then
     return
@@ -1322,6 +1339,7 @@ function M.move_layout_qf_up()
     toggle_list(list_type, false)
   end)
 end
+
 function M.move_layout_qf_down()
   if not Config.window.quickfix.enabled then
     return
