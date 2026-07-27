@@ -252,9 +252,30 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
     local ft
 
     if QfbookmarkUtils.is_valid(bufnr) then
-      local ok, result = pcall(vim.filetype.match, { buf = bufnr })
-      if ok then
+      local ok, result = pcall(vim.filetype.match, { filename = vim.api.nvim_buf_get_name(bufnr) })
+      if ok and result and result ~= "bigfile" then
         ft = result
+      end
+    end
+
+    -- Fallback: match filetype from buffer content when filename alone
+    -- does not resolve it. Skip "bigfile" since that is a synthetic
+    -- filetype injected by bigfile.nvim / snacks bigfile and is not a
+    -- real filetype we can highlight.
+    if not ft and QfbookmarkUtils.is_valid(bufnr) then
+      local ok, result = pcall(vim.filetype.match, { buf = bufnr })
+      if ok and result and result ~= "bigfile" then
+        ft = result
+      end
+    end
+
+    -- Fallback: read the filetype that Neovim already resolved for this
+    -- buffer. This is the most reliable source when the buffer is still
+    -- loaded, and avoids re-running filetype detection entirely.
+    if not ft and QfbookmarkUtils.is_valid(bufnr) then
+      local existing_ft = vim.bo[bufnr].filetype
+      if existing_ft and existing_ft ~= "" and existing_ft ~= "bigfile" then
+        ft = existing_ft
       end
     end
 
