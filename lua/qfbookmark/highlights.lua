@@ -42,13 +42,9 @@ local colors = {
   FloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
   FloatFooter = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" }, tint = { amount = 1 } } },
   FloatCursorLine = {
-    -- fg = {
-    --   higroup = { fromTo = "Directory", attr = "fg" },
-    --   tint = { amount = 0.1 },
-    -- },
     bg = {
-      higroup = { fromTo = "FloatBorder", attr = "fg" },
-      tint = { amount = -0.1 },
+      higroup = { fromTo = "NormalFloat", attr = "bg" },
+      tint = { amount = 0.4 },
     },
     bold = false,
   },
@@ -136,8 +132,8 @@ local colors = {
   EntryUnselectedCheckCursor = {
     fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = -0.1 } },
     bg = {
-      higroup = { fromTo = "FloatBorder", attr = "fg" },
-      tint = { amount = -0.1 },
+      higroup = { fromTo = "NormalFloat", attr = "bg" },
+      tint = { amount = 0.4 },
     },
   },
 
