@@ -90,7 +90,7 @@ local colors = {
   },
 
   -- Preview text on the detail line
-  EntryDetail = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = 0.1 } } },
+  EntryDetail = { fg = { higroup = { fromTo = "Comment", attr = "fg" }, tint = { amount = 0.05 } } },
 
   EntryNote = { fg = { higroup = { fromTo = "String", attr = "fg" }, tint = { amount = 0.3 } } },
 

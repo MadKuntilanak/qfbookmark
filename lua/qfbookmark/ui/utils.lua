@@ -91,7 +91,7 @@ function M.get_position(width, height, anchor, relative, padding)
       local space_right = vim.o.columns - vim.fn.screencol()
       local space_left = vim.fn.screencol() - 1
       row = (space_below >= height + 2 or space_below >= space_above) and vim.fn.screenrow()
-          or vim.fn.screenrow() - height - 1
+        or vim.fn.screenrow() - height - 1
       col = (space_right >= width or space_right >= space_left) and vim.fn.screencol() or vim.fn.screencol() - width
     else
       row = (anchor:sub(1, 1) == "N") and padding or (vim.o.lines - height - padding)
@@ -207,16 +207,16 @@ function M.shorten_text(text, max_len)
   local result = ""
   local i = 0
   for _, char in
-  ---@diagnostic disable-next-line: undefined-global
-  utf8 and utf8.codes(text) or (function()
-    local idx = 0
-    return function()
-      idx = idx + 1
-      if idx <= #text then
-        return idx, text:byte(idx)
+    ---@diagnostic disable-next-line: undefined-global
+    utf8 and utf8.codes(text) or (function()
+      local idx = 0
+      return function()
+        idx = idx + 1
+        if idx <= #text then
+          return idx, text:byte(idx)
+        end
       end
-    end
-  end)()
+    end)()
   do
     if vim.fn.strdisplaywidth(result) >= max_len - 1 then
       break
@@ -346,7 +346,7 @@ end
 ---@param bufnr integer
 ---@return "gone" | "alive" | "hidden"
 function M.get_buffer_status(bufnr)
-  if not QfbookmarkUtils.is_valid(bufnr) then
+  if not QfbookmarkUtils.is_valid(bufnr) or not vim.api.nvim_buf_is_loaded(bufnr) then
     return "gone"
   end
 
@@ -385,6 +385,11 @@ function M.build_entry_lines(idx, mark, path_width, symbol)
     note_annotation = table.concat(mark.note, " ")
   elseif type(mark.note) == "string" then
     note_annotation = mark.note
+  end
+
+  if vim.api.nvim_buf_is_loaded(mark.bufnr) then
+    local current_line_text = QfbookmarkUtils.resolve_line_text(mark.bufnr, mark.line)
+    mark.text = mark.text == current_line_text and mark.text or current_line_text
   end
 
   local preview = mark.category == "NOTE" and ("⮞ " .. note_annotation or mark.text or "") or (mark.text or "")
@@ -495,7 +500,7 @@ function M.resolve_preview_context(opts)
     local mode = "combined"
 
     local results, labels =
-        QfbookmarkMarkContext.build_multi(opts.opts_mark_preview.items, opts.opts_mark_preview.ns, name)
+      QfbookmarkMarkContext.build_multi(opts.opts_mark_preview.items, opts.opts_mark_preview.ns, name)
 
     if mode == "combined" then
       if #results == 0 then
@@ -551,7 +556,7 @@ function M.update_title_win_popup(win, total, selected)
   local sel_count = vim.tbl_count(selected)
 
   local count_str = sel_count > 0 and string.format("QFMarks (%d) · %d selected", total, sel_count)
-      or string.format("QFMarks (%d)", total)
+    or string.format("QFMarks (%d)", total)
 
   local cfg = vim.api.nvim_win_get_config(win)
   cfg.title = M.format_title("🔗 " .. count_str)

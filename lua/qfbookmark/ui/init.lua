@@ -136,7 +136,7 @@ local function mark_harpoon_popup(mark_lists, cb)
 
   for idx, mark in ipairs(mark_lists) do
     local symbol = QfbookmarkUIUtils.resolve_fn_name(mark)
-    local line1, line2, line3, hval = QfbookmarkUIUtils.build_entry_lines(idx, mark, original_width, symbol)
+    local line1, line2, line3, hval = QfbookmarkUIUtils.build_entry_lines(idx, mark, width, symbol)
 
     local start_line = #display_lines + 1
 

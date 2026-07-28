@@ -38,10 +38,10 @@ local NODE_KIND = {
 
   enum_item = "enum",
   -- structs
-  struct_item = "struct", -- Rust
+  struct_item = "struct",      -- Rust
   struct_specifier = "struct", -- C/C++
-  struct_type = "struct", -- Go: type_spec > struct_type
-  type_spec = "struct", -- Go: type TestStruct struct {}
+  struct_type = "struct",      -- Go: type_spec > struct_type
+  type_spec = "struct",        -- Go: type TestStruct struct {}
   -- impl blocks (Rust)
   impl_item = "impl",
   -- interfaces
@@ -106,7 +106,7 @@ local function collect_scope_chain(start, bufnr)
       end
       node = node:parent()
 
-    -- ── enum  method ────────────────────────────────────────
+      -- ── enum  method ────────────────────────────────────────
     elseif t == "enum_item" then
       local name_node = node:field("name")[1]
       local name = name_node and node_text(name_node, bufnr)
@@ -115,7 +115,7 @@ local function collect_scope_chain(start, bufnr)
       end
       node = node:parent()
 
-    -- Rust: fn foo() / pub fn foo() / pub async fn foo()
+      -- Rust: fn foo() / pub fn foo() / pub async fn foo()
     elseif t == "function_item" then
       local name_node = node:field("name")[1]
       local name = name_node and node_text(name_node, bufnr)
@@ -124,8 +124,8 @@ local function collect_scope_chain(start, bufnr)
       end
       node = node:parent()
 
-    -- ── TS/JS arrow function: const foo = () => {}  ───────────────────
-    -- tree: lexical_declaration > variable_declarator(name, value=arrow_function)
+      -- ── TS/JS arrow function: const foo = () => {}  ───────────────────
+      -- tree: lexical_declaration > variable_declarator(name, value=arrow_function)
     elseif t == "arrow_function" then
       local parent = node:parent()
       if not parent then
@@ -140,8 +140,8 @@ local function collect_scope_chain(start, bufnr)
         node = parent
       end
 
-    -- TS/JS: function expression assigned to variable
-    -- const foo = function() {}
+      -- TS/JS: function expression assigned to variable
+      -- const foo = function() {}
     elseif t == "function_expression" then
       local parent = node:parent()
       if not parent then
@@ -155,8 +155,8 @@ local function collect_scope_chain(start, bufnr)
         node = parent
       end
 
-    -- TS/JS: method shorthand inside object/class
-    -- { foo() {} }  or  class { foo() {} }
+      -- TS/JS: method shorthand inside object/class
+      -- { foo() {} }  or  class { foo() {} }
     elseif t == "method_definition" or t == "method_declaration" then
       local name_node = node:field("name")[1]
       local name = name_node and node_text(name_node, bufnr)
@@ -198,7 +198,7 @@ local function collect_scope_chain(start, bufnr)
 
       node = node:parent()
 
-    -- ── anonymous function() — name lives in parent ────────────────────
+      -- ── anonymous function() — name lives in parent ────────────────────
     elseif t == "function" then
       local parent = node:parent()
       if not parent then
@@ -221,22 +221,22 @@ local function collect_scope_chain(start, bufnr)
         -- foo = function()  or  M.foo = function()
         local vl = parent:field("varlist")[1] or parent:named_child(0)
         local first = vl
-          and (
-            (
+            and (
+              (
                 vl:type() == "identifier"
                 or vl:type() == "dot_index_expression"
                 or vl:type() == "method_index_expression"
               )
               and vl
-            or vl:named_child(0)
-          )
+              or vl:named_child(0)
+            )
         push("fn", node_text(first, bufnr))
         node = parent:parent()
       else
         node = parent
       end
 
-    -- ── class / struct / impl / interface ─────────────────────────────
+      -- ── class / struct / impl / interface ─────────────────────────────
     elseif t == "class_definition" or t == "class_declaration" then
       local name_node = node:field("name")[1]
       push("class", node_text(name_node, bufnr))
@@ -246,9 +246,9 @@ local function collect_scope_chain(start, bufnr)
       push("struct", node_text(name_node, bufnr))
       node = node:parent()
 
-    -- Go: type TestStruct struct { ... }
-    -- tree: type_declaration > type_spec(name=TestStruct) > struct_type
-    -- We land on type_spec when walking up from a field inside the struct.
+      -- Go: type TestStruct struct { ... }
+      -- tree: type_declaration > type_spec(name=TestStruct) > struct_type
+      -- We land on type_spec when walking up from a field inside the struct.
     elseif t == "type_spec" then
       local name_node = node:field("name")[1]
       local type_val = node:field("type")[1]
@@ -264,7 +264,7 @@ local function collect_scope_chain(start, bufnr)
       push(kind, node_text(name_node, bufnr))
       node = node:parent()
 
-    -- Go: struct_type is the body of the struct — name lives in parent type_spec
+      -- Go: struct_type is the body of the struct — name lives in parent type_spec
     elseif t == "struct_type" then
       local parent = node:parent()
       if parent and parent:type() == "type_spec" then
@@ -275,7 +275,7 @@ local function collect_scope_chain(start, bufnr)
         node = parent
       end
 
-    -- type_declaration wraps type_spec — skip it
+      -- type_declaration wraps type_spec — skip it
     elseif t == "type_declaration" then
       node = node:parent()
     elseif t == "impl_item" then
@@ -297,7 +297,7 @@ local function collect_scope_chain(start, bufnr)
       end
       node = node:parent()
 
-    -- Rust: declaration_list is the body of impl — skip it transparently
+      -- Rust: declaration_list is the body of impl — skip it transparently
     elseif t == "declaration_list" then
       node = node:parent()
     elseif t == "interface_declaration" or t == "interface_type" then
@@ -305,7 +305,7 @@ local function collect_scope_chain(start, bufnr)
       push("interface", node_text(name_node, bufnr))
       node = node:parent()
 
-    -- ── table_constructor — find its assigned name ─────────────────────
+      -- ── table_constructor — find its assigned name ─────────────────────
     elseif t == "table_constructor" then
       local parent = node:parent()
       if not parent then
@@ -360,7 +360,7 @@ local function format_chain(chain)
 end
 
 --- Resolve enclosing symbol chain at a given buffer position.
---- Uses manual treesitter walker only — nvim-treesitter locals API
+--- Uses manual treesitter walker only, nvim-treesitter locals API
 --- does not reliably accept a bufnr argument and may return data
 --- for the wrong buffer when called outside the target buffer context.
 ---@param bufnr integer
@@ -379,7 +379,7 @@ function M.resolve_symbol(bufnr, lnum, col)
     return { kind = "unknown", chain = "" }
   end
 
-  -- force a full parse — necessary for hidden buffers that were never rendered
+  -- force a full parse, necessary for hidden buffers that were never rendered
   local trees = parser:parse(true)
   local tree = trees and trees[1]
   if not tree then
@@ -402,7 +402,7 @@ function M.resolve_symbol(bufnr, lnum, col)
   end
 
   local start_node = root:named_descendant_for_range(row, effective_col, row, effective_col)
-    or root:descendant_for_range(row, effective_col, row, effective_col)
+      or root:descendant_for_range(row, effective_col, row, effective_col)
 
   -- walk up to first named scope node, then collect chain from there
   local node = start_node

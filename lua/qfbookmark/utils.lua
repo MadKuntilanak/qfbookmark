@@ -235,7 +235,7 @@ function M.get_data_qf(is_loc, context_name)
       end
       local loc_list_context = loc_list.context
       results.location.context = (type(loc_list_context) == "table") and vim.deepcopy(loc_list_context)
-        or loc_list_context
+          or loc_list_context
       results.location.items = vim.tbl_map(function(item)
         return {
           filename = item.bufnr and vim.api.nvim_buf_get_name(item.bufnr),
@@ -719,6 +719,19 @@ function M.resolve_key_shortcut_keymaps()
   return cfg
 end
 
+---@param bufnr integer
+---@param row integer
+---@return string
+function M.resolve_line_text(bufnr, row)
+  if not M.is_valid(bufnr) then
+    return ""
+  end
+
+  local lines = vim.api.nvim_buf_get_lines(bufnr, row - 1, row, false)
+  local line_text = lines[1]
+  return line_text and M.strip_whitespace(line_text) or ""
+end
+
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
 -- ║                                 NOTES UTILS                                 ║
 -- ╙─────────────────────────────────────────────────────────────────────────────╜
@@ -796,10 +809,10 @@ function M.get_visual_selection(opts)
     selection = string.sub(lines[1], cscol) .. "\n" .. string.sub(lines[n], 1, cecol)
   else
     selection = string.sub(lines[1], cscol)
-      .. "\n"
-      .. table.concat(lines, "\n", 2, n - 1)
-      .. "\n"
-      .. string.sub(lines[n], 1, cecol)
+        .. "\n"
+        .. table.concat(lines, "\n", 2, n - 1)
+        .. "\n"
+        .. string.sub(lines[n], 1, cecol)
   end
 
   return {
