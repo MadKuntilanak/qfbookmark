@@ -420,7 +420,7 @@ local function register_mark(mark_lists, category, key, bufnr, lnum, col, line_t
   local filename = vim.api.nvim_buf_get_name(bufnr)
 
   -- Validate line before registering
-  if QfbookmarkMarkUtils.is_not_valid_line_and_col(bufnr, lnum, col) then
+  if QfbookmarkMarkUtils.is_valid_line_and_col(bufnr, lnum, col) then
     return nil
   end
 
@@ -701,9 +701,6 @@ function M.update_mark_sign(mark_lists, bufnr)
   local ns = QfbookmarkMarkUtils.register_namespace(M.note_namespace)
   local filename = vim.api.nvim_buf_get_name(bufnr)
 
-  -- Cache sign_getplaced per call, avoid calling it once per mark inside the loop
-  local placed_signs = QfbookmarkMarkSign.get_all_signs_buffer(bufnr, Config.sign_group)
-
   for category, mark in pairs(mark_lists) do
     for _, m in pairs(mark) do
       if m.filename ~= filename then
@@ -711,29 +708,8 @@ function M.update_mark_sign(mark_lists, bufnr)
       end
 
       if m.category ~= "NOTE" then
-        -- ----------------------------------------------------------------
-        -- For Non-NOTE the sign position is the source of truth.
-        -- Find the sign by id, sync m.line from it, re-place if missing.
-        -- ----------------------------------------------------------------
-        local actual_line = nil
-        for _, s in ipairs(placed_signs) do
-          if tostring(s.id) == tostring(m.key) then
-            actual_line = s.lnum
-            break
-          end
-        end
-
-        if actual_line then
-          -- Sign exists — sync m.line if the sign has drifted
-          if actual_line ~= m.line then
-            m.line = actual_line
-            require("qfbookmark.qf").__update_mark_lists()
-          end
-        else
-          -- Sign is missing — re-place at the last known valid line
-          if not QfbookmarkMarkUtils.is_not_valid_line_and_col(bufnr, m.line, m.col) then
-            insert_sign_or_extmark(m.key, category, bufnr, m.line)
-          end
+        if not QfbookmarkMarkUtils.is_valid_line_and_col(bufnr, m.line, m.col) then
+          insert_sign_or_extmark(m.key, category, bufnr, m.line)
         end
       else
         -- ----------------------------------------------------------------
@@ -757,7 +733,7 @@ function M.update_mark_sign(mark_lists, bufnr)
             atth_extmark_key[atch_key] = true
           else
             -- Extmark is orphaned — re-place if the line is still valid
-            if QfbookmarkMarkUtils.is_not_valid_line_and_col(bufnr, m.line, m.col) then
+            if QfbookmarkMarkUtils.is_valid_line_and_col(bufnr, m.line, m.col) then
               goto continue
             end
             atth_extmark_key[atch_key] = nil
@@ -766,7 +742,7 @@ function M.update_mark_sign(mark_lists, bufnr)
           end
         else
           -- Not in registry yet, place for the first time
-          if not QfbookmarkMarkUtils.is_not_valid_line_and_col(bufnr, m.line, m.col) then
+          if not QfbookmarkMarkUtils.is_valid_line_and_col(bufnr, m.line, m.col) then
             if not atth_extmark_key[atch_key] then
               insert_sign_or_extmark(m.key, category, bufnr, m.line)
               atth_extmark_key[atch_key] = true

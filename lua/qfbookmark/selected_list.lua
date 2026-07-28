@@ -93,15 +93,15 @@ function SelectedList:add_to(target)
 
       if filename then
         local ok = QfbookmarkBookmark.add_mark_at(bufnr, line, col, text, category)
-        local id = tonumber(line .. bufnr)
-        if not id then
+        local key = tonumber(line .. bufnr)
+        if not key then
           goto continue
         end
 
         if not ok then
-          already_add[id] = true
+          already_add[key] = true
         else
-          success_add[id] = true
+          success_add[key] = true
         end
       end
       ::continue::

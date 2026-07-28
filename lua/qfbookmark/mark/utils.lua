@@ -133,10 +133,10 @@ end
 ---@param lnum integer
 ---@param col integer
 ---@return boolean true when the line/col no longer matches the buffer
-function M.is_not_valid_line_and_col(bufnr, lnum, col)
+function M.is_valid_line_and_col(bufnr, lnum, col)
   -- Line check is the real guard — if the line doesn't exist, the mark is gone.
   if is_invalid_line(bufnr, lnum) then
-    return true
+    return false
   end
 
   -- local text = vim.api.nvim_buf_get_lines(bufnr, lnum, lnum + 1, false)[1] or ""
