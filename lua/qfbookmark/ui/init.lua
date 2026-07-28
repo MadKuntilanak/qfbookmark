@@ -168,7 +168,7 @@ local function mark_harpoon_popup(mark_lists, cb)
 
   local win_buf = vim.api.nvim_create_buf(false, true)
   local help_key = resolve_key_shortcuts()
-  local title_footer_str = " dd del · <CR> open · <C-v/s/t> split · " .. help_key .. " help"
+  local title_footer_str = "dd del · <CR> open · <C-v/s/t> split · " .. help_key .. " help"
 
   ---@type WinCfg
   local wincfg = {
@@ -520,7 +520,7 @@ local function buffers_popup(buffer_lists)
   local icon = "📑 "
   local title_str = total > 0 and icon .. string.format("QFBuffers (%d)", total) or icon .. "QFBuffers"
   local help_key = resolve_key_shortcuts()
-  local title_footer_str = " dd del · <C-v/s/t split · " .. help_key .. " help"
+  local title_footer_str = "dd del · <C-v/s/t split · " .. help_key .. " help"
   local win_buf = vim.api.nvim_create_buf(false, true)
 
   ---@type WinCfg
