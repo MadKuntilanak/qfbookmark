@@ -457,7 +457,7 @@ function Mapping.mark.toggle_selection()
   -- Rebuild checkbox extmarks + line hl
   local QfbookmarkMarkVisual = require "qfbookmark.visual"
   Mapping.opts_popup.active = entries.hval
-  QfbookmarkMarkVisual.apply_entry_highlights(
+  QfbookmarkMarkVisual.apply_entry_mark_highlights(
     Mapping.buf,
     Mapping.opts_popup.content_map,
     Mapping.selected,
@@ -625,7 +625,7 @@ local function mark_del_item(is_all)
   vim.bo[Mapping.buf].modifiable = modifiable
 
   local QfbookmarkMarkVisual = require "qfbookmark.visual"
-  QfbookmarkMarkVisual.apply_entry_highlights(Mapping.buf, entries, Mapping.selected, Mapping.opts_popup.active)
+  QfbookmarkMarkVisual.apply_entry_mark_highlights(Mapping.buf, entries, Mapping.selected, Mapping.opts_popup.active)
 
   -- Update title count
   local total = #entries
@@ -805,7 +805,7 @@ function Mapping.buffer.item_del()
 
     for idx, buffer in pairs(list) do
       local line, _hval =
-        QfbookmarkUIUtils.build_entry_line_buffers(idx, buffer, Mapping.opts_popup.original_popup_buffer_width)
+          QfbookmarkUIUtils.build_entry_line_buffers(idx, buffer, Mapping.opts_popup.original_popup_buffer_width)
       display_lines[#display_lines + 1] = line
 
       local start_line = idx

@@ -103,7 +103,7 @@ local __popup_opts_for = {
 
     setup_option_main_popup(main_win, main_buf)
 
-    QfbookmarkMarkVisual.apply_entry_highlights(
+    QfbookmarkMarkVisual.apply_entry_mark_highlights(
       main_buf,
       opts_popup.content_map,
       opts_popup.selected,
@@ -120,7 +120,7 @@ local __popup_opts_for = {
     vim.api.nvim_create_autocmd("TextChanged", {
       buffer = main_buf,
       callback = function()
-        QfbookmarkMarkVisual.apply_entry_highlights(
+        QfbookmarkMarkVisual.apply_entry_mark_highlights(
           main_buf,
           opts_popup.content_map,
           opts_popup.selected,
@@ -173,7 +173,12 @@ local __popup_opts_for = {
 
       -- Rebuild all checkboxes with the correct cursor_hval
       opts_popup.active = active.hval
-      QfbookmarkMarkVisual.apply_entry_highlights(main_buf, opts_popup.content_map, opts_popup.selected, active.hval)
+      QfbookmarkMarkVisual.apply_entry_mark_highlights(
+        main_buf,
+        opts_popup.content_map,
+        opts_popup.selected,
+        active.hval
+      )
     end
 
     vim.api.nvim_create_autocmd("CursorMoved", {
@@ -371,8 +376,28 @@ local __popup_opts_for = {
       buf,
       opts_popup.contents,
       opts_popup.buffer_selected,
-      opts_popup.popup.namespace
+      opts_popup.popup.namespace,
+      opts_popup.active
     )
+
+    local function update_cursorline()
+      local cur = vim.api.nvim_win_get_cursor(win)[1]
+      opts_popup.active = tostring(cur)
+      QfbookmarkMarkVisual.apply_entry_buffer_highlights(
+        buf,
+        opts_popup.contents,
+        opts_popup.buffer_selected,
+        opts_popup.popup.namespace,
+        opts_popup.active
+      )
+    end
+
+    vim.api.nvim_create_autocmd("CursorMoved", {
+      buffer = buf,
+      callback = update_cursorline,
+    })
+
+    vim.schedule(update_cursorline)
 
     QfbookmarkUIKeymaps.setup_keymap_buffers(opts_popup, buf)
   end,

@@ -40,7 +40,7 @@ local colors = {
   },
   FloatTitle = { fg = { higroup = { fromTo = "FloatTitle", attr = "fg" }, tint = { amount = 0.5 } } },
   FloatBorder = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" } } },
-  FloatFooter = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" }, tint = { amount = 1 } } },
+  FloatFooter = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" }, tint = { amount = 0.8 } } },
   FloatCursorLine = {
     bg = {
       higroup = { fromTo = "NormalFloat", attr = "bg" },
@@ -58,7 +58,7 @@ local colors = {
   -- path on the header line
   EntryPath = { fg = { higroup = { fromTo = "Directory", attr = "fg" } }, bold = true },
   -- basename more bright
-  EntryBasename = { fg = { higroup = { fromTo = "Directory", attr = "fg" }, tint = { amount = 0.2 } }, bold = true },
+  EntryBasename = { fg = { higroup = { fromTo = "Directory", attr = "fg" }, tint = { amount = 0.3 } }, bold = true },
   -- current-file indicator "●"
   EntryCurrentFile = { fg = { higroup = { fromTo = "String", attr = "fg" } }, bold = true },
   -- lnum portion ":92" on the detail line

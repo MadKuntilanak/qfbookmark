@@ -554,6 +554,7 @@ local function buffers_popup(buffer_lists)
     original_popup_buffer_width = path_width,
     win_opts = wincfg,
     last_buf = curbuf,
+    active = active_cursor_selection,
   }
 
   QfbookmarkUIView.build_popup("buffer", __opts)

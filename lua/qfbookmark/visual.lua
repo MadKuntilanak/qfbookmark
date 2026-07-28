@@ -23,7 +23,7 @@ end
 ---@param content_map QFBookmarkEntry[]
 ---@param selected table<string, boolean>
 ---@param cursor_hval string
-function M.apply_entry_highlights(bufnr, content_map, selected, cursor_hval)
+function M.apply_entry_mark_highlights(bufnr, content_map, selected, cursor_hval)
   local ns = QfbookmarkMarkUtils.register_namespace "qfbookmark_popup_hl"
   QfbookmarkMarkUtils.del_namespace(bufnr, ns)
 
@@ -219,7 +219,8 @@ end
 ---@param list table[] list of buffer entries (same order as displayed lines)
 ---@param selected table<integer, boolean>  keyed by bufnr
 ---@param namespace string
-function M.apply_entry_buffer_highlights(bufnr, list, selected, namespace)
+---@param cursor_hval string
+function M.apply_entry_buffer_highlights(bufnr, list, selected, namespace, cursor_hval)
   selected = selected or {}
   namespace = namespace or ("qfbookmark" .. tostring(bufnr))
   local ns = QfbookmarkMarkUtils.register_namespace(namespace)
@@ -251,12 +252,25 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected, namespace)
 
     -- ── checkbox ─────────────────────────────────────────────────────
     local chk_text = is_sel and "✓" or "○"
-    local chk_hl = is_sel and "QFBookmarkEntrySelectedCheck" or "QFBookmarkEntryUnselectedCheck"
+    local is_cursor = cursor_hval and tostring(lnum) == cursor_hval
+    local chk_hl
+
+    if is_cursor and is_sel then
+      chk_hl = "QFBookmarkEntrySelectedCheckCursor"
+    elseif is_cursor then
+      chk_hl = "QFBookmarkEntryUnselectedCheckCursor"
+    elseif is_sel then
+      chk_hl = "QFBookmarkEntrySelectedCheck"
+    else
+      chk_hl = "QFBookmarkEntryUnselectedCheck"
+    end
 
     QfbookmarkMarkExtmark.set_extmark(bufnr, ns_chk, row, 0, {
       virt_text = { { chk_text, chk_hl } },
       virt_text_pos = "right_align",
-      priority = 20,
+      hl_eol = true,
+      hl_mode = "replace",
+      priority = 10,
     })
 
     -- ── selected background ──────────────────────────────────────────
@@ -266,7 +280,7 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected, namespace)
         end_col = 0,
         hl_group = "QFBookmarkEntrySelected",
         hl_eol = true,
-        priority = 20,
+        priority = 10,
       })
     end
 
@@ -358,7 +372,7 @@ end
 
 ---@param bufnr integer
 ---@param namespace string
-function M.apply_save_highlights(bufnr, fn_opts, type_label, dir_display, namespace)
+function M.apply_entry_save_highlights(bufnr, fn_opts, type_label, dir_display, namespace)
   namespace = namespace or ("qfbookmark" .. tostring(bufnr))
 
   local ns = QfbookmarkMarkUtils.register_namespace(namespace)

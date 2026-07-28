@@ -45,7 +45,7 @@ local function update_save_footer(opts_popup, buf_preview)
   }
   vim.api.nvim_buf_set_lines(buf_preview, 0, -1, false, footer_text)
 
-  QfbookmarkMarkVisual.apply_save_highlights(
+  QfbookmarkMarkVisual.apply_entry_save_highlights(
     buf_preview,
     fn_opts,
     type_label,
@@ -308,9 +308,9 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
       vim.api.nvim_set_option_value(
         "winhighlight",
         "FloatBorder:QFBookmarkPreviewFloatBorder,"
-          .. "FloatTitle:QFBookmarkPreviewFloatTitle,"
-          .. "CursorLine:QFBookmarkPreviewCursorline,"
-          .. "CursorLineNr:QFBookmarkPreviewFloatCursorLineNr,",
+        .. "FloatTitle:QFBookmarkPreviewFloatTitle,"
+        .. "CursorLine:QFBookmarkPreviewCursorline,"
+        .. "CursorLineNr:QFBookmarkPreviewFloatCursorLineNr,",
         { win = win, scope = "local" }
       )
     else
@@ -346,8 +346,8 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
   vim.api.nvim_win_set_config(win, {
     title = {
       { " " .. keyword_def.icon .. is_annotation, keyword_def.hl_group or "WarningMsg" },
-      { fname, "QFBookmarkEntryFnName" },
-      { line_str, "QFBookmarkEntryLnum" },
+      { fname,                                    "QFBookmarkEntryFnName" },
+      { line_str,                                 "QFBookmarkEntryLnum" },
     },
   })
 end
