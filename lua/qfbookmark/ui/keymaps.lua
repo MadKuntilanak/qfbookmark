@@ -805,7 +805,7 @@ function Mapping.buffer.item_del()
 
     for idx, buffer in pairs(list) do
       local line, _hval =
-          QfbookmarkUIUtils.build_entry_line_buffers(idx, buffer, Mapping.opts_popup.original_popup_buffer_width)
+        QfbookmarkUIUtils.build_entry_line_buffers(idx, buffer, Mapping.opts_popup.original_popup_buffer_width)
       display_lines[#display_lines + 1] = line
 
       local start_line = idx
@@ -830,7 +830,8 @@ function Mapping.buffer.item_del()
       Mapping.buf,
       __entries,
       Mapping.buffer_selected,
-      Mapping.popup.namespace
+      Mapping.popup.namespace,
+      Mapping.opts_popup.active
     )
 
     vim.schedule(function()
@@ -899,7 +900,8 @@ function Mapping.buffer.toggle_selection()
     Mapping.buf,
     list,
     Mapping.buffer_selected,
-    Mapping.popup.namespace
+    Mapping.popup.namespace,
+    Mapping.opts_popup.active
   )
 
   local total = #list
@@ -937,7 +939,8 @@ function Mapping.buffer.deselect_all_buffers()
     Mapping.buf,
     list,
     Mapping.buffer_selected,
-    Mapping.popup.namespace
+    Mapping.popup.namespace,
+    Mapping.opts_popup.active
   )
 end
 

@@ -23,7 +23,7 @@ local function should_set_keymap(entry)
 end
 
 ---@param keymaps_opts QFBookKeys[]
----@param is_bufnr boolean
+---@param is_bufnr? boolean
 function M.set_keymaps(keymaps_opts, is_bufnr)
   is_bufnr = is_bufnr or false
 

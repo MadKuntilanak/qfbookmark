@@ -498,7 +498,7 @@ function M.setup()
   copyline_keymaps()
   trouble_keymaps()
 
-  QfbookmarkKeymapUtils.set_keymaps(keys, false)
+  QfbookmarkKeymapUtils.set_keymaps(keys)
 end
 
 return M
