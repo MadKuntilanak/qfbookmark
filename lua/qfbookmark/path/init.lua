@@ -213,7 +213,7 @@ M.qf = {}
 ---@param is_global boolean
 ---@param is_loc boolean
 function M.qf.save_data_lists(list_items, is_global, is_loc)
-  local target_path = M.path_opts.__local
+  local target_path = is_global and M.path_opts.__global or M.path_opts.__local
   if not target_path then
     return
   end

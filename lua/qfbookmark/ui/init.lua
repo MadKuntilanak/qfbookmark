@@ -94,6 +94,7 @@ local function saveqf_popup(title, target_path, for_what, is_loc, cb)
     content_map = {},
     display_lines = {},
     win_opts = wincfg,
+    on_submit = cb,
     save = {
       title = title,
       target_path = target_path,

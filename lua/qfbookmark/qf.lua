@@ -379,7 +379,7 @@ function M.setup_autocmds()
   vim.api.nvim_create_autocmd("ColorScheme", {
     callback = function()
       vim.schedule(function()
-        require "qfbookmark.highlights"(M.prefix_app)
+        require "qfbookmark.highlights" (M.prefix_app)
       end)
     end,
   })
@@ -908,7 +908,7 @@ local function add_item(list_type)
 
   local is_location_target = list_type == "loclist"
   local cmd_ = is_location_target and { "lclose", Config.window.quickfix.actions.lopen, "loclist" }
-    or { "cclose", Config.window.quickfix.actions.copen, "qflist" }
+      or { "cclose", Config.window.quickfix.actions.copen, "qflist" }
 
   local title = QfbookmarkUtils.get_title_qf(QfbookmarkUtils.is_loclist())
   if title and title:match "setqflist" or #title == 0 then
@@ -961,7 +961,7 @@ end
 local function rename_header(list_type)
   local is_loc = list_type == "loclist"
   local cmd = is_loc and { Config.window.quickfix.actions.lopen, "LocList" }
-    or { Config.window.quickfix.actions.copen, "QuickFix" }
+      or { Config.window.quickfix.actions.copen, "QuickFix" }
 
   if QfbookmarkUtils.is_loclist() then
     QfbookmarkUtils.warn("Renaming the title is not supported in the " .. cmd[2] .. ",\nOnly in Quickfix")
@@ -993,7 +993,7 @@ local function toggle_list(list_type, force_close)
 
   local is_loc = list_type == "loclist"
   local cmd_ = is_loc and { "lclose", Config.window.quickfix.actions.lopen }
-    or { "cclose", Config.window.quickfix.actions.copen }
+      or { "cclose", Config.window.quickfix.actions.copen }
   local is_open, qf_or_loclist = QfbookmarkUtils.is_vim_list_open(true)
 
   if (is_open and (list_type == qf_or_loclist)) or force_close then
@@ -1163,9 +1163,9 @@ function M.delete_item()
     for dlist_idx, dlist in pairs(data_lists) do
       for _, sel in pairs(selected) do
         if
-          sel.filename == vim.api.nvim_buf_get_name(dlist.bufnr)
-          and sel.col == dlist.col
-          and sel.lnum == dlist.lnum
+            sel.filename == vim.api.nvim_buf_get_name(dlist.bufnr)
+            and sel.col == dlist.col
+            and sel.lnum == dlist.lnum
         then
           if data_lists[dlist_idx] then
             data_lists[dlist_idx] = nil

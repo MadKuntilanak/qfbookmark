@@ -235,8 +235,12 @@ end
 function M.reformat_filename_json(input, target_path, is_loc)
   is_loc = is_loc or false
 
-  input = input:gsub("%s", "_")
-  input = input:gsub("%.", "_")
+  if type(input) == "table" then
+    input = table.concat(input, " ")
+  end
+
+  input = string.gsub(input, "%s", "_")
+  input = string.gsub(input, "%.", "_")
 
   local fname_path, fname = format_filename_json(target_path, input, is_loc)
   return {
