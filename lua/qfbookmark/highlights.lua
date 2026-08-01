@@ -179,7 +179,7 @@ local colors = {
 
   EntryFlag = {
     fg = {
-      higroup = { fromTo = "type", attr = "fg" },
+      higroup = { fromTo = "DiagnosticWarn", attr = "fg" },
       tint = { amount = 0.4 },
     },
   },

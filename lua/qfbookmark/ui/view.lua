@@ -381,6 +381,10 @@ local __popup_opts_for = {
     )
 
     local function update_cursorline()
+      if not win or not vim.api.nvim_win_is_valid(win) then
+        return
+      end
+
       local cur = vim.api.nvim_win_get_cursor(win)[1]
       opts_popup.active = tostring(cur)
       QfbookmarkMarkVisual.apply_entry_buffer_highlights(

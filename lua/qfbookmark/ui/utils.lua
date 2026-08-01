@@ -156,14 +156,12 @@ end
 
 --- Shorten a path by trimming from the left, keeping the meaningful tail.
 --- Example: "nvim/.config/nvim/lua/r/plugins/qf.lua" → "r/plugins/qf.lua"
+--- Shorten a path by trimming from the left, keeping the meaningful tail.
 ---@param path string
 ---@param max_len integer
 ---@return string
 function M.shorten_path(path, max_len)
   local short = vim.fn.fnamemodify(path, ":~:.")
-
-  -- local TAB_WIDTH = 4
-  -- short = short:gsub("\t", string.rep(" ", TAB_WIDTH))
 
   if vim.fn.strdisplaywidth(short) <= max_len then
     return short
@@ -171,9 +169,34 @@ function M.shorten_path(path, max_len)
 
   local parts = vim.split(short, "/", { plain = true })
   local result = parts[#parts]
+
+  if vim.fn.strdisplaywidth(result) > max_len then
+    local target_len = max_len - 1
+    local best_cut = nil
+
+    for i = #result, 1, -1 do
+      local ch = result:sub(i, i)
+      if ch == "-" or ch == "_" or ch == "." then
+        local candidate = result:sub(i)
+        if vim.fn.strdisplaywidth(candidate) <= target_len then
+          best_cut = candidate
+        end
+      end
+    end
+
+    if best_cut then
+      return "…" .. best_cut
+    end
+
+    while vim.fn.strdisplaywidth(result) > target_len and #result > 1 do
+      result = result:sub(2)
+    end
+    return "…" .. result
+  end
+
   for i = #parts - 1, 1, -1 do
     local candidate = parts[i] .. "/" .. result
-    if vim.fn.strdisplaywidth(candidate) > max_len + 10 then
+    if vim.fn.strdisplaywidth(candidate) > max_len then
       return "…/" .. result
     end
     result = candidate
@@ -375,7 +398,7 @@ end
 ---@return string harpoon harpoon value for lookup
 function M.build_entry_lines(idx, mark, path_width, symbol)
   local badge = M.get_mode_badge(mark.sign_category)
-  local path = M.shorten_path(mark.filename, path_width)
+  local path = M.shorten_path(mark.filename, path_width + 10)
   local cur_marker = M.is_current_file(mark.filename) and " ●" or ""
   local lnum = string.format(":%d", mark.line)
 

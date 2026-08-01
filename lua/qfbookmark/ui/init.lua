@@ -35,19 +35,30 @@ local function calc_path_width(mark_lists, is_buffers, max_path)
   return math.min(w, max_path)
 end
 
---- Compute popup width from entry content
----@param mark_lists QFbookBufferMarkEntry[]
----@param is_buffers? boolean
+--- Compute popup width from actual rendered entry lines
+---@param display_lines string[]
+---@param extra? string[]  -- optional strings that also need to fit (e.g. title/footer)
 ---@return integer
-local function calc_popup_width(mark_lists, is_buffers)
-  is_buffers = is_buffers or false
-  local path_w = calc_path_width(mark_lists, is_buffers, 32)
-  -- " N  BADGE  path ●" → 1+1+2+4+2+path+2 = path + ~12
-  local estimated = path_w + 14
+local function calc_popup_width(display_lines, extra)
+  local max_w = 0
+  for _, line in ipairs(display_lines) do
+    local w = vim.fn.strdisplaywidth(line)
+    if w > max_w then
+      max_w = w
+    end
+  end
 
+  for _, s in ipairs(extra or {}) do
+    local w = vim.fn.strdisplaywidth(s)
+    if w > max_w then
+      max_w = w
+    end
+  end
+
+  local border_padding = 4 -- border (2) + breathing room (2)
   local min_w = 38
-  local max_w = 60
-  return math.max(min_w, math.min(estimated, max_w))
+  local hard_max = 60
+  return math.max(min_w, math.min(max_w + border_padding, hard_max))
 end
 
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
@@ -120,12 +131,9 @@ local function mark_harpoon_popup(mark_lists, cb)
   end
 
   local editor = QfbookmarkUIUtils.get_editor_size()
-
   local height = math.max(2, math.floor(editor.height / 2))
-  local original_width = calc_popup_width(mark_lists)
-  local width = math.max(original_width + 20, 20)
 
-  local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
+  local path_width = calc_path_width(mark_lists, false, 32)
 
   -- ── Build display lines dan harpoon_map ────────────────────────────────
   -- entries are 2 or 3 lines depending on whether symbol context exists:
@@ -137,7 +145,7 @@ local function mark_harpoon_popup(mark_lists, cb)
 
   for idx, mark in ipairs(mark_lists) do
     local symbol = QfbookmarkUIUtils.resolve_fn_name(mark)
-    local line1, line2, line3, hval = QfbookmarkUIUtils.build_entry_lines(idx, mark, original_width, symbol)
+    local line1, line2, line3, hval = QfbookmarkUIUtils.build_entry_lines(idx, mark, path_width, symbol)
 
     local start_line = #display_lines + 1
 
@@ -167,9 +175,14 @@ local function mark_harpoon_popup(mark_lists, cb)
   local icon = "🔗 "
   local title_str = total > 0 and icon .. string.format("QFMarks (%d)", total) or icon .. "QFMarks"
 
-  local win_buf = vim.api.nvim_create_buf(false, true)
   local help_key = resolve_key_shortcuts()
   local title_footer_str = "dd del · <CR> open · <C-v/s/t> split · " .. help_key .. " help"
+
+  local width = calc_popup_width(display_lines, { title_str, title_footer_str })
+
+  local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
+
+  local win_buf = vim.api.nvim_create_buf(false, true)
 
   ---@type WinCfg
   local wincfg = {
@@ -194,7 +207,7 @@ local function mark_harpoon_popup(mark_lists, cb)
     contents = mark_lists,
     content_map = entries,
     display_lines = display_lines,
-    original_popup_mark_width = original_width,
+    original_popup_mark_width = path_width,
     win_opts = wincfg,
     selected = selected,
     active = active_cursor_selection,
@@ -491,7 +504,7 @@ local function buffers_popup(buffer_lists)
   -- Build display lines
   local display_lines = {}
   local entries = {}
-  local path_width = calc_path_width(buffer_lists, true, 30)
+  local path_width = calc_path_width(buffer_lists, true, 50)
 
   for idx, buffer in pairs(buffer_lists) do
     local line, hval = QfbookmarkUIUtils.build_entry_line_buffers(idx, buffer, path_width)
@@ -510,11 +523,7 @@ local function buffers_popup(buffer_lists)
   end
 
   local editor = QfbookmarkUIUtils.get_editor_size()
-
-  local height = math.max(2, #buffer_lists) + 1
-  local width = calc_popup_width(display_lines) + 10
-
-  local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
+  local height = math.min(math.floor(editor.height / 2), #buffer_lists) + 1
 
   -- Total mark buffer
   local total = #buffer_lists
@@ -522,6 +531,11 @@ local function buffers_popup(buffer_lists)
   local title_str = total > 0 and icon .. string.format("QFBuffers (%d)", total) or icon .. "QFBuffers"
   local help_key = resolve_key_shortcuts()
   local title_footer_str = "dd del · <C-v/s/t split · " .. help_key .. " help"
+
+  local width = calc_popup_width(display_lines, { title_str, title_footer_str })
+
+  local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
+
   local win_buf = vim.api.nvim_create_buf(false, true)
 
   ---@type WinCfg
