@@ -235,7 +235,7 @@ function M.get_data_qf(is_loc, context_name)
       end
       local loc_list_context = loc_list.context
       results.location.context = (type(loc_list_context) == "table") and vim.deepcopy(loc_list_context)
-          or loc_list_context
+        or loc_list_context
       results.location.items = vim.tbl_map(function(item)
         return {
           filename = item.bufnr and vim.api.nvim_buf_get_name(item.bufnr),
@@ -809,10 +809,10 @@ function M.get_visual_selection(opts)
     selection = string.sub(lines[1], cscol) .. "\n" .. string.sub(lines[n], 1, cecol)
   else
     selection = string.sub(lines[1], cscol)
-        .. "\n"
-        .. table.concat(lines, "\n", 2, n - 1)
-        .. "\n"
-        .. string.sub(lines[n], 1, cecol)
+      .. "\n"
+      .. table.concat(lines, "\n", 2, n - 1)
+      .. "\n"
+      .. string.sub(lines[n], 1, cecol)
   end
 
   return {
@@ -854,6 +854,13 @@ function M.resolve_bufnr(filename)
     if bufnr == -1 then
       bufnr = vim.fn.bufadd(filename)
     end
+
+    if bufnr ~= -1 and not vim.api.nvim_buf_is_loaded(bufnr) then
+      vim.api.nvim_buf_call(bufnr, function()
+        vim.cmd("doautocmd BufReadCmd " .. vim.fn.fnameescape(filename))
+      end)
+    end
+
     return bufnr ~= -1 and bufnr or nil
   end
 
@@ -861,6 +868,10 @@ function M.resolve_bufnr(filename)
     local bufnr = vim.fn.bufnr(filename)
     if bufnr == -1 then
       bufnr = vim.fn.bufadd(filename)
+    end
+
+    if bufnr ~= -1 and not vim.api.nvim_buf_is_loaded(bufnr) then
+      vim.fn.bufload(bufnr)
     end
 
     return bufnr ~= -1 and bufnr or nil
