@@ -263,7 +263,7 @@ function M.get_mode_badge(category)
   return badges[category] or category:sub(1, 4)
 end
 
---- Cek apakah mark entry ini adalah file yang sedang aktif
+--- Check whether the filename is the current buffer's file.
 ---@param filename string
 ---@return boolean
 function M.is_current_file(filename)
@@ -310,23 +310,6 @@ function M.clean_up(windows)
   if #bufs > 0 then
     M.close_buf(bufs)
   end
-  -- for _, v in pairs(ui_cfg) do
-  --   if type(v) == "table" then
-  --     if v.augroup then
-  --       local augroup = Config.sign_group .. v.augroup
-  --       QfbookmarkUtils.clear_autocmd_group(augroup)
-  --     end
-  --     v.buf = nil
-  --     v.win = nil
-  --   end
-  -- end
-
-  -- if ui_cfg.augroup then
-  --   local augroup = Config.sign_group .. ui_cfg.augroup
-  --   QfbookmarkUtils.clear_autocmd_group(augroup)
-  -- end
-  -- ui_cfg.buf = nil
-  -- ui_cfg.win = nil
   return windows
 end
 
@@ -385,25 +368,29 @@ function M.get_buffer_status(bufnr)
 end
 
 --- Build display lines per entry — 2 lines when no symbol, 3 lines when symbol exists:
----   Line 1 (header): " N  BADGE  path/file.lua ●"
----   Line 2 (detail): "         :lnum  preview text"
----   Line 3 (symbol): "         icon name > icon name"  ← only when chain != ""
----@param idx integer 1-based display index
----@param mark QFbookBufferMarkEntry mark entry to render
----@param path_width integer column width for path alignment
----@param symbol QFBookSymbol resolved symbol (kind + name)
----@return string line1 header line
----@return string line2 detail line
----@return string|nil line3 symbol line, nil when no symbol context
----@return string harpoon harpoon value for lookup
-function M.build_entry_lines(idx, mark, path_width, symbol)
+---   Line 1 (header): " N  BADGE  basename    ●    dir"
+---   Line 2 (detail): "         :lnum preview text"
+---   Line 3 (symbol): "         icon chain"  ← only when chain != ""
+---@param idx integer
+---@param mark QFbookBufferMarkEntry
+---@param base_width integer  fixed width for basename column (never truncated)
+---@param dir_segments integer max segments to keep for trailing dir path
+---@param symbol QFBookSymbol
+---@return string line1, string line2, string|nil line3, string harpoon, table cols
+function M.build_entry_lines(idx, mark, base_width, dir_segments, symbol)
   local badge = M.get_mode_badge(mark.sign_category)
-  local path = M.shorten_path(mark.filename, path_width + 10)
-  local cur_marker = M.is_current_file(mark.filename) and " ●" or ""
-  local lnum = string.format(":%d", mark.line)
+
+  local full = mark.filename
+  local base = vim.fn.fnamemodify(full, ":t")
+  local dir = vim.fn.fnamemodify(full, ":~:.:h")
+
+  local base_w = vim.fn.strdisplaywidth(base)
+  local base_padded = base .. string.rep(" ", math.max(0, base_width - base_w))
+
+  local cur_marker = M.is_current_file(mark.filename) and "●" or " "
+  local dir_short = M.shorten_path(dir, dir_segments)
 
   local note_annotation
-
   if type(mark.note) == "table" then
     note_annotation = table.concat(mark.note, " ")
   elseif type(mark.note) == "string" then
@@ -416,59 +403,104 @@ function M.build_entry_lines(idx, mark, path_width, symbol)
   end
 
   local preview = mark.category == "NOTE" and ("⮞ " .. note_annotation or mark.text or "") or (mark.text or "")
-  preview = M.shorten_text(preview, path_width)
+  preview = M.shorten_text(preview, base_width + 20)
 
-  -- header: " N  BADGE  plugins/qf.lua ●"
-  local line1 = string.format(" %d  %s  %s%s", idx, badge, path, cur_marker)
+  local lnum = string.format(":%d", mark.line)
 
-  -- detail: indent + lnum + preview (full width, no truncation for symbol)
+  -- Build line 1 while calculating the byte offsets for each component.
+  -- Extmark columns use byte offsets rather than display columns.
+  local prefix = string.format(" %d  ", idx)
+  local idx_s = 1
+  local idx_e = idx_s + #tostring(idx)
+
+  local badge_s = #prefix
+  local badge_e = badge_s + #badge
+
+  local gap1 = "  "
+  local base_s = badge_e + #gap1
+  local base_e = base_s + #base_padded
+
+  local gap2 = " "
+  local marker_s = base_e + #gap2
+  local marker_e = marker_s + #cur_marker
+
+  local gap3 = "   "
+  local dir_s = marker_e + #gap3
+  local dir_e = dir_s + #dir_short
+
+  local line1 = prefix .. badge .. gap1 .. base_padded .. gap2 .. cur_marker .. gap3 .. dir_short
+
   local indent = string.rep(" ", 9)
-  local line2 = string.format("%s%s  %s", indent, lnum, preview)
+  local line2 = string.format("%s%s %s", indent, lnum, preview)
 
-  -- symbol line: only emit when there is context
   local sym_part = symbol.chain or ""
   local line3 = sym_part ~= "" and (indent .. sym_part) or nil
 
-  return line1, line2, line3, mark.harpoon
+  local cols = {
+    idx_s = idx_s,
+    idx_e = idx_e,
+    badge_s = badge_s,
+    badge_e = badge_e,
+    base_s = base_s,
+    base_e = base_e,
+    marker_s = marker_s,
+    marker_e = marker_e,
+    dir_s = dir_s,
+    dir_e = dir_e,
+    is_current = cur_marker == "●",
+  }
+
+  return line1, line2, line3, mark.harpoon, cols
 end
 
 ---@param idx integer
 ---@param buf QFBookBufferItem
----@param path_width integer
+---@param base_width integer   fixed width for basename column (never truncates)
+---@param lnum_width integer   fixed width for lnum column
+---@param dir_segments integer max segments to keep for the trailing dir path
 ---@return string line
 ---@return QFBookBufferItem buffer_opts
-function M.build_entry_line_buffers(idx, buf, path_width)
+function M.build_entry_line_buffers(idx, buf, base_width, lnum_width, dir_segments)
   local flag = buf.flag or ""
   local changed = buf.info.changed == 1
   local hidden = buf.info.hidden == 1
 
   local col0, col1
-
   if #flag > 0 then
-    -- flag (% atau #): flag at col0, modified at col1
     col0 = flag
     col1 = changed and "+" or " "
   elseif changed then
-    -- modified only: + at col0
     col0 = "+"
     col1 = " "
   elseif hidden then
-    -- hidden: h at col0,
     col0 = "h"
     col1 = " "
   else
     col0 = " "
     col1 = " "
   end
-
   local badge = col0 .. col1
-  local path = M.shorten_path(buf.info.name, path_width)
-  local lnum = string.format(":%d", buf.info.lnum)
+
+  local full = buf.info.name or ""
+  local base = vim.fn.fnamemodify(full, ":t")
+  local dir = vim.fn.fnamemodify(full, ":~:.:h")
+
+  -- basename: never truncated, only padded
+  local base_w = vim.fn.strdisplaywidth(base)
+  base = base .. string.rep(" ", math.max(0, base_width - base_w))
+
+  -- lnum: fixed width
+  local lnum_str = string.format(":%d", buf.info.lnum)
+  local lnum_w = vim.fn.strdisplaywidth(lnum_str)
+  local lnum_padded = lnum_str .. string.rep(" ", math.max(0, lnum_width - lnum_w))
+
+  -- dir: truncate by segment, not by character
+  local path = M.shorten_path(dir, dir_segments)
 
   local pad_idx = #tostring(idx)
   local pad_space = (" "):rep(4 - pad_idx)
 
-  local line = pad_space .. idx .. "   " .. badge .. "  " .. path .. " " .. lnum
+  local line = pad_space .. idx .. "   " .. badge .. "  " .. base .. " " .. lnum_padded .. "  " .. path
   return line, buf
 end
 

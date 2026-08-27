@@ -23,6 +23,7 @@
 --- id: integer,
 --- start_line: integer,
 --- line_count: integer,
+--- cols: {idx_s: integer, idx_e: integer, badge_e: integer, badge_s: integer, base_e: integer, base_s: integer, marker_s: integer, marker_e: integer, dir_e: integer, dir_s: integer, is_current: boolean},
 --- mark: QFbookBufferMarkEntry, }
 
 ---@alias QFBookmarkUiPopupCfg {
@@ -31,6 +32,7 @@
 --- win_opts: WinCfg,
 --- original_popup_mark_width: integer,
 --- original_popup_buffer_width: integer,
+--- original_popup_buffer_lwidth: integer,
 --- display_lines: string[],
 --- popup?: QFBookmarkUiPopup,
 --- is_harpoon?: boolean,

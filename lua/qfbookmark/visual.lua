@@ -27,81 +27,46 @@ function M.apply_entry_mark_highlights(bufnr, content_map, selected, cursor_hval
   local ns = QfbookmarkMarkUtils.register_namespace "qfbookmark_popup_hl"
   QfbookmarkMarkUtils.del_namespace(bufnr, ns)
 
-  for idx, entry in ipairs(content_map) do
+  for _, entry in ipairs(content_map) do
     local ln_header = (entry.start_line or 1) - 1
 
     local header = vim.api.nvim_buf_get_lines(bufnr, ln_header, ln_header + 1, false)[1] or ""
     local detail = vim.api.nvim_buf_get_lines(bufnr, ln_header + 1, ln_header + 2, false)[1] or ""
     local symbol_line = vim.api.nvim_buf_get_lines(bufnr, ln_header + 2, ln_header + 3, false)[1] or ""
 
-    -- ── Header ────────────────────────────────
+    -- ── Header: use the offsets calculated during entry construction ──────
+    local cols = entry.cols
 
-    local idx_str = tostring(idx)
-    local idx_s = 0
-    local idx_e = 1 + #idx_str + 2
+    if cols then
+      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, cols.idx_s, {
+        end_col = math.min(cols.idx_e, #header),
+        hl_group = "QFBookmarkEntryIdx",
+      })
 
-    QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, idx_s, {
-      end_col = math.min(idx_e, #header),
-      hl_group = "QFBookmarkEntryIdx",
-    })
+      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, cols.badge_s, {
+        end_col = math.min(cols.badge_e, #header),
+        hl_group = badge_hl(entry.mark.category),
+      })
 
-    local badge_s = idx_e
-    local badge_e = badge_s + 4
+      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, cols.base_s, {
+        end_col = math.min(cols.base_e, #header),
+        hl_group = "QFBookmarkEntryBasename",
+      })
 
-    QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, badge_s, {
-      end_col = math.min(badge_e, #header),
-      hl_group = badge_hl(entry.mark.category),
-    })
-
-    local path_s = badge_e + 2
-    local cur_pos = header:find(" ●", path_s, true)
-
-    local path_text = header:sub(path_s + 1, #header)
-    -- find last "/" within path_text to split dir vs basename
-    local last_slash = nil
-    for i = #path_text, 1, -1 do
-      if path_text:sub(i, i) == "/" then
-        last_slash = i
-        break
+      if cols.is_current then
+        QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, cols.marker_s, {
+          end_col = math.min(cols.marker_e, #header),
+          hl_group = "QFBookmarkEntryCurrentFile",
+        })
       end
-    end
 
-    if last_slash then
-      -- dir part: dim
-      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, path_s, {
-        end_col = path_s + last_slash,
+      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, cols.dir_s, {
+        end_col = math.min(cols.dir_e, #header),
         hl_group = "QFBookmarkEntryPath",
       })
-
-      -- basename part: bright
-      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, path_s + last_slash, {
-        end_col = #header,
-        hl_group = "QFBookmarkEntryBasename",
-      })
-
-      -- dot part
-      if cur_pos then
-        QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, cur_pos, {
-          end_col = #header,
-          hl_group = "QFBookmarkEntryCurrentFile",
-        })
-      end
-    else
-      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, path_s, {
-        end_col = #header,
-        hl_group = "QFBookmarkEntryBasename",
-      })
-      -- dot part
-      if cur_pos then
-        QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, cur_pos, {
-          end_col = #header,
-          hl_group = "QFBookmarkEntryCurrentFile",
-        })
-      end
     end
 
     -- ── Selected entry ────────────────────────────────
-
     local is_sel = selected[entry.hval] == true
     local is_cursor = entry.hval == cursor_hval
 
@@ -138,11 +103,9 @@ function M.apply_entry_mark_highlights(bufnr, content_map, selected, cursor_hval
           priority = 10,
         })
       end
-      -- unplan: dont hl line path?
-      local _path_s = header:find("  ", 8, true)
 
-      if _path_s then
-        QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, path_s + 1, {
+      if cols then
+        QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header, cols.dir_s, {
           end_col = #header,
           hl_group = "QFBookmarkEntrySelectedPath",
           priority = 10,
@@ -150,8 +113,7 @@ function M.apply_entry_mark_highlights(bufnr, content_map, selected, cursor_hval
       end
     end
 
-    -- ── Detail line ───────────────────────────
-
+    -- ── Detail line: preserve the existing format ─────────────────────────
     local lnum_s, lnum_e_byte = detail:match "():%d+()"
     if lnum_s then
       QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header + 1, lnum_s - 1, {
@@ -159,7 +121,8 @@ function M.apply_entry_mark_highlights(bufnr, content_map, selected, cursor_hval
         hl_group = "QFBookmarkEntryLnum",
       })
 
-      local preview_s = lnum_e_byte + 1
+      -- local preview_s = lnum_e_byte + 1
+      local preview_s = lnum_e_byte
       if preview_s <= #detail then
         local is_symbol = detail:find("⮞", preview_s + 1, true)
         if is_symbol then
@@ -176,13 +139,11 @@ function M.apply_entry_mark_highlights(bufnr, content_map, selected, cursor_hval
       end
     end
 
-    -- ── Symbol line ───────────────────────────
-
+    -- ── Symbol line: highlight the symbol type and function name ──────────
     if symbol_line ~= "" and not symbol_line:match "^ %d+ " and not symbol_line:match "^%s+:%d+" then
       local sym_s = symbol_line:find "%S"
       if sym_s then
         sym_s = sym_s - 1
-
         local is_fn = symbol_line:sub(sym_s + 1, sym_s + 2) == "\xC6\x92"
 
         if is_fn then
@@ -197,7 +158,6 @@ function M.apply_entry_mark_highlights(bufnr, content_map, selected, cursor_hval
               end_col = sep - 1,
               hl_group = "QFBookmarkEntrySymbolType",
             })
-
             QfbookmarkMarkExtmark.set_extmark(bufnr, ns, ln_header + 2, sep + 2, {
               end_col = #symbol_line,
               hl_group = "QFBookmarkEntryFnName",
@@ -220,7 +180,9 @@ end
 ---@param selected table<integer, boolean>  keyed by bufnr
 ---@param namespace string
 ---@param cursor_hval string
-function M.apply_entry_buffer_highlights(bufnr, list, selected, namespace, cursor_hval)
+---@param base_width integer  fixed width of the basename column (must match build_entry_line_buffers)
+---@param lnum_width integer  fixed width of the lnum column (must match build_entry_line_buffers)
+function M.apply_entry_buffer_highlights(bufnr, list, selected, namespace, cursor_hval, base_width, lnum_width)
   selected = selected or {}
   namespace = namespace or ("qfbookmark" .. tostring(bufnr))
   local ns = QfbookmarkMarkUtils.register_namespace(namespace)
@@ -230,6 +192,16 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected, namespace, curso
   QfbookmarkMarkUtils.del_namespace(bufnr, ns_chk)
 
   local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+
+  -- fixed column offsets, derived from build_entry_line_buffers' format:
+  -- "{idx:4}   {badge:2}  {base:base_width} {lnum:lnum_width}  {dir}"
+  local BADGE_COL0 = 7
+  local BADGE_COL1 = 8
+  local BASE_START = 11
+  local BASE_END = BASE_START + base_width
+  local LNUM_START = BASE_END + 1
+  local LNUM_END = LNUM_START + lnum_width
+  local DIR_START = LNUM_END + 2
 
   for lnum, line in ipairs(lines) do
     if not line or line == "" then
@@ -284,11 +256,7 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected, namespace, curso
       })
     end
 
-    -- ── flag/badge: col 7-8 (after "{idx:4}   ") ────────────────────────
-    -- format: "{idx pad to 4}   {col0}{col1}  {path} {lnum}"
-    local BADGE_COL0 = 7 -- 0-based
-    local BADGE_COL1 = 8
-
+    -- ── flag/badge: col 7-8 ────────────────────────────────────────────
     local col0 = line:sub(BADGE_COL0 + 1, BADGE_COL0 + 1)
     local col1 = line:sub(BADGE_COL1 + 1, BADGE_COL1 + 1)
 
@@ -325,43 +293,31 @@ function M.apply_entry_buffer_highlights(bufnr, list, selected, namespace, curso
       })
     end
 
-    -- ── path + line number: path starts at col 11 ──────────────────────
-    local lnum_s = line:find ":%d+$"
-    if lnum_s then
-      local path_start = 11 -- 0-based: after "{idx:4}   {badge:2}  "
-      local path_end = lnum_s - 2
-      local path_text = line:sub(path_start + 1, path_end)
+    -- ── basename: fixed column, no need to search ──────────────────────
+    if #line >= BASE_START then
+      local base_end = math.min(BASE_END, #line)
+      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, row, BASE_START, {
+        end_col = base_end,
+        hl_group = "QFBookmarkEntryBasename",
+        priority = 10,
+      })
+    end
 
-      local last_slash
-      for i = #path_text, 1, -1 do
-        if path_text:sub(i, i) == "/" then
-          last_slash = i
-          break
-        end
-      end
-
-      if last_slash then
-        QfbookmarkMarkExtmark.set_extmark(bufnr, ns, row, path_start, {
-          end_col = path_start + last_slash,
-          hl_group = "QFBookmarkEntryPath",
-          priority = 10,
-        })
-        QfbookmarkMarkExtmark.set_extmark(bufnr, ns, row, path_start + last_slash, {
-          end_col = path_end,
-          hl_group = "QFBookmarkEntryBasename",
-          priority = 10,
-        })
-      else
-        QfbookmarkMarkExtmark.set_extmark(bufnr, ns, row, path_start, {
-          end_col = path_end,
-          hl_group = "QFBookmarkEntryBasename",
-          priority = 10,
-        })
-      end
-
-      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, row, lnum_s - 1, {
-        end_col = #line,
+    -- ── lnum: fixed column ───────────────────────────────────────────
+    if #line >= LNUM_START then
+      local lnum_end = math.min(LNUM_END, #line)
+      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, row, LNUM_START, {
+        end_col = lnum_end,
         hl_group = "QFBookmarkEntryLnum",
+        priority = 10,
+      })
+    end
+
+    -- ── dir path: trailing, fills to end of line ────────────────────────
+    if #line > DIR_START then
+      QfbookmarkMarkExtmark.set_extmark(bufnr, ns, row, DIR_START, {
+        end_col = #line,
+        hl_group = "QFBookmarkEntryPath",
         priority = 10,
       })
     end

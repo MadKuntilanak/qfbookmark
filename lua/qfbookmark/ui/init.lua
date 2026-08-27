@@ -9,37 +9,12 @@ local function resolve_key_shortcuts()
   return QfbookmarkUtils.resolve_key_shortcut_keymaps()
 end
 
---- Compute optimal path column width across all mark entries
----@param mark_lists QFbookBufferMarkEntry[] | QFBookBufferItem[]
----@param max_path? integer
----@param is_buffers boolean
----@return integer
-local function calc_path_width(mark_lists, is_buffers, max_path)
-  max_path = max_path or 32
-  local w = 15
-  for _, m in ipairs(mark_lists) do
-    local short
-    if is_buffers then
-      short = vim.fn.fnamemodify(m.info.name or "", ":~:.")
-    else
-      short = vim.fn.fnamemodify(m.filename or "", ":~:.")
-    end
-    -- keep only the last directory component + filename for display
-    local parts = vim.split(short, "/", { plain = true })
-    local display = #parts >= 2 and (parts[#parts - 1] .. "/" .. parts[#parts]) or parts[#parts] or short
-    local len = vim.fn.strdisplaywidth(display)
-    if len > w then
-      w = len
-    end
-  end
-  return math.min(w, max_path)
-end
-
---- Compute popup width from actual rendered entry lines
+--- Compute the popup width based on the actual rendered entry lines.
 ---@param display_lines string[]
----@param extra? string[]  -- optional strings that also need to fit (e.g. title/footer)
+---@param extra? string[]          -- optional strings that also need to fit (e.g. title/footer)
+---@param editor_width? integer    -- available editor width, used as a dynamic upper bound
 ---@return integer
-local function calc_popup_width(display_lines, extra)
+local function calc_popup_width(display_lines, extra, editor_width)
   local max_w = 0
   for _, line in ipairs(display_lines) do
     local w = vim.fn.strdisplaywidth(line)
@@ -55,10 +30,28 @@ local function calc_popup_width(display_lines, extra)
     end
   end
 
-  local border_padding = 4 -- border (2) + breathing room (2)
+  local border_padding = 4 -- 2 for the border + 2 for breathing room
   local min_w = 38
-  local hard_max = 60
+
+  -- The maximum width is dynamic: use most of the available editor width,
+  -- while leaving a margin so the popup does not touch the screen edges.
+  editor_width = editor_width or vim.o.columns
+  local margin = 10
+  local hard_max = math.max(min_w, editor_width - margin)
+
   return math.max(min_w, math.min(max_w + border_padding, hard_max))
+end
+
+local function calc_mark_base_width(mark_lists)
+  local base_w = 8
+  for _, m in ipairs(mark_lists) do
+    local base = vim.fn.fnamemodify(m.filename or "", ":t")
+    local bw = vim.fn.strdisplaywidth(base)
+    if bw > base_w then
+      base_w = bw
+    end
+  end
+  return base_w
 end
 
 -- ╓─────────────────────────────────────────────────────────────────────────────╖
@@ -122,7 +115,7 @@ end
 local selected = {}
 local active_cursor_selection = ""
 
----@param mark_lists QFbookBufferMarkEntry[]
+---@param mark_lists QFBookBufferItem
 ---@param cb function
 local function mark_harpoon_popup(mark_lists, cb)
   if #mark_lists == 0 then
@@ -133,30 +126,19 @@ local function mark_harpoon_popup(mark_lists, cb)
   local editor = QfbookmarkUIUtils.get_editor_size()
   local height = math.max(2, math.floor(editor.height / 2))
 
-  local path_width = calc_path_width(mark_lists, false, 32)
+  local base_width = calc_mark_base_width(mark_lists)
+  local dir_segments = 20
 
-  -- ── Build display lines dan harpoon_map ────────────────────────────────
-  -- entries are 2 or 3 lines depending on whether symbol context exists:
-  --   line 1 (header)  → harpoon_map[line_nr] = hval
-  --   line 2 (detail)  → harpoon_map[line_nr] = hval
-  --   line 3 (symbol)  → harpoon_map[line_nr] = hval  (only when chain != "")
   local display_lines = {}
   local entries = {}
 
   for idx, mark in ipairs(mark_lists) do
     local symbol = QfbookmarkUIUtils.resolve_fn_name(mark)
-    local line1, line2, line3, hval = QfbookmarkUIUtils.build_entry_lines(idx, mark, path_width, symbol)
+    local line1, line2, line3, hval, cols =
+      QfbookmarkUIUtils.build_entry_lines(idx, mark, base_width, dir_segments, symbol)
 
     local start_line = #display_lines + 1
-
-    local entry = {
-      id = idx,
-      start_line = start_line,
-      hval = hval,
-      mark = mark,
-      line_count = 2,
-    }
-
+    local entry = { id = idx, start_line = start_line, hval = hval, mark = mark, line_count = 2, cols = cols }
     entries[idx] = entry
 
     display_lines[#display_lines + 1] = line1
@@ -167,19 +149,15 @@ local function mark_harpoon_popup(mark_lists, cb)
     end
   end
 
-  -- Ensure popup is tall enough to show all entries
   height = math.min(height, #display_lines) + 2
 
-  -- Total mark count shown in the popup title
   local total = #mark_lists
   local icon = "🔗 "
   local title_str = total > 0 and icon .. string.format("QFMarks (%d)", total) or icon .. "QFMarks"
-
   local help_key = resolve_key_shortcuts()
   local title_footer_str = "dd del · <CR> open · <C-v/s/t> split · " .. help_key .. " help"
 
-  local width = calc_popup_width(display_lines, { title_str, title_footer_str })
-
+  local width = calc_popup_width(display_lines, { title_str, title_footer_str }, editor.width)
   local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
 
   local win_buf = vim.api.nvim_create_buf(false, true)
@@ -207,7 +185,8 @@ local function mark_harpoon_popup(mark_lists, cb)
     contents = mark_lists,
     content_map = entries,
     display_lines = display_lines,
-    original_popup_mark_width = path_width,
+    original_popup_mark_width = base_width,
+    mark_lnum_width = base_width,
     win_opts = wincfg,
     selected = selected,
     active = active_cursor_selection,
@@ -495,6 +474,26 @@ local function select_sink_picker(text)
   QfbookmarkUIView.build_popup("select_sink_picker", __opts)
 end
 
+---@param mark_lists QFBookBufferItem[]
+---@return integer base_width, integer lnum_width
+local function calc_buffer_columns(mark_lists)
+  local base_w, lnum_w = 8, 4
+  for _, m in ipairs(mark_lists) do
+    local base = vim.fn.fnamemodify(m.info.name or "", ":t")
+    local bw = vim.fn.strdisplaywidth(base)
+    if bw > base_w then
+      base_w = bw
+    end
+
+    local lw = vim.fn.strdisplaywidth(string.format(":%d", m.info.lnum or 0))
+    if lw > lnum_w then
+      lnum_w = lw
+    end
+  end
+  -- No more math.min(...), the basename is always shown in full, and the column width follows
+  return base_w, lnum_w
+end
+
 local buffer_selected = {}
 
 ---@param buffer_lists table
@@ -504,22 +503,20 @@ local function buffers_popup(buffer_lists)
   -- Build display lines
   local display_lines = {}
   local entries = {}
-  local path_width = calc_path_width(buffer_lists, true, 50)
+
+  local base_width, lnum_width = calc_buffer_columns(buffer_lists)
+  local dir_width = 20 -- maximum path width at the end of the line
 
   for idx, buffer in pairs(buffer_lists) do
-    local line, hval = QfbookmarkUIUtils.build_entry_line_buffers(idx, buffer, path_width)
+    local line, hval = QfbookmarkUIUtils.build_entry_line_buffers(idx, buffer, base_width, lnum_width, dir_width)
     display_lines[#display_lines + 1] = line
 
-    local start_line = idx
-
-    local entry = {
+    entries[idx] = {
       id = idx,
-      start_line = start_line,
+      start_line = idx,
       hval = hval,
       line_count = 1,
     }
-
-    entries[idx] = entry
   end
 
   local editor = QfbookmarkUIUtils.get_editor_size()
@@ -532,8 +529,7 @@ local function buffers_popup(buffer_lists)
   local help_key = resolve_key_shortcuts()
   local title_footer_str = "dd del · <C-v/s/t split · " .. help_key .. " help"
 
-  local width = calc_popup_width(display_lines, { title_str, title_footer_str })
-
+  local width = calc_popup_width(display_lines, { title_str, title_footer_str }, editor.width)
   local col, row = QfbookmarkUIUtils.get_col_row(editor.height, editor.width, width)
 
   local win_buf = vim.api.nvim_create_buf(false, true)
@@ -566,7 +562,8 @@ local function buffers_popup(buffer_lists)
     buffer_selected = buffer_selected,
     content_map = entries,
     display_lines = display_lines,
-    original_popup_buffer_width = path_width,
+    original_popup_buffer_width = base_width,
+    original_popup_buffer_lwidth = math.max(lnum_width, 13),
     win_opts = wincfg,
     last_buf = curbuf,
     active = active_cursor_selection,

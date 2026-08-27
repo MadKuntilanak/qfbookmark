@@ -399,7 +399,8 @@ function Mapping.mark.move_item_to(is_prev)
     local m = e.mark
     local symbol = QfbookmarkUIUtils.resolve_fn_name(m)
 
-    local l1, l2, l3 = QfbookmarkUIUtils.build_entry_lines(i, m, Mapping.wincfg.width, symbol)
+    local l1, l2, l3, _, _ =
+      QfbookmarkUIUtils.build_entry_lines(i, m, Mapping.opts_popup.original_popup_mark_width, 20, symbol)
 
     table.insert(lines, l1)
     table.insert(lines, l2)
@@ -601,7 +602,8 @@ local function mark_del_item(is_all)
     local mark = entry.mark
 
     local symbol = QfbookmarkUIUtils.resolve_fn_name(mark)
-    local l1, l2, l3 = QfbookmarkUIUtils.build_entry_lines(i, mark, Mapping.mark_original_width, symbol)
+    local l1, l2, l3, _, _ =
+      QfbookmarkUIUtils.build_entry_lines(i, mark, Mapping.opts_popup.original_popup_mark_width, 20, symbol)
 
     entry.start_line = line_nr
 
@@ -804,8 +806,13 @@ function Mapping.buffer.item_del()
     local __entries = {}
 
     for idx, buffer in pairs(list) do
-      local line, _hval =
-        QfbookmarkUIUtils.build_entry_line_buffers(idx, buffer, Mapping.opts_popup.original_popup_buffer_width)
+      local line, _hval = QfbookmarkUIUtils.build_entry_line_buffers(
+        idx,
+        buffer,
+        Mapping.opts_popup.original_popup_buffer_width,
+        Mapping.opts_popup.original_popup_buffer_lwidth,
+        20
+      )
       display_lines[#display_lines + 1] = line
 
       local start_line = idx
@@ -831,7 +838,9 @@ function Mapping.buffer.item_del()
       __entries,
       Mapping.buffer_selected,
       Mapping.popup.namespace,
-      Mapping.opts_popup.active
+      Mapping.opts_popup.active,
+      Mapping.opts_popup.original_popup_buffer_width,
+      Mapping.opts_popup.original_popup_buffer_lwidth
     )
 
     vim.schedule(function()
@@ -901,7 +910,9 @@ function Mapping.buffer.toggle_selection()
     list,
     Mapping.buffer_selected,
     Mapping.popup.namespace,
-    Mapping.opts_popup.active
+    Mapping.opts_popup.active,
+    Mapping.opts_popup.original_popup_buffer_width,
+    Mapping.opts_popup.original_popup_buffer_lwidth
   )
 
   local total = #list
@@ -940,7 +951,9 @@ function Mapping.buffer.deselect_all_buffers()
     list,
     Mapping.buffer_selected,
     Mapping.popup.namespace,
-    Mapping.opts_popup.active
+    Mapping.opts_popup.active,
+    Mapping.opts_popup.original_popup_buffer_width,
+    Mapping.opts_popup.original_popup_buffer_lwidth
   )
 end
 

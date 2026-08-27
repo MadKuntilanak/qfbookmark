@@ -62,7 +62,7 @@ local colors = {
   -- current-file indicator "●"
   EntryCurrentFile = { fg = { higroup = { fromTo = "String", attr = "fg" } }, bold = true },
   -- lnum portion ":92" on the detail line
-  EntryLnum = { fg = { higroup = { fromTo = "type", attr = "fg" }, tint = { amount = -0.6 } } },
+  EntryLnum = { fg = { higroup = { fromTo = "type", attr = "fg" }, tint = { amount = -0.2 } } },
   -- directory value in save footer (cyan-ish)
   EntryDirectory = { fg = { higroup = { fromTo = "Special", attr = "fg" } } },
 

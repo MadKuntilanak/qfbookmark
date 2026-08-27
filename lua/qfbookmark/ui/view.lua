@@ -377,7 +377,9 @@ local __popup_opts_for = {
       opts_popup.contents,
       opts_popup.buffer_selected,
       opts_popup.popup.namespace,
-      opts_popup.active
+      opts_popup.active,
+      opts_popup.original_popup_buffer_width,
+      opts_popup.original_popup_buffer_lwidth
     )
 
     local function update_cursorline()
@@ -392,7 +394,9 @@ local __popup_opts_for = {
         opts_popup.contents,
         opts_popup.buffer_selected,
         opts_popup.popup.namespace,
-        opts_popup.active
+        opts_popup.active,
+        opts_popup.original_popup_buffer_width,
+        opts_popup.original_popup_buffer_lwidth
       )
     end
 
