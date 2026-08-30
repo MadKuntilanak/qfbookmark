@@ -43,8 +43,8 @@ local colors = {
   FloatFooter = { fg = { higroup = { fromTo = "FloatBorder", attr = "fg" }, tint = { amount = 0.8 } } },
   FloatCursorLine = {
     bg = {
-      higroup = { fromTo = "NormalFloat", attr = "bg" },
-      tint = { amount = 0.4 },
+      higroup = { fromTo = "FloatBorder", attr = "fg" },
+      tint = { amount = 0.1 },
     },
     bold = false,
   },
