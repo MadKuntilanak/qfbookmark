@@ -134,12 +134,12 @@ local __popup_opts_for = {
     -- +-----------------------------------------------------------------------------+
 
     local function update_cursorline()
-      local cursorline_ns = vim.api.nvim_create_namespace "qfbookmark_cursorline"
-      vim.api.nvim_buf_clear_namespace(main_buf, cursorline_ns, 0, -1)
-
       if not QfbookmarkUtils.is_valid(main_buf, main_win) then
         return
       end
+
+      local cursorline_ns = vim.api.nvim_create_namespace "qfbookmark_cursorline"
+      vim.api.nvim_buf_clear_namespace(main_buf, cursorline_ns, 0, -1)
 
       local cur = vim.api.nvim_win_get_cursor(main_win)[1]
       local entries = opts_popup.content_map
