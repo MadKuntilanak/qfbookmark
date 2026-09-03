@@ -44,7 +44,7 @@ local colors = {
   FloatCursorLine = {
     bg = {
       higroup = { fromTo = "FloatBorder", attr = "fg" },
-      tint = { amount = 0.1 },
+      darken = { fromTo = "NormalFloat", attr = "bg", amount = -0.65 },
     },
     bold = false,
   },
