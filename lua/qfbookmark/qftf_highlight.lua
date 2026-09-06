@@ -33,42 +33,59 @@ local function ts_from_buf(bufnr, lnum)
     return {}
   end
   local row = lnum - 1
+
   if not parser:is_valid() then
-    parser:parse(true)
+    local ok_parse = pcall(function()
+      parser:parse(true)
+    end)
+    if not ok_parse then
+      return {}
+    end
   end
 
   local out = {}
-  parser:for_each_tree(function(tstree, tree)
-    if not tstree then
-      return
-    end
-    local root = tstree:root()
-    local rs, _, re = root:range()
-    if rs > row or re < row then
-      return
-    end
-    local q = get_hl_query(tree:lang())
-    if not q then
-      return
-    end
 
-    -- Pass (row, re+1) as range so iter_captures is sorted from `row` onward.
-    -- This makes `break` safe when start_row > row (same as quicker.nvim).
-    for cap, node, meta in q:iter_captures(root, bufnr, row, re + 1) do
-      if cap == nil then
-        break
+  -- Guard against custom query predicates (e.g. orgmode) that error out
+  -- when they lack full per-buffer/per-file context. Skip TS highlight
+  -- for this line instead of crashing the qf renderer.
+  local ok_iter = pcall(function()
+    parser:for_each_tree(function(tstree, tree)
+      if not tstree then
+        return
       end
-      local range = vim.treesitter.get_range(node, bufnr, meta[cap])
-      local sr, sc, _, er, ec = range[1], range[2], range[3], range[4], range[5]
-      if sr > row then
-        break
+      local root = tstree:root()
+      local rs, _, re = root:range()
+      if rs > row or re < row then
+        return
       end
-      if er > sr then
-        ec = -1
-      end -- multiline node: extend to EOL
-      out[#out + 1] = { sc = sc, ec = ec, hl = ("@%s.%s"):format(q.captures[cap], tree:lang()) }
-    end
+      local q = get_hl_query(tree:lang())
+      if not q then
+        return
+      end
+
+      -- Pass (row, re+1) as range so iter_captures is sorted from `row` onward.
+      -- This makes `break` safe when start_row > row (same as quicker.nvim).
+      for cap, node, meta in q:iter_captures(root, bufnr, row, re + 1) do
+        if cap == nil then
+          break
+        end
+        local range = vim.treesitter.get_range(node, bufnr, meta[cap])
+        local sr, sc, _, er, ec = range[1], range[2], range[3], range[4], range[5]
+        if sr > row then
+          break
+        end
+        if er > sr then
+          ec = -1
+        end -- multiline node: extend to EOL
+        out[#out + 1] = { sc = sc, ec = ec, hl = ("@%s.%s"):format(q.captures[cap], tree:lang()) }
+      end
+    end)
   end)
+
+  if not ok_iter then
+    return {}
+  end
+
   return out
 end
 
@@ -99,27 +116,47 @@ local function ts_from_string(text, bufnr, fname)
   if not ok then
     return {}
   end
-  local root = parser:parse(true)[1]:root()
+
+  local ok_parse, trees = pcall(function()
+    return parser:parse(true)
+  end)
+  if not ok_parse or not trees or not trees[1] then
+    return {}
+  end
+
+  local root = trees[1]:root()
   local q = get_hl_query(lang)
   if not q then
     return {}
   end
 
   local out = {}
-  for cap, node, meta in q:iter_captures(root, text) do
-    if cap == nil then
-      break
+
+  -- Guard against custom query predicates (e.g. orgmode's config-dependent
+  -- directives) that error out when parsing raw text without a real
+  -- buffer/file context. Skip TS highlight for this line instead of
+  -- propagating the error into the qf renderer.
+  local ok_iter = pcall(function()
+    for cap, node, meta in q:iter_captures(root, text) do
+      if cap == nil then
+        break
+      end
+      local range = vim.treesitter.get_range(node, text, meta[cap])
+      local sr, sc, _, er, ec = range[1], range[2], range[3], range[4], range[5]
+      if sr > 0 then
+        break
+      end
+      if er > sr then
+        ec = -1
+      end
+      out[#out + 1] = { sc = sc, ec = ec, hl = ("@%s.%s"):format(q.captures[cap], lang) }
     end
-    local range = vim.treesitter.get_range(node, text, meta[cap])
-    local sr, sc, _, er, ec = range[1], range[2], range[3], range[4], range[5]
-    if sr > 0 then
-      break
-    end
-    if er > sr then
-      ec = -1
-    end
-    out[#out + 1] = { sc = sc, ec = ec, hl = ("@%s.%s"):format(q.captures[cap], lang) }
+  end)
+
+  if not ok_iter then
+    return {}
   end
+
   return out
 end
 
