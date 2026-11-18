@@ -293,13 +293,22 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
     end
 
     if ft then
-      vim.api.nvim_set_option_value("filetype", ft, { buf = buf })
+      -- Neutral filetype first: no parser is registered for "qfbookmark_preview",
+      -- so nvim-treesitter / rainbow-delimiters won't attach and parse
+      -- synchronously on every refresh (no lag).
+      vim.api.nvim_set_option_value("filetype", "qfbookmark_preview", { buf = buf })
+
+      -- Then set the real filetype inside nvim_buf_call so it applies to the
+      -- preview buffer (buffer-local), not the current window's buffer. This
+      -- keeps legacy `syntax` and plugins reading &filetype working.
+      vim.api.nvim_buf_call(buf, function()
+        vim.bo.filetype = ft
+      end)
 
       -- Stop any existing highlighter before starting fresh,
       -- avoids stale treesitter state when the previous source
       -- buffer no longer exists
       pcall(vim.treesitter.stop, buf)
-      pcall(vim.treesitter.start, buf, ft)
 
       vim.api.nvim_set_option_value("foldenable", false, { win = win, scope = "local" })
       vim.api.nvim_set_option_value("foldmethod", "manual", { win = win, scope = "local" })
@@ -308,9 +317,9 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
       vim.api.nvim_set_option_value(
         "winhighlight",
         "FloatBorder:QFBookmarkPreviewFloatBorder,"
-        .. "FloatTitle:QFBookmarkPreviewFloatTitle,"
-        .. "CursorLine:QFBookmarkPreviewCursorline,"
-        .. "CursorLineNr:QFBookmarkPreviewFloatCursorLineNr,",
+          .. "FloatTitle:QFBookmarkPreviewFloatTitle,"
+          .. "CursorLine:QFBookmarkPreviewCursorline,"
+          .. "CursorLineNr:QFBookmarkPreviewFloatCursorLineNr,",
         { win = win, scope = "local" }
       )
     else
@@ -341,13 +350,14 @@ local function update_mark_preview(opts_popup, win, buf, is_note_mark)
   end
 
   local line_str = m.mark and ":" .. tostring(m.mark.line) .. " " or ""
-  local is_annotation = (m.mark and m.mark.note and #m.mark.note > 0) and "(Note) " or " "
+  local is_annotation = (m.mark and m.mark.note and #m.mark.note > 0) and "(Note) " or ""
 
   vim.api.nvim_win_set_config(win, {
     title = {
-      { " " .. keyword_def.icon .. is_annotation, keyword_def.hl_group or "WarningMsg" },
-      { fname,                                    "QFBookmarkEntryFnName" },
-      { line_str,                                 "QFBookmarkEntryLnum" },
+      -- { " " .. keyword_def.icon .. is_annotation, keyword_def.hl_group or "WarningMsg" },
+      { " " .. keyword_def.icon .. is_annotation, "QFBookmarkFloatTitle" },
+      { fname, "QFBookmarkFloatTitle" },
+      { line_str, "QFBookmarkFloatTitle" },
     },
   })
 end
@@ -476,7 +486,10 @@ function M.mark_note_preview(opts_popup, main_wincfg, width, height)
     { win = win_preview }
   )
 
-  vim.bo[buf_preview].filetype = "markdown"
+  vim.b[buf_preview].qfbookmark_preview = true
+  vim.api.nvim_buf_call(buf_preview, function()
+    vim.bo.filetype = "markdown"
+  end)
 
   local ctx = vim.api.nvim_buf_get_lines(
     opts_popup._opts.bufnr,
@@ -610,7 +623,8 @@ function M.show_keymap_helps(prefix_title, keys)
   local main_buf, main_win = M.new_open(wincfg, {})
   vim.api.nvim_buf_set_lines(main_buf, 0, -1, false, content)
   vim.bo[main_buf].filetype = "qfbookmark_help"
-  vim.wo[main_win].winhighlight = "NormalFloat:Normal,FloatFooter:QFBookmarkFloatFooter,FloatTitle:QFBookmarkFloatTitle"
+  vim.wo[main_win].winhighlight =
+    "NormalFloat:QFBookmarkNormalFloat,FloatFooter:QFBookmarkFloatFooter,FloatTitle:QFBookmarkFloatTitle"
 
   local hl_ns = vim.api.nvim_create_namespace "qfbookmark_help_hl"
   for i, x in ipairs(keys) do

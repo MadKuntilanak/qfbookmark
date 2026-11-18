@@ -116,6 +116,7 @@ require("qfbookmark").setup {
       allow_number = true,
       actions = {
         win_resized = true,
+        center = true,
       },
     },
     mark = {
@@ -124,6 +125,7 @@ require("qfbookmark").setup {
       allow_number = true,
       actions = {
         win_resized = false,
+        center = true,
       },
       context_templates = {
         -- `separator` defines the string inserted between multiple contexts

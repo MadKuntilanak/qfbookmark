@@ -41,6 +41,7 @@ M.defaults = {
       allow_number = true,
       actions = {
         win_resized = true,
+        center = true,
       },
     },
     mark = {
@@ -48,7 +49,7 @@ M.defaults = {
       anchor = "SE", -- NW/SW --- SE/NE
       allow_number = true,
       preview_fullscreen = false,
-      actions = { win_resized = false },
+      actions = { win_resized = false, center = true },
       context_templates = {
         separator = nil, -- or "\n\n" .. string.rep("─", 60) .. "\n\n",
         default = "",

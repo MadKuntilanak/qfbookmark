@@ -32,7 +32,7 @@ local M = {}
 --   vim.api.nvim_win_set_cursor(win, { line, col })
 -- end
 
----@param opts {filename: string, line: integer, col: integer, text?: string, mode_open?: OpenMode, is_force_jump: boolean, win_resized: boolean?}
+---@param opts {filename: string, line: integer, col: integer, text?: string, mode_open?: OpenMode, is_force_jump: boolean, win_resized: boolean?, is_center: boolean?}
 function M.jump_to(opts)
   local buf = vim.api.nvim_get_current_buf()
   local current_file = vim.api.nvim_buf_get_name(buf)
@@ -104,14 +104,17 @@ function M.jump_to(opts)
     end
   end
 
+  -- re center
+  if opts.is_center and opts.line and opts.line > 0 then
+    pcall(function()
+      vim.cmd "normal! zz"
+    end)
+  end
+
   --- resized
   if opts.win_resized then
     vim.cmd "wincmd ="
   end
-
-  vim.schedule(function()
-    vim.cmd "redraw"
-  end)
 end
 
 local function go_first_line()
@@ -419,7 +422,8 @@ local current_idx_mark = 0
 
 ---@param mark_lists QFbookBufferMarkEntry[]
 ---@param is_prev boolean
-function M.handle_nav_mark(mark_lists, is_prev)
+---@param is_center? boolean
+function M.handle_nav_mark(mark_lists, is_prev, is_center)
   local next = 1
   if is_prev then
     next = -1
@@ -448,6 +452,7 @@ function M.handle_nav_mark(mark_lists, is_prev)
     line = next_mark.line,
     col = next_mark.col,
     text = next_mark.text,
+    is_center = is_center or false,
   }
 
   M.jump_to(jump_opts)

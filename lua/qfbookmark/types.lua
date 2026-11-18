@@ -208,7 +208,7 @@
 ---@field preview_fullscreen boolean
 ---@field context_templates {separator?: string, default: string, handler: table<string, table>}
 ---@field sinks {default: string, handler: table<string, function|string, string>}
----@field actions { win_resized: boolean }
+---@field actions { win_resized: boolean, center: boolean }
 
 ---@class QFBookItemOpenMode
 ---@field auto_close boolean
@@ -231,7 +231,7 @@
 ---@class QFBookWindowBuffers
 ---@field enabled boolean
 ---@field allow_number boolean
----@field actions { win_resized: boolean }
+---@field actions { win_resized: boolean, center: boolean }
 
 ---@class QFBookmarkWindowCfg
 ---@field notify { note: boolean, mark: boolean, plugin: boolean, buffers: boolean }

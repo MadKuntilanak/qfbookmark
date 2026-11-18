@@ -99,6 +99,16 @@ local function exclude_buf(bufnr)
   return true
 end
 
+vim.api.nvim_create_autocmd("LspAttach", {
+  callback = function(args)
+    if vim.b[args.buf].qfbookmark_preview then
+      vim.schedule(function()
+        vim.lsp.buf_detach_client(args.buf, args.data.client_id)
+      end)
+    end
+  end,
+})
+
 local function recall_augroup()
   QfbookmarkMark.setup_mark_autocmds(M.buffers, true)
 
@@ -122,55 +132,55 @@ local function recall_augroup()
 
   --- DirChanged fires immediately on `:cd`, `:lcd`, or `:tcd` — covers the
   --- case where the user explicitly changes Neovim's working directory.
-  vim.api.nvim_create_autocmd("DirChanged", {
-    group = path_group,
-    callback = function()
-      QfbookmarkMark.check_and_reload(M.get_current_mark_lists(), true)
-    end,
-    desc = "QFBookmark: reload marks when cwd actually changes (:cd/:lcd/:tcd)",
-  })
+  -- vim.api.nvim_create_autocmd("DirChanged", {
+  --   group = path_group,
+  --   callback = function()
+  --     QfbookmarkMark.check_and_reload(M.get_current_mark_lists(), true)
+  --   end,
+  --   desc = "QFBookmark: reload marks when cwd actually changes (:cd/:lcd/:tcd)",
+  -- })
 
   --- FocusGained fires when Neovim regains focus (e.g. switching back from
   --- a terminal where `git checkout` was run). Debounced to avoid running
   --- git commands on every alt-tab.
-  vim.api.nvim_create_autocmd("FocusGained", {
-    group = path_group,
-    callback = function()
-      QfbookmarkMark.check_and_reload(M.get_current_mark_lists(), false)
-    end,
-    desc = "QFBookmark: reload marks when regaining focus (debounced)",
-  })
+  -- vim.api.nvim_create_autocmd("FocusGained", {
+  --   group = path_group,
+  --   callback = function()
+  --     QfbookmarkMark.check_and_reload(M.get_current_mark_lists(), false)
+  --   end,
+  --   desc = "QFBookmark: reload marks when regaining focus (debounced)",
+  -- })
 
   --- BufEnter covers the case where the user opens a file belonging to a
   --- different git repository than the one they were just working in,
   --- without ever leaving Neovim's focus (e.g. via :edit, telescope, etc).
-  vim.api.nvim_create_autocmd("BufEnter", {
-    group = path_group,
-    callback = function(args)
-      -- skip special buffers (popups, terminals, quickfix, etc.)
-      local buftype = vim.bo[args.buf].buftype
-      if buftype ~= "" then
-        return
-      end
-
-      -- Skip if the buffer has no real file (e.g. a fresh empty buffer)
-      local bufname = vim.api.nvim_buf_get_name(args.buf)
-      if bufname == "" then
-        return
-      end
-
-      -- only proceed if this file is still inside the active cwd
-      -- file is outside the active project, don't disturb the context
-      local cwd = vim.fn.getcwd()
-      local file_dir = vim.fn.fnamemodify(bufname, ":p:h")
-      if not vim.startswith(file_dir, cwd) then
-        return
-      end
-
-      QfbookmarkMark.check_and_reload(M.get_current_mark_lists(), false)
-    end,
-    desc = "QFBookmark: reload marks when entering a buffer from a different project",
-  })
+  -- vim.api.nvim_create_autocmd("BufEnter", {
+  --   group = path_group,
+  --   callback = function(args)
+  --     -- skip special buffers (popups, terminals, quickfix, etc.)
+  --     local buftype = vim.bo[args.buf].buftype
+  --     if buftype ~= "" then
+  --       return
+  --     end
+  --
+  --     -- Skip if the buffer has no real file (e.g. a fresh empty buffer)
+  --     local bufname = vim.api.nvim_buf_get_name(args.buf)
+  --     if bufname == "" then
+  --       return
+  --     end
+  --
+  --     -- only proceed if this file is still inside the active cwd
+  --     -- file is outside the active project, don't disturb the context
+  --     local cwd = vim.fn.getcwd()
+  --     local file_dir = vim.fn.fnamemodify(bufname, ":p:h")
+  --     if not vim.startswith(file_dir, cwd) then
+  --       return
+  --     end
+  --
+  --     QfbookmarkMark.check_and_reload(M.get_current_mark_lists(), false)
+  --   end,
+  --   desc = "QFBookmark: reload marks when entering a buffer from a different project",
+  -- })
 end
 
 local function remove_augroup()
@@ -310,22 +320,24 @@ function M.load_mark_lists(mark_lists, is_renew)
     return (a.data.inserted_at or 0) > (b.data.inserted_at or 0)
   end)
 
+  -- QfbookmarkUtils.info(vim.inspect(M.buffers))
+
   for _, entry in ipairs(sorted_marks) do
     local m_idx, m = entry.idx, entry.data
 
     -- Only validate line range if the buffer is already loaded.
     -- If not loaded yet, let the mark through — update_mark_sign will
     -- re-validate when the buffer is eventually opened (BufReadPost/BufEnter).
-    if m.bufnr and m.bufnr > 0 and vim.api.nvim_buf_is_loaded(m.bufnr) then
-      local line_count = vim.api.nvim_buf_line_count(m.bufnr)
-      if m.line > line_count then
-        -- Line is genuinely out of range for a loaded buffer — skip silently.
-        -- Do not warn here: the mark may still be recoverable after the file
-        -- is reloaded or the user undoes edits. Let update_mark_sign decide
-        -- whether to warn or delete.
-        goto continue
-      end
-    end
+    -- if m.bufnr and m.bufnr > 0 and vim.api.nvim_buf_is_loaded(m.bufnr) then
+    -- local line_count = vim.api.nvim_buf_line_count(m.bufnr)
+    -- if m.line > line_count then
+    -- Line is genuinely out of range for a loaded buffer — skip silently.
+    -- Do not warn here: the mark may still be recoverable after the file
+    -- is reloaded or the user undoes edits. Let update_mark_sign decide
+    -- whether to warn or delete.
+    --   goto continue
+    -- end
+    -- end
 
     if not M.buffers[m.category] then
       M.buffers[m.category] = {}
@@ -373,14 +385,9 @@ end
 function M.setup_autocmds()
   QfbookmarkMark.mark_dirty()
 
-  local qfhighlights = require "qfbookmark.highlights"
-  qfhighlights(M.prefix_app)
-
   vim.api.nvim_create_autocmd("ColorScheme", {
     callback = function()
-      vim.schedule(function()
-        require "qfbookmark.highlights" (M.prefix_app)
-      end)
+      require "qfbookmark.highlights"(M.prefix_app)
     end,
   })
 
@@ -647,7 +654,7 @@ local function next_prev_mark(is_prev_or_next)
     return
   end
   local mark_lists = get_lists_marks()
-  QfbookmarkNav.handle_nav_mark(mark_lists, is_prev_or_next)
+  QfbookmarkNav.handle_nav_mark(mark_lists, is_prev_or_next, Config.window.mark.actions.center)
 end
 
 function M.next_mark()
@@ -808,6 +815,7 @@ function M.goto_mark_index(idx)
         filename = m.filename,
         col = m.col,
         line = m.line,
+        is_center = Config.window.mark.actions.center,
       }
     end
   end
@@ -908,7 +916,7 @@ local function add_item(list_type)
 
   local is_location_target = list_type == "loclist"
   local cmd_ = is_location_target and { "lclose", Config.window.quickfix.actions.lopen, "loclist" }
-      or { "cclose", Config.window.quickfix.actions.copen, "qflist" }
+    or { "cclose", Config.window.quickfix.actions.copen, "qflist" }
 
   local title = QfbookmarkUtils.get_title_qf(QfbookmarkUtils.is_loclist())
   if title and title:match "setqflist" or #title == 0 then
@@ -961,7 +969,7 @@ end
 local function rename_header(list_type)
   local is_loc = list_type == "loclist"
   local cmd = is_loc and { Config.window.quickfix.actions.lopen, "LocList" }
-      or { Config.window.quickfix.actions.copen, "QuickFix" }
+    or { Config.window.quickfix.actions.copen, "QuickFix" }
 
   if QfbookmarkUtils.is_loclist() then
     QfbookmarkUtils.warn("Renaming the title is not supported in the " .. cmd[2] .. ",\nOnly in Quickfix")
@@ -993,7 +1001,7 @@ local function toggle_list(list_type, force_close)
 
   local is_loc = list_type == "loclist"
   local cmd_ = is_loc and { "lclose", Config.window.quickfix.actions.lopen }
-      or { "cclose", Config.window.quickfix.actions.copen }
+    or { "cclose", Config.window.quickfix.actions.copen }
   local is_open, qf_or_loclist = QfbookmarkUtils.is_vim_list_open(true)
 
   if (is_open and (list_type == qf_or_loclist)) or force_close then
@@ -1163,9 +1171,9 @@ function M.delete_item()
     for dlist_idx, dlist in pairs(data_lists) do
       for _, sel in pairs(selected) do
         if
-            sel.filename == vim.api.nvim_buf_get_name(dlist.bufnr)
-            and sel.col == dlist.col
-            and sel.lnum == dlist.lnum
+          sel.filename == vim.api.nvim_buf_get_name(dlist.bufnr)
+          and sel.col == dlist.col
+          and sel.lnum == dlist.lnum
         then
           if data_lists[dlist_idx] then
             data_lists[dlist_idx] = nil

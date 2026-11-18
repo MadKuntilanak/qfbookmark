@@ -114,9 +114,7 @@ local __popup_opts_for = {
     local total_selected = #opts_popup.content_map
     QfbookmarkUIUtils.update_title_win_popup(main_win, total_selected, opts_popup.selected)
 
-    -- +-----------------------------------------------------------------------------+
-    -- | Re-apply highlights after dd deletes lines                                  |
-    -- +-----------------------------------------------------------------------------+
+    -- Re-apply highlights after dd deletes lines
     vim.api.nvim_create_autocmd("TextChanged", {
       buffer = main_buf,
       callback = function()
@@ -129,10 +127,7 @@ local __popup_opts_for = {
       end,
     })
 
-    -- +-----------------------------------------------------------------------------+
-    -- | Multi-line cursorline: highlight all lines of the current entry             |
-    -- +-----------------------------------------------------------------------------+
-
+    -- highlight all lines of the current entry
     local function update_cursorline()
       if not QfbookmarkUtils.is_valid(main_buf, main_win) then
         return
@@ -189,9 +184,9 @@ local __popup_opts_for = {
     -- Trigger immediately on open
     vim.schedule(update_cursorline)
 
-    -- +-----------------------------------------------------------------------------+
-    -- | PREVIEW WIN                                                                 |
-    -- +-----------------------------------------------------------------------------+
+    -- ┏╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┓
+    -- ╏                                 PREVIEW WIN                                 ╏
+    -- ┗╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍╍┛
     local main_win_cfg = vim.api.nvim_win_get_config(main_win)
 
     local buf_preview, win_preview = QfbookmarkUIPopup.mark_preview(
@@ -286,12 +281,13 @@ local __popup_opts_for = {
 
     if opts_popup._opts and opts_popup._opts.keyword_def then
       local hl = opts_popup._opts.keyword_def.hl_group
-      vim.wo[main_win].winhighlight = "NormalFloat:Normal,FloatFooter:QFBookmarkFloatFooter,FloatTitle:"
+
+      vim.wo[main_win].winhighlight = "NormalFloat:NormalFloat,FloatFooter:QFBookmarkFloatFooter,FloatTitle:"
         .. (hl or "QFBookmarkFloatTitle")
     end
 
     vim.bo[main_buf].filetype = "qfbookmark"
-    vim.bo[main_buf].buftype = ""
+    vim.bo[main_buf].buftype = "nofile" -- atau "acwrite" kalau perlu :w dan BufWriteCmd
     vim.bo[main_buf].textwidth = opts_popup.win_opts.wincfg.width
     vim.bo[main_buf].bufhidden = "wipe"
 

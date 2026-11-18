@@ -4,7 +4,8 @@ local M = {}
 
 ---@param module_or_message string
 ---@param message? string
-local function notify(hl, module_or_message, message)
+---@param level number
+local function notify(module_or_message, message, level)
   local module
 
   if message == nil then
@@ -15,22 +16,24 @@ local function notify(hl, module_or_message, message)
 
   local prefix = module and ("QFBookmark." .. module) or "QFBookmark"
 
-  vim.api.nvim_echo({
-    { ("(%s) "):format(prefix), hl },
-    { message },
-  }, true, {})
+  -- vim.api.nvim_echo({
+  --   { ("(%s) "):format(prefix), hl },
+  --   { message },
+  -- }, true, {})
+
+  vim.notify(message, level, { title = prefix })
 end
 
 function M.info(module_or_message, message)
-  notify("Directory", module_or_message, message)
+  notify(module_or_message, message, vim.log.levels.INFO)
 end
 
 function M.warn(module_or_message, message)
-  notify("WarningMsg", module_or_message, message)
+  notify(module_or_message, message, vim.log.levels.WARN)
 end
 
 function M.error(module_or_message, message)
-  notify("ErrorMsg", module_or_message, message)
+  notify(module_or_message, message, vim.log.levels.ERROR)
 end
 
 ---@param msg? string
@@ -843,11 +846,14 @@ end
 -- ╙─────────────────────────────────────────────────────────────────────────────╜
 
 ---@param filename string
+---@param opts? { load?: boolean }
 ---@return integer | nil
-function M.resolve_bufnr(filename)
+function M.resolve_bufnr(filename, opts)
   if not filename then
     return nil
   end
+
+  local load = opts and opts.load or false
 
   if filename:match "^fugitive://" then
     local bufnr = vim.fn.bufnr(filename)
@@ -855,7 +861,7 @@ function M.resolve_bufnr(filename)
       bufnr = vim.fn.bufadd(filename)
     end
 
-    if bufnr ~= -1 and not vim.api.nvim_buf_is_loaded(bufnr) then
+    if load and bufnr ~= -1 and not vim.api.nvim_buf_is_loaded(bufnr) then
       vim.api.nvim_buf_call(bufnr, function()
         vim.cmd("doautocmd BufReadCmd " .. vim.fn.fnameescape(filename))
       end)
@@ -870,7 +876,7 @@ function M.resolve_bufnr(filename)
       bufnr = vim.fn.bufadd(filename)
     end
 
-    if bufnr ~= -1 and not vim.api.nvim_buf_is_loaded(bufnr) then
+    if load and bufnr ~= -1 and not vim.api.nvim_buf_is_loaded(bufnr) then
       vim.fn.bufload(bufnr)
     end
 
