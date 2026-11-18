@@ -1,5 +1,5 @@
 *qfbookmark.txt*
-                                  For NVIM v0.8.0    Last change: 2026 July 12
+                              For NVIM v0.8.0    Last change: 2026 November 18
 
 ==============================================================================
 Table of Contents                               *qfbookmark-table-of-contents*
@@ -52,7 +52,8 @@ FEATURES                                      *qfbookmark-qfbookmark-features*
 SHOWCASE                                      *qfbookmark-qfbookmark-showcase*
 
 
-  For more example videos and GIFs, see the |qfbookmark-providers| section.
+  For more example videos and GIFs, see the |qfbookmark-qfbookmark-providers|
+  section.
 
 REQUIREMENTS                              *qfbookmark-qfbookmark-requirements*
 
@@ -98,20 +99,20 @@ DEFAULT CONFIGS ~
 >lua
     require("qfbookmark").setup {
       save_dir = vim.fn.stdpath "data" .. "/qfbookmark",
-    
+
       -- Picker backend. "default" uses the built-in popup.
       picker = "default", --  or "fzf-lua"
-    
+
       extmarks = {
         priority = 15,
         throttle = 200, -- ms
-    
+
         -- Exclude certain buffer or file types from showing extmarks
         excluded = {
           buftypes = {},
           filetypes = {},
         },
-    
+
         -- Mark mode definitions: icon, highlight group, and sign text
         keywords = {
           MARK = { icon = "📌", hl_group = "QFbookmarkBadgeMark" },
@@ -146,6 +147,7 @@ DEFAULT CONFIGS ~
           allow_number = true,
           actions = {
             win_resized = true,
+            center = true,
           },
         },
         mark = {
@@ -154,6 +156,7 @@ DEFAULT CONFIGS ~
           allow_number = true,
           actions = {
             win_resized = false,
+            center = true,
           },
           context_templates = {
             -- `separator` defines the string inserted between multiple contexts
@@ -162,13 +165,13 @@ DEFAULT CONFIGS ~
             -- string for a more visible divider.
             -- Example: "\n\n" .. string.rep("─", 60) .. "\n\n"
             separator = nil,
-    
+
             -- `default` sets which template is pre-selected when the preview
             -- popup opens. Must match a key inside `handler`.
             -- If unset or the key is not found, falls back to the first
             -- entry in `handler`, then to the builtin "copy_raw".
             default = "",
-    
+
             -- `handler` is a map of named templates. Each entry defines how
             -- the annotation context is formatted before sending or copying.
             -- The `builder` function receives a `ctx` table with:
@@ -186,7 +189,7 @@ DEFAULT CONFIGS ~
             -- Set to "" or omit to fall back to the builtin clipboard sink.
             -- Must match a key inside `handler`.
             default = "", -- fallback: clipboard (builtin, always available)
-    
+
             -- `handler` is a map of named sink functions.
             -- Each function receives the final formatted string and is responsible
             -- for delivering it (e.g. sending to an AI plugin, writing to a file).
@@ -201,13 +204,13 @@ DEFAULT CONFIGS ~
           -- to its previous location, so you don't need to scroll
           -- through long notes again.
           enabled = true,
-    
+
           mode = "float", -- or "belowright split"
           wrap = true,
           anchor = "SE", -- "NW|NE|SW|SE"
           width = 0.45, -- relative size (0.1 to 1)
           height = 0.80,
-    
+
           -- `current_project` controls where local (per-project) notes are saved.
           -- When `enabled = true`, notes are written to a file named `filename`
           -- inside the current working directory (i.e. the project root).
@@ -260,60 +263,60 @@ DEFAULT CONFIGS ~
         actions = { -- General actions
           up = { "<C-p>", "<C-k>", "k" },
           down = { "<C-n>", "<C-j>", "j" },
-    
+
           default = { "<CR>", "o" },
           split = "<C-s>",
           vsplit = "<C-v>",
           tab = "<C-t>",
-    
+
           scroll_preview_up = "<C-u>",
           scroll_preview_down = "<C-d>",
           scroll_preview_up_fast = "<C-b>",
           scroll_preview_down_fast = "<C-f>",
-    
+
           toggle_select = "<Tab>",
           diselect_all = "D",
-    
+
           next_item = "<C-n>",
           prev_item = "<C-p>",
-    
+
           quit = { "q", "<Esc>", "<C-c>", "<C-q>" },
-    
+
           show_help = "g?",
-    
+
           del_item = "dd",
           del_item_all = "dM",
         },
-    
+
         mark = {
           -- Create marks
           add_mark = "<Leader>qq",
           add_fix = "<Leader>qf",
           add_debug = "<Leader>qd",
           add_mark_annotation = "<Leader>qn",
-    
+
           preview_context = "S",
           edit_context = "E",
           toggle_preview = "<Leader>qP",
           toggle_range_signs = "<Leader>qp",
-    
+
           toggle_open = "gl",
-    
+
           save_annotation = "<C-o>",
-    
+
           next_mark = "gn",
           prev_mark = "gp",
-    
+
           del_mark = "dm",
           del_mark_buffer = "dM",
-    
+
           move_item_down = "<a-n>",
           move_item_up = "<a-p>",
-    
+
           zoom = "<C-z>",
-    
+
           pick_master = "<Leader>qm",
-    
+
           -- Jump directly to harpoon slot N
           harpoon = {
             mark_1 = "<a-1>",
@@ -333,20 +336,20 @@ DEFAULT CONFIGS ~
         quickfix = {
           next_hist = "gl",
           prev_hist = "gh",
-    
+
           rename_title = "<Localleader>qR",
-    
+
           add_item_to_qf = "tt",
           add_item_to_loc = "ty",
-    
+
           open_toggle_qf = "<Leader>qj",
           open_toggle_loc = "<Leader>ql",
-    
+
           save_or_load = "<Leader>qy",
-    
+
           layout_up = "<c-k>",
           layout_down = "<c-j>",
-    
+
           integrations = {
             trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
             grugfar = { enabled = true, toggle = "<Localleader>gg" },
@@ -354,14 +357,14 @@ DEFAULT CONFIGS ~
             custom = { enabled = false, commands = {} },
           },
         },
-    
+
         buffers = {
           toggle_open = "gb",
           integrations = {
             custom = { enabled = false, commands = {} },
           },
         },
-    
+
         note = {
           toggle_open_global = "<Leader>fn",
           toggle_open_local = "<Leader>fN",
@@ -537,7 +540,7 @@ MARK ~
 - Show current buffer mark indicators with a green bullet `●` (`QFBookmarkEntryCurrentFile` highlight).
 
 
-  Insidethe mark popup, the delete keymaps live under `keymaps.actions.del_item`
+  Inside the mark popup, the delete keymaps live under `keymaps.actions.del_item`
   (delete current entry) and `keymaps.actions.del_item_all` (delete all entries),
   these are separate from `del_mark` / `del_mark_buffer` below, which operate
   directly on a buffer rather than inside the popup.
@@ -559,31 +562,31 @@ DEFAULT KEYMAPS
 
 ------------------------------------------------------------------------------
 >lua
-    
+
         mark = {
           -- Create marks
           add_mark = "<Leader>qq",
           add_fix = "<Leader>qf",
           add_debug = "<Leader>qd",
           add_mark_annotation = "<Leader>qn",
-    
+
           toggle_open = "gl",
-    
+
           save_annotation = "<C-s>",
-    
+
           del_mark = "dm",
           del_mark_buffer = "dM",
-    
+
           next_mark = "gn",
           prev_mark = "gp",
-    
+
           move_item_down = "<a-n>",
           move_item_up = "<a-p>",
-    
+
           zoom = "<C-z>",
-    
+
           pick_master = "<Leader>qm",
-    
+
           -- Jump directly to harpoon slot N
           harpoon = {
             mark_1 = "<a-1>",
@@ -783,7 +786,7 @@ DEFAULT KEYMAPS
 
 ------------------------------------------------------------------------------
 >lua
-    
+
         buffers = {
           toggle_open = "gb",
           integrations = {
@@ -895,24 +898,24 @@ DEFAULT KEYMAPS
 
 ------------------------------------------------------------------------------
 >lua
-    
+
         quickfix = {
           next_hist = "gl",
           prev_hist = "gh",
-    
+
           rename_title = "<Localleader>qR",
-    
+
           add_item_to_qf = "tt",
           add_item_to_loc = "ty",
-    
+
           open_toggle_qf = "<Leader>qj",
           open_toggle_loc = "<Leader>ql",
-    
+
           save_or_load = "<Leader>qy",
-    
+
           layout_up = "<c-k>",
           layout_down = "<c-j>",
-    
+
           integrations = {
             trouble = { enabled = true, toggle_qflist = "Q", toggle_loclist = "L" },
             grugfar = { enabled = true, toggle = "<Localleader>gg" },
@@ -993,13 +996,13 @@ Example:
         notify.warn "Not in qf filetype"
         return nil
       end
-    
+
       if Util.qf.is_loclist() then
         return true
       end
       return false
     end
-    
+
     ---@param cmds { qf: string, lf: string }
     ---@return string|nil
     local call_func = function(cmds)
@@ -1007,17 +1010,17 @@ Example:
       if is_ok == nil then
         return
       end
-    
+
       if is_ok then
         return cmds.lf
       end
-    
+
       return cmds.qf
     end
 <
 
 >lua
-    
+
             -- Filter & bulk update
             {
               key = "<LocalLeader>qf",
@@ -1195,11 +1198,11 @@ Config:
                       local Date = require "orgmode.objects.date"
                       local scheduled_date = Date.today().tomorrow()
                       return string.format(
-    
+
                         [[
     * TODO investigate this later                                   :mytodo:
       SCHEDULED: <%d-%s-%d %s 18:00>
-    
+
       #+begin_src %s
       <TEXT_HERE>
       #+end_src
@@ -1224,7 +1227,7 @@ Config:
                       os.date "%Y-%m-%d %H:%M"
                     ),
                   },
-    
+
                   error = {
                     target = "local",
                     description = "Capture an error / bug for this project",
@@ -1237,7 +1240,7 @@ Config:
                       os.date "%Y-%m-%d %H:%M"
                     ),
                   },
-    
+
                   todo = {
                     target = "local",
                     description = "TODO item with source reference",
@@ -1245,11 +1248,11 @@ Config:
                       return string.format(
                         [[
       - [ ] error ..
-    
+
         #+begin_src %s
         <TEXT_HERE>
         #+end_src
-    
+
           ]],
                         vim.bo.filetype
                       )
@@ -1299,7 +1302,7 @@ Example using heirline <https://github.com/rebelot/heirline.nvim>
 Click to expand ~
 
 >lua
-    
+
     local get_qfbookmark = function()
       if not qfbookmark then
         local ok, qfbook = pcall(require, "qfbookmark.qf")
@@ -1309,9 +1312,9 @@ Click to expand ~
       end
       return qfbookmark
     end
-    
+
     ...
-    
+
     M.QFbookmark = {
       condition = function()
         local qfbook = get_qfbookmark()
@@ -1372,7 +1375,7 @@ ACKNOWLEDGEMENTS                      *qfbookmark-qfbookmark-acknowledgements*
 
 - Fzf-lua <https://github.com/ibhagwan/fzf-lua> The picker that inspired me a
     lot. I borrowed a few ideas along the way and occasionally peeked at the code.
-- quicker.nvim <https://github.com/stevearc/quicker.nvim> Helpedme make quickfix
+- quicker.nvim <https://github.com/stevearc/quicker.nvim> Helped me make quickfix
     look nicer and taught me that quickfix doesn’t have to look like a 1990s
     terminal output.
 - folke <https://github.com/folke> Creator of many incredible Neovim plugins.
